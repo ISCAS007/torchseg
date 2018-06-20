@@ -106,7 +106,9 @@ class cityscapes(TD.Dataset):
         
         if self.augmentations is not None:
             img, ann = self.augmentations(img, ann)
-
+        
+        # convert image from (height,width,channel) to (channel,height,width)
+        img=img.transpose((2,0,1))
         return img, ann
     
 if __name__ == '__main__':

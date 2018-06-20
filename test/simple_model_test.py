@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# -*- coding: utf-8 -*-
-
 import torch
 from torch.nn import Module,Conv2d
 from torch.nn import functional as F
@@ -29,7 +27,7 @@ class simple_net(Module):
         # H/2, W/2 -> H/4, W/4
         x = F.max_pool2d(x, kernel_size=3, stride=2, padding=1)
 
-        x = F.upsample(x, size=inp_shape, mode='bilinear')
+        x = F.upsample(x, size=inp_shape, mode='bilinear',align_corners=True)
 
         return x
     
@@ -40,11 +38,12 @@ class simple_net(Module):
         # use gpu memory
         self.cuda()
         optimizer = torch.optim.Adam(self.parameters(), lr = 0.0001)
-        loss_fn=torch.nn.NLLLoss()
+#        loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
+        loss_fn=torch.nn.CrossEntropyLoss()
         for epoch in range(args.n_epoch):
             for i, (images, labels) in enumerate(trainloader):
-                images = Variable(images.cuda())
-                labels = Variable(labels.cuda())
+                images = Variable(images.cuda().float())
+                labels = Variable(labels.cuda().long())
                 
                 optimizer.zero_grad()
                 outputs = self.forward(images)
@@ -55,9 +54,9 @@ class simple_net(Module):
     
                 loss.backward()
                 optimizer.step()
-    
+                
                 if (i+1) % 20 == 0:
-                    print("Epoch [%d/%d] Loss: %.4f" % (epoch+1, args.n_epoch, loss.data[0]))
+                    print("Epoch [%d/%d] Loss: %.4f" % (epoch+1, args.n_epoch, loss.data))
                     
 if __name__ == '__main__':
     config=edict()
