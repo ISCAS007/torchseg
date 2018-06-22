@@ -28,7 +28,7 @@ the miou is 0.8+
 
 # todo
 - [ ] pspnet
-- [*] simplenet
-- [*] motionnet
-- [*] tensorboard
-- [*] miou
+- [x] simplenet
+- [x] motionnet
+- [x] tensorboard
+- [x] miou
