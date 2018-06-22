@@ -3,9 +3,12 @@ import pandas as pd
 import torchvision as TV
 import torch.nn as TN
 import numpy as np
+import torch
+from torch.autograd import Variable
+from torchvision.models import *
 from easydict import EasyDict as edict
 
-class backbone():
+class backbone(TN.Module):
     def __init__(self,config,model=None):
         super(backbone,self).__init__()
         self.config=config
@@ -67,6 +70,13 @@ class backbone():
                 return x
             
         assert False,'unexpected level %d for format %s'%(level,self.format)
+        
+    def get_feature_map_channel(self,level):
+        self.cuda()
+        x=torch.rand(2,3,224,224)
+        x=Variable(x.cuda().float())
+        x=self.forward(x,level)
+        return x.shape[1]
         
     def get_model(self):
         assert self.config.backbone_name in globals().keys(), 'undefine backbone name %s'%self.config.backbone_name
@@ -148,3 +158,4 @@ if __name__ == '__main__':
         config.backbone_name=name
         bb=backbone(config)
         bb.show_layers()
+        break
