@@ -133,8 +133,8 @@ class motionnet(TN.Module):
                 writer.add_scalar('val/acc', score['Overall Acc: \t'], epoch)
                 writer.add_scalar('val/iou', score['Mean IoU : \t'], epoch)
                 
-                if epoch+1 % (args.n_epoch//5) == 0:
-                    image_num=5
+                if (epoch+1) % (1+args.n_epoch//10) == 0:
+                    image_num=min(5,predicts_val.shape[0])
                     image_idxs=np.random.permutation(predicts_val.shape[0])[0:image_num]
                     for idx in image_idxs:
                         writer.add_image('val/images_%d'%idx,images_val[idx],epoch)

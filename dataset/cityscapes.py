@@ -9,7 +9,14 @@ from easydict import EasyDict as edict
 import random
 
 class cityscapes(TD.Dataset):
-    def __init__(self, config, augmentations=None, split=None):
+    """
+    ➜  ls root_path/gtFine_trainvaltest/gtFine/test/berlin/berlin_000000_000019_gtFine_
+    berlin_000000_000019_gtFine_color.png      
+    berlin_000000_000019_gtFine_instanceIds.png
+    berlin_000000_000019_gtFine_labelIds.png   
+    berlin_000000_000019_gtFine_polygons.json  
+    """
+    def __init__(self, config, augmentations=None, split=None, bchw=True):
         """
         root_path
         ├── gtFine_trainvaltest
@@ -27,6 +34,7 @@ class cityscapes(TD.Dataset):
         """
         self.config=config
         self.augmentations=augmentations
+        self.bchw=bchw
         if split is not None:
             self.split=split
         else:
@@ -61,10 +69,10 @@ class cityscapes(TD.Dataset):
         """
         # eg root_path/leftImg8bit_trainvaltest/leftImg8bit/test/berlin/berlin_000000_000019_leftImg8bit.png
         img_path = self.image_files[index]
-        # eg root_path/gtFine_trainvaltest/gtFine/test/berlin/berlin_000000_000019_gtFine_color.png
+        # eg root_path/gtFine_trainvaltest/gtFine/test/berlin/berlin_000000_000019_gtFine_labelIds.png
         lbl_path = os.path.join(self.annotations_base,
                                 img_path.split(os.sep)[-2], 
-                                os.path.basename(img_path).replace('leftImg8bit.png','gtFine_color.png'))
+                                os.path.basename(img_path).replace('leftImg8bit.png','gtFine_labelIds.png'))
 #        lbl_path = self.annotation_files[index]
         
         img_path_split=img_path.split(os.sep)
@@ -83,12 +91,15 @@ class cityscapes(TD.Dataset):
         
         if hasattr(self.config,'print_path'):
             if self.config.print_path:
-                print(img_path)
-                print(lbl_path)
+                print('image path:',img_path)
+                print('label path:',lbl_path)
         img = cv2.imread(img_path,cv2.IMREAD_COLOR)
         lbl = cv2.imread(lbl_path,cv2.IMREAD_GRAYSCALE)
         
         ann = np.zeros_like(lbl)
+        
+#        lbl_ids = np.unique(lbl)
+#        print('label image ids',lbl_ids)
         if self.ignore_index==0:
             for idx, class_id in enumerate(self.foreground_class_ids):
                 ann[lbl == class_id] = idx+1
@@ -107,8 +118,9 @@ class cityscapes(TD.Dataset):
         if self.augmentations is not None:
             img, ann = self.augmentations(img, ann)
         
-        # convert image from (height,width,channel) to (channel,height,width)
-        img=img.transpose((2,0,1))
+        if self.bchw:
+            # convert image from (height,width,channel) to (channel,height,width)
+            img=img.transpose((2,0,1))
         return img, ann
     
 if __name__ == '__main__':
@@ -120,6 +132,16 @@ if __name__ == '__main__':
     dataset=cityscapes(config)
     loader=TD.DataLoader(dataset=dataset,batch_size=2, shuffle=True,drop_last=False)
     for i, data in enumerate(loader):
+        imgs, labels = data
+        print(i,imgs.shape,labels.shape)
+        
+        if i>=3:
+            break
+        
+    print('validation dataset'+'*'*50)
+    val_dataset=cityscapes(config,split='val')
+    val_loader=TD.DataLoader(dataset=val_dataset,batch_size=2, shuffle=True,drop_last=False)
+    for i, data in enumerate(val_loader):
         imgs, labels = data
         print(i,imgs.shape,labels.shape)
         

@@ -28,7 +28,10 @@ the miou is 0.8+
 
 # todo
 - [ ] pspnet
+- [ ] color for label image and predict image
+- [x] keras empty net: use pytorch loader and tensorboard-pytorch in keras
+- [x] notebook for keras and empty net
 - [x] simplenet
 - [x] motionnet
-- [x] tensorboard
+- [x] tensorboard-pytorch
 - [x] miou
