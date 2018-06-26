@@ -35,3 +35,4 @@ the miou is 0.8+
 - [x] motionnet
 - [x] tensorboard-pytorch
 - [x] miou
+- [ ] input image preprocess and augmentation
