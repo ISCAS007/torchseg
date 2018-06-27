@@ -38,15 +38,19 @@ class ImageAugmenter:
         return self.seq.augment_image(image)
 
 class ImageTransformer(object):
-    def __init__(self,config):
+    def __init__(self,config,propability=0.25):
         self.config=config
+        self.p=propability
         
-    def transform_image_and_mask(self,image,mask,propability=0,config=None):
+    def transform_image_and_mask(self,image,mask,propability=None,config=None):
         if config is None:
             config=self.config
             
         if not hasattr(config,'debug'):
             config.debug=False
+        
+        if propability is None:
+            propability=self.p
         
         if propability == 0:
             return image,mask
@@ -80,9 +84,9 @@ class ImageTransformer(object):
                     a=np.random.rand()
                     th=(ratio_min+(ratio_max-ratio_min)*a)*h
                     tw=(ratio_min+(ratio_max-ratio_min)*a)*w
-                    crop_size=(th,tw)
+                    crop_size=(int(th),int(tw))
                 else:
-                    crop_size=(crop_ratio*h,crop_ratio*w)
+                    crop_size=(int(crop_ratio*h),int(crop_ratio*w))
             else:
                 assert False,'crop size and crop ratio should have one and only one defined!'
             
@@ -135,10 +139,10 @@ class ImageTransformer(object):
         assert height_new_float>0,'half of the angle cannot bigger than arctan(height/width)'
 #        height_new=2*int(cos_angle_half*(x/2-tan_angle_half*y/2)/cos_angle)
 #        width_new=2*int(cos_angle_half*(y/2-tan_angle_half*x/2)/cos_angle)
-        print('old height is',y)
-        print('old width is',x)
-        print('new_height is',height_new_float)
-        print('new_width is',width_new_float)
+#        print('old height is',y)
+#        print('old width is',x)
+#        print('new_height is',height_new_float)
+#        print('new_width is',width_new_float)
     
         x_new=int(math.ceil((x-width_new_float)/2))
         y_new=int(math.ceil((y-height_new_float)/2))
@@ -184,16 +188,43 @@ class ImageTransformer(object):
         new_image=cv2.flip(image,0)
         new_mask=cv2.flip(mask,0)
         return new_image,new_mask
+
+def get_default_augmentor_config():
+    config=edict()
+    config.rotate=edict()
+    config.rotate.max_angle=15
+    config.crop=edict()
+    config.crop.crop_ratio=[0.85,1.0]
+    config.horizontal_flip=True
+    config.vertical_filp=False
+    config.debug=False
+    
+    return config
+
+class Augmentations(object):
+    def __init__(self,p=0.25,config=None):
+        if config is None:
+            config=get_default_augmentor_config()
+        
+        self.aug=ImageAugmenter(propability=p)
+        self.tran=ImageTransformer(config=config,propability=p)
+        self.p=p
+        
+    def transform(self,image,mask=None):
+        if mask is None:
+            return self.aug.augument_image(image)
+        else:
+            return self.tran.transform_image_and_mask(image,mask)
     
 if __name__ == '__main__':
     
     config=edict()
     config.rotate=edict()
-    config.rotate.angle=45
-#    config.crop=edict()
-#    config.crop.crop_size=(100,100)
-#    config.horizontal_flip=True
-#    config.vertical_filp=False
+    config.rotate.angle=30
+    config.crop=edict()
+    config.crop.crop_size=(100,100)
+    config.horizontal_flip=True
+    config.vertical_filp=False
     config.debug=True
     
     aug = ImageAugmenter()

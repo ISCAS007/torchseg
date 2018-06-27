@@ -8,19 +8,18 @@ import torch.utils.data as TD
 import random
 from dataset.cityscapes import cityscapes
 from models.backbone import backbone
-from utils.metrics import runningScore,get_scores
+from utils.metrics import runningScore
 from utils.torch_tools import freeze_layer
 from models.upsample import upsample_duc,upsample_bilinear,transform_psp
 from easydict import EasyDict as edict
 import numpy as np
-from tqdm import tqdm
 from tensorboardX import SummaryWriter
 import time
 import os
 
-class pspnet(TN.Module):
+class psp_edge(TN.Module):
     def __init__(self,config):
-        super(pspnet,self).__init__()
+        super(psp_edge,self).__init__()
         self.config=config
         self.name=self.__class__.__name__
         self.backbone=backbone(config.model)
@@ -52,20 +51,17 @@ class pspnet(TN.Module):
         # psp net will output channels with 2*self.midnet_out_channels
         if self.upsample_type=='duc':
             r=2**self.upsample_layer
-            self.seg_decoder=upsample_duc(2*self.midnet_out_channels,self.class_number,r)
-            self.edge_decoder=upsample_duc(2*self.midnet_out_channels,2,r)
+            self.decoder=upsample_duc(2*self.midnet_out_channels,self.class_number,r)
         elif self.upsample_type=='bilinear':
-            self.seg_decoder=upsample_bilinear(2*self.midnet_out_channels,self.class_number,self.input_shape[0:2])
-            self.edge_decoder=upsample_bilinear(2*self.midnet_out_channels,2,self.input_shape[0:2])
+            self.decoder=upsample_bilinear(2*self.midnet_out_channels,self.class_number,self.input_shape[0:2])
         else:
             assert False,'unknown upsample type %s'%self.upsample_type
 
     def forward(self, x):        
         feature_map=self.backbone.forward(x,self.upsample_layer)
         feature_mid=self.midnet(feature_map)
-        seg=self.seg_decoder(feature_mid)
-        edge=self.edge_decoder(feature_mid)
-        return seg,edge
+        x=self.decoder(feature_mid)
+        return x
     
     def do_train_or_val(self,args,trainloader=None,valloader=None):
         # use gpu memory
@@ -91,16 +87,13 @@ class pspnet(TN.Module):
                 # set model to train mode
                 self.train()
                 n_step=len(trainloader)
-                for i, (images, labels, edges) in enumerate(trainloader):
+                for i, (images, labels) in enumerate(trainloader):
                     images = Variable(images.cuda().float())
                     labels = Variable(labels.cuda().long())
-                    edges = Variable(labels.cuda().long())
                     
                     optimizer.zero_grad()
-                    seg_output,edge_output = self.forward(images)
-                    seg_loss = loss_fn(input=seg_output, target=labels)
-                    edge_loss = loss_fn(input=edge_output,target=edges)
-                    loss = seg_loss + edge_loss
+                    outputs = self.forward(images)
+                    loss = loss_fn(input=outputs, target=labels)
         
                     loss.backward()
                     optimizer.step()

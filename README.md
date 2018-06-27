@@ -35,4 +35,14 @@ the miou is 0.8+
 - [x] motionnet
 - [x] tensorboard-pytorch
 - [x] miou
-- [ ] input image preprocess and augmentation
+- [ ] input image preprocess and augmentation: 
+    - [ ] imagenet
+    - [x] [-1,1]
+    - [ ] [0,1] not prefered
+- [ ] pspnet + edge
+    - [ ] multi input, output, loss, log
+    - [ ] edge before pspnet or after pspnet ?
+    - [ ] change edge width with epoch
+- [ ] pspnet + global
+- [ ] pspnet + dict learning
+- [ ] pspnet + fractal filters (random number of filters)

@@ -7,6 +7,9 @@ import cv2
 import numpy as np
 from easydict import EasyDict as edict
 import random
+import matplotlib.pyplot as plt
+
+from utils.augmentor import Augmentations
 
 class cityscapes(TD.Dataset):
     """
@@ -55,6 +58,10 @@ class cityscapes(TD.Dataset):
         self.background_class_ids=[0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30, -1]
         self.ignore_index = 0
         
+        if hasattr(self.config,'norm'):
+            self.norm=True
+        else:
+            self.norm=False
         
         print("Found %d image files, %d annotation files" % (len(self.image_files),len(self.annotation_files)))
         
@@ -110,13 +117,20 @@ class cityscapes(TD.Dataset):
             for idx, class_id in enumerate(self.foreground_class_ids):
                 ann[lbl == class_id] = idx
         
+        if self.augmentations is not None:
+            img = self.augmentations.transform(img)
+            img, ann = self.augmentations.transform(img, ann)
+#            print('augmentation',img.shape,ann.shape)
+            
+            assert hasattr(self.config,'resize_shape'),'augmentations may change image to random size by random crop'
+            
         if hasattr(self.config,'resize_shape'):
             assert len(self.config.resize_shape)==2, 'resize_shape should with len of 2 but %d'%len(self.config.resize_shape)
             img=cv2.resize(src=img,dsize=tuple(self.config.resize_shape),interpolation=cv2.INTER_LINEAR)
             ann=cv2.resize(src=ann,dsize=tuple(self.config.resize_shape),interpolation=cv2.INTER_NEAREST)
         
-        if self.augmentations is not None:
-            img, ann = self.augmentations(img, ann)
+        if self.norm:
+            img=2*img/255-1.0
         
         if self.bchw:
             # convert image from (height,width,channel) to (channel,height,width)
@@ -128,18 +142,23 @@ if __name__ == '__main__':
     config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
     config.cityscapes_split=random.choice(['test','val','train'])
     config.print_path=True
+    config.resize_shape=(224,224)
     
-    dataset=cityscapes(config)
+    augmentations=Augmentations()
+    dataset=cityscapes(config,split='train',augmentations=augmentations)
     loader=TD.DataLoader(dataset=dataset,batch_size=2, shuffle=True,drop_last=False)
     for i, data in enumerate(loader):
         imgs, labels = data
         print(i,imgs.shape,labels.shape)
-        
+        plt.imshow(imgs[0,0])
+        plt.show()
+        plt.imshow(labels[0])
+        plt.show()
         if i>=3:
             break
         
     print('validation dataset'+'*'*50)
-    val_dataset=cityscapes(config,split='val')
+    val_dataset=cityscapes(config,split='val',augmentations=augmentations)
     val_loader=TD.DataLoader(dataset=val_dataset,batch_size=2, shuffle=True,drop_last=False)
     for i, data in enumerate(val_loader):
         imgs, labels = data
