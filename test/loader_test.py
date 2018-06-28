@@ -15,13 +15,19 @@ config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_ar
 config.cityscapes_split=random.choice(['test','val','train'])
 config.resize_shape=(224,224)
 config.print_path=True
+config.with_path=True
 
 
 dataset=cityscapes(config)
 loader=TD.DataLoader(dataset=dataset,batch_size=2, shuffle=True,drop_last=False)
 
 for i, data in enumerate(loader):
-    imgs, labels = data
+    print(len(data))
+    imgs=data['image']
+    paths=data['filename']
+    imgs, labels = imgs
+    img_path,lbl_path = paths
+    print(img_path,lbl_path)
     print(i,imgs.shape,labels.shape)
     plt.imshow(imgs[0,:,:,:].permute([1,2,0]))
     plt.show()

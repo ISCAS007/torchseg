@@ -35,6 +35,11 @@ class pspnet(TN.Module):
         self.class_number = self.config.model.class_number
         self.input_shape = self.config.model.input_shape
         self.dataset_name=self.config.dataset.name
+        if hasattr(self.config,'ignore_index'):
+            self.ignore_index=self.config.ignore_index
+        else:
+            self.ignore_index = 0
+        
 #        self.midnet_type = self.config.model.midnet_type
         self.midnet_pool_sizes=self.config.model.midnet_pool_sizes
         self.midnet_scale=self.config.model.midnet_scale
@@ -52,20 +57,19 @@ class pspnet(TN.Module):
         # psp net will output channels with 2*self.midnet_out_channels
         if self.upsample_type=='duc':
             r=2**self.upsample_layer
-            self.seg_decoder=upsample_duc(2*self.midnet_out_channels,self.class_number,r)
-            self.edge_decoder=upsample_duc(2*self.midnet_out_channels,2,r)
+            self.decoder=upsample_duc(2*self.midnet_out_channels,self.class_number,r)
         elif self.upsample_type=='bilinear':
-            self.seg_decoder=upsample_bilinear(2*self.midnet_out_channels,self.class_number,self.input_shape[0:2])
-            self.edge_decoder=upsample_bilinear(2*self.midnet_out_channels,2,self.input_shape[0:2])
+            self.decoder=upsample_bilinear(2*self.midnet_out_channels,self.class_number,self.input_shape[0:2])
         else:
             assert False,'unknown upsample type %s'%self.upsample_type
 
-    def forward(self, x):        
+
+    def forward(self, x):
         feature_map=self.backbone.forward(x,self.upsample_layer)
         feature_mid=self.midnet(feature_map)
-        seg=self.seg_decoder(feature_mid)
-        edge=self.edge_decoder(feature_mid)
-        return seg,edge
+        x=self.decoder(feature_mid)        
+
+        return x
     
     def do_train_or_val(self,args,trainloader=None,valloader=None):
         # use gpu memory
@@ -73,7 +77,13 @@ class pspnet(TN.Module):
         self.backbone.model.cuda()
         optimizer = torch.optim.Adam([p for p in self.parameters() if p.requires_grad], lr = 0.0001)
 #        loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
-        loss_fn=torch.nn.CrossEntropyLoss()
+        if hasattr(args,'ignore_index'):
+            if args.ignore_index:
+                loss_fn=torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
+            else:
+                loss_fn=torch.nn.CrossEntropyLoss()
+        else:
+            loss_fn=torch.nn.CrossEntropyLoss()
         
         # metrics
         running_metrics = runningScore(self.class_number)
@@ -91,16 +101,13 @@ class pspnet(TN.Module):
                 # set model to train mode
                 self.train()
                 n_step=len(trainloader)
-                for i, (images, labels, edges) in enumerate(trainloader):
+                for i, (images, labels) in enumerate(trainloader):
                     images = Variable(images.cuda().float())
                     labels = Variable(labels.cuda().long())
-                    edges = Variable(labels.cuda().long())
                     
                     optimizer.zero_grad()
-                    seg_output,edge_output = self.forward(images)
-                    seg_loss = loss_fn(input=seg_output, target=labels)
-                    edge_loss = loss_fn(input=edge_output,target=edges)
-                    loss = seg_loss + edge_loss
+                    outputs = self.forward(images)
+                    loss = loss_fn(input=outputs, target=labels)
         
                     loss.backward()
                     optimizer.step()

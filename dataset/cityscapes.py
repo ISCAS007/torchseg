@@ -56,7 +56,10 @@ class cityscapes(TD.Dataset):
         self.foreground_class_ids=[7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
         self.n_classes = len(self.foreground_class_ids)+1
         self.background_class_ids=[0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30, -1]
-        self.ignore_index = 0
+        if hasattr(self.config,'ignore_index'):
+            self.ignore_index=self.config.ignore_index
+        else:
+            self.ignore_index = 0
         
         if hasattr(self.config,'norm'):
             self.norm=True
@@ -117,7 +120,7 @@ class cityscapes(TD.Dataset):
             for idx, class_id in enumerate(self.foreground_class_ids):
                 ann[lbl == class_id] = idx
         
-        if self.augmentations is not None:
+        if self.augmentations is not None and self.split=='train':
             img = self.augmentations.transform(img)
             img, ann = self.augmentations.transform(img, ann)
 #            print('augmentation',img.shape,ann.shape)
@@ -135,7 +138,23 @@ class cityscapes(TD.Dataset):
         if self.bchw:
             # convert image from (height,width,channel) to (channel,height,width)
             img=img.transpose((2,0,1))
+            
+        if hasattr(self.config,'with_edge'):
+            if self.config.with_edge:
+                edge=self.get_edge(ann_img=ann,edge_width=self.config.edge_width)
+                return img,ann,edge
+        if hasattr(self.config,'with_path'):
+            return {'image':(img,ann),'filename':(img_path,lbl_path)}
+        
         return img, ann
+    
+    @staticmethod
+    def get_edge(ann_img,edge_width=5):
+        kernel = np.ones((edge_width,edge_width),np.uint8)
+        ann_edge=cv2.Canny(ann_img,0,1)
+        ann_dilation=cv2.dilate(ann_edge,kernel,iterations=1)
+        return ann_dilation
+        
     
 if __name__ == '__main__':
     config=edict()

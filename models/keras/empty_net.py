@@ -89,7 +89,7 @@ class empty_net(SS):
                 n_step=len(loader)
                 losses=[]
                 
-                for i, (images, labels) in enumerate(train_loader):   
+                for i, (images, labels) in enumerate(loader):   
                     x=images.data.numpy()
                     trues=labels.data.numpy()
                     y=to_categorical(trues,self.class_number)

@@ -46,3 +46,9 @@ the miou is 0.8+
 - [ ] pspnet + global
 - [ ] pspnet + dict learning
 - [ ] pspnet + fractal filters (random number of filters)
+- [ ] the ignore_index for CrossEntropyLoss
+    - [ ] foreground ids[1-19], background ids[0], ignore_index[100,255 in labels?]
+- [ ] multi outputs metrics support like keras
+- [ ] benchmark
+    - [x] dataset loader with path
+    - [ ] crop and merge or upsample predict results
