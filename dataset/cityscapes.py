@@ -115,6 +115,7 @@ class cityscapes(TD.Dataset):
                 ann[lbl == class_id] = idx+1
         else:
             assert self.ignore_index not in self.foreground_class_ids,'ignore_index cannot in foregournd_class_ids if not 0'
+            assert self.ignore_index >= self.n_classes,'ignore_index %d cannot less than class number %d'%(self.ignore_index,self.n_classes)
             for class_id in self.background_class_ids:
                 ann[lbl == class_id] = self.ignore_index
             for idx, class_id in enumerate(self.foreground_class_ids):
@@ -154,6 +155,21 @@ class cityscapes(TD.Dataset):
         ann_edge=cv2.Canny(ann_img,0,1)
         ann_dilation=cv2.dilate(ann_edge,kernel,iterations=1)
         return ann_dilation
+    
+    def get_benchmarkable_predict(self,img):
+        new_img=np.zeros_like(img)
+        img_ids=np.unique(img)
+        if self.ignore_index==0:
+            for idx in img_ids:
+                if idx != self.ignore_index:
+                    new_img[img==idx]=self.foreground_class_ids[idx-1]
+        else:
+            for idx in img_ids:
+                if idx != self.ignore_index:
+                    new_img[img==idx]=self.foreground_class_ids[idx]
+        
+        new_img=cv2.resize(new_img,dsize=(2048, 1024),interpolation=cv2.INTER_NEAREST)
+        return new_img
         
     
 if __name__ == '__main__':

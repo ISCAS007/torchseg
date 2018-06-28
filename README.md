@@ -27,7 +27,7 @@ the miou is 0.8+
 - [paper and dataset for semantic segmentation introduction](https://meetshah1995.github.io/semantic-segmentation/deep-learning/pytorch/visdom/2017/06/01/semantic-segmentation-over-the-years.html#sec_datasets)
 
 # todo
-- [ ] pspnet
+- [x] pspnet
 - [ ] color for label image and predict image
 - [x] keras empty net: use pytorch loader and tensorboard-pytorch in keras
 - [x] notebook for keras and empty net
@@ -52,3 +52,13 @@ the miou is 0.8+
 - [ ] benchmark
     - [x] dataset loader with path
     - [ ] crop and merge or upsample predict results
+    - [ ] train id --> label id
+    
+# benchmark
+- use code from https://github.com/mcordts/cityscapesScripts (only support for python2)
+- change to python2 environment
+- clone them and install them by `pip install .`
+- export CITYSCAPES_RESULTS=/media/sdc/yzbx/benchmark_output/cityscapes
+- export CITYSCAPES_DATASET=/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives/gtFine_trainvaltest
+- open terminal and input: csEvalPixelLevelSemanticLabeling
+- the image size and id transform can be view in [test/benchmark_test.py](test/benchmark_test.py)
