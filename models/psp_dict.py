@@ -77,13 +77,14 @@ class psp_dict(TN.Module):
         self.dict_conv=TN.Conv2d(in_channels=self.dict_length,
                                  out_channels=self.class_number,
                                  kernel_size=1)
+        self.dict_sig=TN.Sigmoid()
 
     def forward(self, x):
         feature_map = self.backbone.forward(x, self.upsample_layer)
         feature_mid = self.midnet(feature_map)
         feature_decoder = self.seg_decoder(feature_mid)
         feature_dict = self.dict_net(feature_decoder)
-        seg = self.dict_conv(feature_dict)
+        seg = self.dict_sig(self.dict_conv(feature_dict))
         return seg
 
     def do_train_or_val(self, args, train_loader=None, val_loader=None):

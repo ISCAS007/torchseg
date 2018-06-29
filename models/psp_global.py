@@ -23,7 +23,7 @@ import os
 
 class psp_global(TN.Module):
     def __init__(self, config):
-        super(psp_global, self).__init__()
+        super().__init__()
         self.config = config
         self.name = self.__class__.__name__
         self.backbone = backbone(config.model)

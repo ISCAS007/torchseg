@@ -14,6 +14,7 @@ from models.pspnet import pspnet
 from models.psp_edge import psp_edge
 from models.psp_global import psp_global
 from models.psp_dict import psp_dict
+from models.psp_fractal import psp_fractal
 from utils.augmentor import Augmentations
 
 if __name__ == '__main__':
@@ -53,7 +54,7 @@ if __name__ == '__main__':
     config.dataset.norm=True
     
     
-    choices=['disc','ignore_index','norm','edge','global','backbone','dict']
+    choices=['disc','ignore_index','norm','edge','global','backbone','dict','fractal']
     parser=argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -121,5 +122,19 @@ if __name__ == '__main__':
         config.args.note='_'.join([config.args.note,'%dx%d'%(dict_number,dict_lenght)])
         net=psp_dict(config)
         net.do_train_or_val(config.args,train_loader,val_loader)
+    elif test == 'fractal':
+        config.args.n_epoch=100
+        config.args.note='fractal'
+        before_upsample=True
+        fractal_depth=8
+        fractal_fusion_type='mean'
+        config.model.before_upsample=before_upsample
+        config.model.fractal_depth=fractal_depth
+        config.model.fractal_fusion_type=fractal_fusion_type
+        
+        location_str='before' if before_upsample else 'after'
+        config.args.note='_'.join([config.args.note,location_str,'depth',str(fractal_depth),'fusion',fractal_fusion_type])
+        net=psp_fractal(config)
+        net.do_train_or_val(config.args,train_loader,val_loader)
     else:
-        assert False
+        raise NotImplementedError

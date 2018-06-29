@@ -2,7 +2,8 @@
 use pytorch to do image semantic segmentation
 
 # requriments
-for detail version see [requirements.txt](requirements.txt)
+- for detail version see [requirements.txt](requirements.txt)
+- test on python3
 ```
 conda install pytorch torchvision -c pytorch
 pip install opencv-python
@@ -30,15 +31,15 @@ the miou is 0.8+
 - [paper and dataset for semantic segmentation introduction](https://meetshah1995.github.io/semantic-segmentation/deep-learning/pytorch/visdom/2017/06/01/semantic-segmentation-over-the-years.html#sec_datasets)
 
 # todo
-- [x] pspnet
+- [x] [pspnet](models/pspnet.py)
 - [ ] color for label image and predict image
-- [x] keras empty net: use pytorch loader and tensorboard-pytorch in keras
-- [x] notebook for keras and empty net
-- [x] simplenet
-- [x] motionnet
-- [x] tensorboard-pytorch
-- [x] miou
-- [x] input image preprocess and augmentation: 
+- [x] [keras empty net: use pytorch loader and tensorboard-pytorch in keras](models/keras/empty_net.py)
+- [x] ~[notebook for keras and empty net](notebooks)~
+- [x] [simple_model_test](test/simple_model_test.py)
+- [x] [motionnet](models/motionnet.py)
+- [x] tensorboard-pytorch, [10.0.0.39:6789](10.0.0.39:6789)
+- [x] [miou](utils/metrics.py)
+- [x] input image preprocess and augmentation
     - [ ] ~~imagenet~~
     - [x] [-1,1]
     - [ ] ~~[0,1]~~
@@ -52,10 +53,13 @@ the miou is 0.8+
 - [x] pspnet + dict learning
     - dict net after upsample net (conv feature can be upsampled with duc, but dict feature may not fit for upsample)
 - [ ] pspnet + fractal filters (random number of filters)
+    - [x] max/mean feature
+    - [ ] int parameter a learning for route (choice=int(a), a is the index for right class, for different class, we have different index)
+    - [x] before upsample, otherwise will out of memory.
 - [ ] ~~the ignore_index for CrossEntropyLoss~~
     - [ ] foreground ids[1-19], background ids[0], ignore_index[100,255 in labels?]
 - [ ] multi outputs metrics support like keras
-- [x] benchmark
+- [x] [benchmark](test/benchmark_test.py)
     - [x] dataset loader with path
     - [x] upsample predict results
     - [ ] ~~crop + merge predict results~~
