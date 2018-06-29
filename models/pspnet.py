@@ -193,7 +193,7 @@ if __name__ == '__main__':
     config.dataset.name='cityscapes'
     
     train_dataset=cityscapes(config.dataset,split='train')
-    train_loader=TD.DataLoader(dataset=train_dataset,batch_size=32, shuffle=True,drop_last=False)
+    train_loader=TD.DataLoader(dataset=train_dataset,batch_size=32, shuffle=True,drop_last=True)
     
     val_dataset=cityscapes(config.dataset,split='val')
     val_loader=TD.DataLoader(dataset=val_dataset,batch_size=32, shuffle=True,drop_last=False)

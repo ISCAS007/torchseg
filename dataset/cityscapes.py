@@ -154,6 +154,7 @@ class cityscapes(TD.Dataset):
         kernel = np.ones((edge_width,edge_width),np.uint8)
         ann_edge=cv2.Canny(ann_img,0,1)
         ann_dilation=cv2.dilate(ann_edge,kernel,iterations=1)
+        ann_dilation=(ann_dilation>0).astype(np.uint8)
         return ann_dilation
     
     def get_benchmarkable_predict(self,img):

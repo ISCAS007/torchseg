@@ -13,6 +13,7 @@ import argparse
 from models.pspnet import pspnet
 from models.psp_edge import psp_edge
 from models.psp_global import psp_global
+from models.psp_dict import psp_dict
 from utils.augmentor import Augmentations
 
 if __name__ == '__main__':
@@ -37,10 +38,10 @@ if __name__ == '__main__':
     
     augmentations=Augmentations(p=0.25)
     train_dataset=cityscapes(config.dataset,split='train',augmentations=augmentations)
-    train_loader=TD.DataLoader(dataset=train_dataset,batch_size=32, shuffle=True,drop_last=False,num_workers=8)
+    train_loader=TD.DataLoader(dataset=train_dataset,batch_size=2, shuffle=True,drop_last=True,num_workers=8)
     
     val_dataset=cityscapes(config.dataset,split='val',augmentations=augmentations)
-    val_loader=TD.DataLoader(dataset=val_dataset,batch_size=32, shuffle=True,drop_last=False,num_workers=8)
+    val_loader=TD.DataLoader(dataset=val_dataset,batch_size=2, shuffle=True,drop_last=False,num_workers=8)
     
     config.args=edict()
     config.args.n_epoch=100
@@ -52,7 +53,7 @@ if __name__ == '__main__':
     config.dataset.norm=True
     
     
-    choices=['disc','ignore_index','norm','edge','global','backbone']
+    choices=['disc','ignore_index','norm','edge','global','backbone','dict']
     parser=argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -91,7 +92,7 @@ if __name__ == '__main__':
     elif test == 'edge':
         config.args.n_epoch=100
         config.dataset.with_edge=True
-        for edge_width in [1,5,10]:
+        for edge_width in [10]:
             config.args.note='edge_width'
             config.dataset.edge_width=edge_width
             config.args.note='_'.join([config.args.note,str(edge_width)])
@@ -104,12 +105,21 @@ if __name__ == '__main__':
         net=psp_global(config)
         net.do_train_or_val(config.args,train_loader,val_loader)
     elif test == 'backbone':
-        config.args.n_epoch=300
-        for backbone in ['resnet50','resnet101','resnet152']:
+        config.args.n_epoch=100
+        for backbone in ['resnet50','resnet101']:
             config.model.backbone_name=backbone
-            config.args.n_epoch=100
             config.args.note='_'.join([config.args.note,backbone])
             net=pspnet(config)
             net.do_train_or_val(config.args,train_loader,val_loader)
+    elif test == 'dict':
+        config.args.n_epoch=100
+        config.args.note='dict'
+        dict_number=config.model.class_number*5+1
+        dict_lenght=config.model.class_number*2+1
+        config.model.dict_number=dict_number
+        config.model.dict_length=dict_lenght
+        config.args.note='_'.join([config.args.note,'%dx%d'%(dict_number,dict_lenght)])
+        net=psp_dict(config)
+        net.do_train_or_val(config.args,train_loader,val_loader)
     else:
         assert False

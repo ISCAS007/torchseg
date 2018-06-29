@@ -34,6 +34,11 @@ class backbone(TN.Module):
             self.bn1 = TN.BatchNorm2d(64)
             self.relu = TN.ReLU(inplace=True)
             self.maxpool = TN.MaxPool2d(kernel_size=3, stride=2, padding=1)
+            
+            self.layer1=self.model.layer1
+            self.layer2=self.model.layer2
+            self.layer3=self.model.layer3
+            self.layer4=self.model.layer4
         else:
             assert False,'unknown backbone name %s'%self.config.backbone_name
         

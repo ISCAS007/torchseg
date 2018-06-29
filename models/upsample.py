@@ -35,6 +35,7 @@ class upsample_bilinear(TN.Module):
         """
         out_channels: class number
         """
+        super().__init__()
         self.output_shape = output_shape
         self.duc_conv = TN.Conv2d(in_channels=in_channels,
                                   out_channels=out_channels,
@@ -97,19 +98,20 @@ class transform_psp(TN.Module):
 
         return torch.cat(output_slices, dim=1)
 
-class transform_global(TN.modules):
+class transform_global(TN.Module):
     def __init__(self,dilation_sizes,class_number):
         """
         in_channels=class_number
         out_channels=class_number
         """
-        super(transform_psp, self).__init__()
+        super(transform_global, self).__init__()
         dil_paths=[]
         for dilation_size in dilation_sizes:
+            # for stride=1, to keep size: 2*padding=dilation*(kernel_size-1)
             dil_paths.append(TN.Conv2d(in_channels=class_number,
                                       out_channels=class_number,
                                       kernel_size=3,
-                                      padding=1,
+                                      padding=dilation_size,
                                       dilation=dilation_size))
         self.dil_paths=TN.ModuleList(dil_paths)
         self.conv=TN.Conv2d(in_channels=class_number*(1+len(dilation_sizes)),
@@ -124,4 +126,25 @@ class transform_global(TN.modules):
         
         x=torch.cat(global_features, dim=1)
         x=self.conv(x)
+        return x
+    
+class transform_dict(TN.Module):
+    """
+    input [b,c,h,w]
+    output [b,h,w,dict_vertor_size]
+    assert c in range(dict_vertor_number)
+    """
+    def __init__(self,dict_vector_number,dict_verctor_length):
+        super().__init__()
+        self.dict=TN.Embedding(num_embeddings=dict_vector_number,
+                               embedding_dim=dict_verctor_length)
+        
+    def forward(self,x):
+        #[b,c,h,w] -> [b,h,w,c]
+        x=x.permute([0,2,3,1])
+        x=x.argmax(-1)
+        x=self.dict(x)
+        # [b,h,w,c] -> [b,c,h,w]
+        x=x.permute([0,3,1,2])
+        
         return x

@@ -135,12 +135,13 @@ class psp_edge(TN.Module):
                     losses.append(loss.data.cpu().numpy())
                     seg_losses.append(seg_loss.data.cpu().numpy())
                     edge_losses.append(edge_loss.data.cpu().numpy())
+                    predicts = seg_output.data.cpu().numpy().argmax(1)
+                    trues = labels.data.cpu().numpy()
+                    running_metrics.update(trues,predicts)
+                    score, class_iou = running_metrics.get_scores()
+                    
                     if (i+1) % 5 == 0:
-                        print("Epoch [%d/%d] Step [%d/%d] Total Loss: %.4f" % (epoch+1, args.n_epoch, i, n_step, loss.data))
-                        predicts = seg_output.data.cpu().numpy().argmax(1)
-                        trues = labels.data.cpu().numpy()
-                        running_metrics.update(trues,predicts)
-                        score, class_iou = running_metrics.get_scores()
+                        print("%s Epoch [%d/%d] Step [%d/%d] Total Loss: %.4f" % (loader_name,epoch+1, args.n_epoch, i, n_step, loss.data))
                         for k, v in score.items():
                             print(k, v)
                     
@@ -162,7 +163,7 @@ class psp_edge(TN.Module):
                     
                     if val_image:
                         print('write image to tensorboard'+'.'*50)
-                        idx=np.random.choice(predicts.shape[0])
+                        idx=np.random.randint(predicts.shape[0])
                         writer.add_image('val/images',images[idx,:,:,:],epoch)
                         writer.add_image('val/predicts', torch.from_numpy(predicts[idx,:,:]), epoch)
                         writer.add_image('val/trues', torch.from_numpy(trues[idx,:,:]), epoch)
@@ -171,44 +172,3 @@ class psp_edge(TN.Module):
                 
         
         writer.close()
-        
-if __name__ == '__main__':
-    config=edict()
-    config.model=edict()
-    config.model.upsample_type='duc'
-    config.model.upsample_layer=3
-    config.model.class_number=20
-    config.model.backbone_name='vgg16'
-    config.model.layer_preference='last'
-    config.model.input_shape=(224,224)
-    
-    config.model.midnet_pool_sizes=[6,3,2,1]
-    config.model.midnet_scale=5
-    config.model.midnet_out_channels=512
-    
-    config.dataset=edict()
-    config.dataset.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
-    config.dataset.cityscapes_split=random.choice(['test','val','train'])
-    config.dataset.resize_shape=(224,224)
-    config.dataset.name='cityscapes'
-    config.dataset.with_edge=True
-    config.dataset.edge_width=5
-    
-    augmentations=Augmentations(p=0.25)
-    train_dataset=cityscapes(config.dataset,split='train',augmentations=augmentations)
-    train_loader=TD.DataLoader(dataset=train_dataset,batch_size=32, shuffle=True,drop_last=False,num_workers=8)
-    
-    val_dataset=cityscapes(config.dataset,split='val',augmentations=augmentations)
-    val_loader=TD.DataLoader(dataset=val_dataset,batch_size=32, shuffle=True,drop_last=False,num_workers=8)
-    
-    config.args=edict()
-    config.args.n_epoch=100
-    config.args.log_dir='/home/yzbx/tmp/logs/pytorch'
-    config.args.note='with_edge'
-    
-    # prefer setting
-    config.model.backbone_lr_ratio=1.0
-    config.dataset.norm=True
-    
-    net=psp_edge(config)
-    net.do_train_or_val(config.args,train_loader,val_loader)
