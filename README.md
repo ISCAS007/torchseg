@@ -32,6 +32,9 @@ the miou is 0.8+
 
 # todo
 - [x] [pspnet](models/pspnet.py)
+    - [ ] [train on corse dataset and then finetune + optimizer config(not adam)](https://github.com/ZijunDeng/pytorch-semantic-segmentation/issues/6)
+    - [ ] [slice/slide + flipped prediction/evaluation](https://github.com/Vladkryvoruchko/PSPNet-Keras-tensorflow/issues/12)
+    - [ ] official pspnet layer setting?
 - [ ] color for label image and predict image
 - [x] [keras empty net: use pytorch loader and tensorboard-pytorch in keras](models/keras/empty_net.py)
 - [x] ~[notebook for keras and empty net](notebooks)~

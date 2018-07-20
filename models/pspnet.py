@@ -16,6 +16,7 @@ import numpy as np
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 import time
+import math
 import os
 
 class pspnet(TN.Module):
@@ -71,11 +72,42 @@ class pspnet(TN.Module):
 
         return x
     
+    def get_optim(self,args):
+        if hasattr(args,'lr'):
+            lr=args.lr
+        else:
+            lr=0.0001
+        
+        if hasattr(args,'optim'):
+            if args.optim=='adam':
+                optimizer = torch.optim.Adam([p for p in self.parameters() if p.requires_grad], lr = lr)
+            elif args.optim in ['sgd','sgd_simple']:
+                #lr=1e-2 / math.sqrt(16 / args.batch_size)
+                lr=lr / math.sqrt(16 / args.batch_size)
+                optimizer = torch.optim.SGD([p for p in self.parameters() if p.requires_grad],
+                                             lr=lr, momentum=0.9, nesterov=True)
+            elif args.optim=='sgd_complex':
+                
+                #lr=1e-2 / math.sqrt(16 / args.batch_size)
+                lr=lr / math.sqrt(16 / args.batch_size)
+                optimizer = torch.optim.SGD([
+                        {'params': [param for name, param in self.named_parameters() if param.requires_grad and name[-4:] == 'bias'],
+                         'lr': 2 *lr},
+                        {'params': [param for name, param in self.named_parameters() if param.requires_grad and name[-4:] != 'bias'],
+                         'lr': lr, 'weight_decay': 1e-4}
+                    ], momentum=0.9, nesterov=True)
+            else:
+                assert False,'unknonw optimizer type %s'%args.optim
+        else:
+            optimizer = torch.optim.Adam([p for p in self.parameters() if p.requires_grad], lr = 0.0001)
+        
+        return optimizer
+    
     def do_train_or_val(self,args,trainloader=None,valloader=None):
         # use gpu memory
         self.cuda()
         self.backbone.model.cuda()
-        optimizer = torch.optim.Adam([p for p in self.parameters() if p.requires_grad], lr = 0.0001)
+        optimizer = self.get_optim(args)
 #        loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
         if hasattr(args,'ignore_index'):
             if args.ignore_index:
@@ -101,7 +133,14 @@ class pspnet(TN.Module):
                 # set model to train mode
                 self.train()
                 n_step=len(trainloader)
+                curr_iter=epoch*len(trainloader)
+                max_iter=args.n_epoch*len(trainloader)
                 for i, (images, labels) in enumerate(trainloader):
+                    if hasattr(args,'optim') and args.optim=='sgd_complex':
+                        lr=1e-2 / math.sqrt(16 / args.batch_size)
+                        lr_decay=0.9
+                        optimizer.param_groups[0]['lr'] = 2 * lr * (1 - curr_iter / max_iter) ** lr_decay
+                        optimizer.param_groups[1]['lr'] = lr * (1 - curr_iter / max_iter) ** lr_decay
                     images = Variable(images.cuda().float())
                     labels = Variable(labels.cuda().long())
                     
@@ -201,5 +240,6 @@ if __name__ == '__main__':
     config.args.n_epoch=300
     config.args.log_dir='/home/yzbx/tmp/logs/pytorch'
     config.args.note='image'
+    config.args.batch_size=32
     net=pspnet(config)
     net.do_train_or_val(config.args,train_loader,val_loader)

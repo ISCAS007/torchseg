@@ -37,24 +37,29 @@ if __name__ == '__main__':
     config.dataset.resize_shape=(224,224)
     config.dataset.name='cityscapes'
     
-    augmentations=Augmentations(p=0.25)
-    train_dataset=cityscapes(config.dataset,split='train',augmentations=augmentations)
-    train_loader=TD.DataLoader(dataset=train_dataset,batch_size=2, shuffle=True,drop_last=True,num_workers=8)
     
-    val_dataset=cityscapes(config.dataset,split='val',augmentations=augmentations)
-    val_loader=TD.DataLoader(dataset=val_dataset,batch_size=2, shuffle=True,drop_last=False,num_workers=8)
     
     config.args=edict()
     config.args.n_epoch=100
     config.args.log_dir='/home/yzbx/tmp/logs/pytorch'
     config.args.note='aug'
+    # must change batch size here!!!
+    batch_size=2
+    config.args.batch_size=batch_size
     
     # prefer setting
     config.model.backbone_lr_ratio=1.0
     config.dataset.norm=True
     
+    augmentations=Augmentations(p=0.25)
+    train_dataset=cityscapes(config.dataset,split='train',augmentations=augmentations)
+    train_loader=TD.DataLoader(dataset=train_dataset,batch_size=batch_size, shuffle=True,drop_last=True,num_workers=8)
     
-    choices=['disc','ignore_index','norm','edge','global','backbone','dict','fractal']
+    val_dataset=cityscapes(config.dataset,split='val',augmentations=augmentations)
+    val_loader=TD.DataLoader(dataset=val_dataset,batch_size=batch_size, shuffle=True,drop_last=False,num_workers=8)
+    
+    
+    choices=['disc','ignore_index','norm','edge','global','backbone','dict','fractal','optim']
     parser=argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -136,5 +141,16 @@ if __name__ == '__main__':
         config.args.note='_'.join([config.args.note,location_str,'depth',str(fractal_depth),'fusion',fractal_fusion_type])
         net=psp_fractal(config)
         net.do_train_or_val(config.args,train_loader,val_loader)
+    elif test=='optim':
+        config.args.n_epoch=100
+        for optim in ['adam','sgd_simple','sgd_complex']:
+            for lr in [0.01,0.001,0.0001]:
+                config.args.note='_'.join([optim,str(lr)])
+                config.args.optim=optim
+                
+                net=pspnet(config)
+                net.do_train_or_val(config.args,train_loader,val_loader)
+                
+            break
     else:
         raise NotImplementedError
