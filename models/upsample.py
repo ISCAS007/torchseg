@@ -77,12 +77,24 @@ class transform_psp(TN.Module):
                                                 out_channels=out_c,
                                                 kernel_size=1,
                                                 stride=1,
-                                                padding=0),
+                                                padding=0,
+                                                bias=False),
                                       TN.BatchNorm2d(num_features=out_c),
+                                      TN.ReLU(),
                                       TN.Upsample(size=out_size, mode='bilinear', align_corners=False))
             pool_paths.append(pool_path)
 
         self.pool_paths = TN.ModuleList(pool_paths)
+        
+        self.conv_bn_relu=TN.Sequential(TN.Conv2d(in_channels=out_channels,
+                                                  out_channels=out_channels,
+                                                  kernel_size=3,
+                                                  stride=1,
+                                                  padding=1,
+                                                  bias=False),
+                                      TN.BatchNorm2d(num_features=out_channels),
+                                      TN.ReLU(),
+                                      TN.Dropout2d(p=0.1))
 
     def forward(self, x):
         output_slices = [x]
@@ -97,7 +109,9 @@ class transform_psp(TN.Module):
             x = module(psp_x)
             output_slices.append(x)
 
-        return torch.cat(output_slices, dim=1)
+        x = torch.cat(output_slices, dim=1)
+        x = self.conv_bn_relu(x)
+        return x
 
 
 class transform_global(TN.Module):
