@@ -12,19 +12,21 @@ class upsample_duc(TN.Module):
         out_channels: class number
         """
         super(upsample_duc, self).__init__()
+
+        self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
+                                                    out_channels=out_channels*upsample_ratio*upsample_ratio,
+                                                    kernel_size=3,
+                                                    padding=1,
+                                                    stride=1,
+                                                    bias=False),
+                                          TN.BatchNorm2d(
+            num_features=out_channels*upsample_ratio*upsample_ratio),
+            TN.ReLU(),
+            TN.Dropout2d(p=0.1))
         self.duc = TN.PixelShuffle(upsample_ratio)
-        self.duc_conv = TN.Conv2d(in_channels=in_channels,
-                                  out_channels=out_channels*upsample_ratio*upsample_ratio,
-                                  kernel_size=3,
-                                  padding=1,
-                                  stride=1)
-        self.duc_norm = TN.BatchNorm2d(
-            num_features=out_channels*upsample_ratio*upsample_ratio)
 
     def forward(self, x):
-        x = self.duc_conv(x)
-        x = self.duc_norm(x)
-        x = F.relu(x)
+        x = self.conv_bn_relu(x)
         x = self.duc(x)
 
         return x
@@ -37,17 +39,26 @@ class upsample_bilinear(TN.Module):
         """
         super().__init__()
         self.output_shape = output_shape
-        self.duc_conv = TN.Conv2d(in_channels=in_channels,
-                                  out_channels=out_channels,
-                                  kernel_size=3,
-                                  padding=1,
-                                  stride=1)
-        self.duc_norm = TN.BatchNorm2d(num_features=out_channels)
+        self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
+                                                    out_channels=512,
+                                                    kernel_size=3,
+                                                    stride=1,
+                                                    padding=1,
+                                                    bias=False),
+                                          TN.BatchNorm2d(
+                                              num_features=out_channels),
+                                          TN.ReLU(),
+                                          TN.Dropout2d(p=0.1))
+
+        self.conv = TN.Conv2d(in_channels=512,
+                              out_channels=out_channels,
+                              kernel_size=1,
+                              padding=1,
+                              stride=1)
 
     def forward(self, x):
-        x = self.duc_conv(x)
-        x = self.duc_norm(x)
-        x = F.relu(x)
+        x = self.conv_bn_relu(x)
+        x = self.conv(x)
         x = F.upsample(x, size=self.output_shape, mode='bilinear')
         return x
 # TODO
@@ -85,16 +96,6 @@ class transform_psp(TN.Module):
             pool_paths.append(pool_path)
 
         self.pool_paths = TN.ModuleList(pool_paths)
-        
-        self.conv_bn_relu=TN.Sequential(TN.Conv2d(in_channels=out_channels,
-                                                  out_channels=out_channels,
-                                                  kernel_size=3,
-                                                  stride=1,
-                                                  padding=1,
-                                                  bias=False),
-                                      TN.BatchNorm2d(num_features=out_channels),
-                                      TN.ReLU(),
-                                      TN.Dropout2d(p=0.1))
 
     def forward(self, x):
         output_slices = [x]
@@ -110,7 +111,6 @@ class transform_psp(TN.Module):
             output_slices.append(x)
 
         x = torch.cat(output_slices, dim=1)
-        x = self.conv_bn_relu(x)
         return x
 
 
@@ -169,7 +169,7 @@ class transform_dict(TN.Module):
 
 
 class transform_fractal(TN.Module):
-    def __init__(self, in_channels, depth, class_number, fusion_type='max',do_fusion=False):
+    def __init__(self, in_channels, depth, class_number, fusion_type='max', do_fusion=False):
         """
         input [b,in_channels,h,w]
         output [b,class_number,h,w]
@@ -178,10 +178,10 @@ class transform_fractal(TN.Module):
         self.depth = depth
         self.class_number = class_number
         self.fusion_type = fusion_type
-        self.do_fusion=do_fusion
+        self.do_fusion = do_fusion
         if do_fusion:
-            assert depth>1,'fusion can only do once on the top level'
-        
+            assert depth > 1, 'fusion can only do once on the top level'
+
         support_types = ['max', 'mean', 'route']
         assert fusion_type in support_types, 'fusion_type %s not in %s' % (
             fusion_type, support_types)
@@ -190,7 +190,7 @@ class transform_fractal(TN.Module):
         fractal_paths = []
         if fusion_type == 'route':
             raise NotImplementedError
-        
+
         if depth == 1:
             path = TN.Sequential(TN.Conv2d(in_channels=in_channels,
                                            out_channels=class_number,
@@ -213,42 +213,43 @@ class transform_fractal(TN.Module):
                                                    kernel_size=1,
                                                    stride=1,
                                                    padding=0),
-                                         TN.BatchNorm2d(num_features=(2**i)*class_number),
+                                         TN.BatchNorm2d(
+                                             num_features=(2**i)*class_number),
                                          TN.ReLU(inplace=True),
                                          transform_fractal((2**i)*class_number, i, class_number, fusion_type))
-                
+
                 fractal_paths.append(path)
-        self.fractal_paths=TN.ModuleList(fractal_paths)
+        self.fractal_paths = TN.ModuleList(fractal_paths)
 
     def forward(self, x):
-        outputs=[]
+        outputs = []
         for model in self.fractal_paths:
-            y=model(x)
+            y = model(x)
             if type(y) is list:
                 outputs.extend(y)
             else:
                 outputs.append(y)
-        
+
         if self.do_fusion:
-            if self.fusion_type=='max':
-                result=None
+            if self.fusion_type == 'max':
+                result = None
                 for o in outputs:
                     if result is None:
-                        result=o
+                        result = o
                     else:
-                        result=torch.max(result,o)
+                        result = torch.max(result, o)
                 return result
-            elif self.fusion_type=='mean':
-                result=None
+            elif self.fusion_type == 'mean':
+                result = None
                 for o in outputs:
                     if result is None:
-                        result=o
+                        result = o
                     else:
-                        result=result+o
+                        result = result+o
                 return result/len(outputs)
-            elif self.fusion_type=='route':
+            elif self.fusion_type == 'route':
                 raise NotImplementedError
             else:
                 raise Exception('This is unexcepted Error')
-            
+
         return outputs

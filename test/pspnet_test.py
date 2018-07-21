@@ -59,7 +59,7 @@ if __name__ == '__main__':
     val_loader=TD.DataLoader(dataset=val_dataset,batch_size=batch_size, shuffle=True,drop_last=False,num_workers=8)
     
     
-    choices=['disc','ignore_index','norm','edge','global','backbone','dict','fractal','optim']
+    choices=['disc','ignore_index','norm','edge','global','backbone','dict','fractal','optim','upsample_type']
     parser=argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -152,5 +152,12 @@ if __name__ == '__main__':
                 net.do_train_or_val(config.args,train_loader,val_loader)
                 
             break
+    elif test=='upsample_type':
+        config.args.n_epoch=100
+        for upsample_type in ['duc','bilinear']:
+            config.model.upsample_type=upsample_type
+            config.args.note='_'.join([upsample_type,'keras_psp'])
+            net=pspnet(config)
+            net.do_train_or_val(config.args,train_loader,val_loader)
     else:
         raise NotImplementedError
