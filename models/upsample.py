@@ -46,7 +46,7 @@ class upsample_bilinear(TN.Module):
                                                     padding=1,
                                                     bias=False),
                                           TN.BatchNorm2d(
-                                              num_features=out_channels),
+                                              num_features=512),
                                           TN.ReLU(),
                                           TN.Dropout2d(p=0.1))
 

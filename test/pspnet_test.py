@@ -154,9 +154,11 @@ if __name__ == '__main__':
             break
     elif test=='upsample_type':
         config.args.n_epoch=100
+        backbone='resnet101'
+        config.model.backbone_name=backbone
         for upsample_type in ['duc','bilinear']:
             config.model.upsample_type=upsample_type
-            config.args.note='_'.join([upsample_type,'keras_psp'])
+            config.args.note='_'.join([backbone,upsample_type,'keras_psp'])
             net=pspnet(config)
             net.do_train_or_val(config.args,train_loader,val_loader)
     else:

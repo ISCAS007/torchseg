@@ -34,7 +34,11 @@ the miou is 0.8+
 - [x] [pspnet](models/pspnet.py)
     - [ ] [train on corse dataset and then finetune + optimizer config(not adam)](https://github.com/ZijunDeng/pytorch-semantic-segmentation/issues/6)
     - [ ] [slice/slide + flipped prediction/evaluation](https://github.com/Vladkryvoruchko/PSPNet-Keras-tensorflow/issues/12)
-    - [ ] official pspnet layer setting?
+    - [x] official pspnet layer setting?
+        - https://raw.githubusercontent.com/hszhao/PSPNet/master/evaluation/prototxt/pspnet101_cityscapes_713.prototxt
+        - [resnet-101](https://dgschwend.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85) [ethereon](https://ethereon.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85)
+        - [resnet-101-deploy](https://dgschwend.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150) [ethereon](https://ethereon.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150)
+        - [pspnet101 cityscapes 713](https://dgschwend.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79) [ethereon](https://ethereon.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79)
 - [ ] color for label image and predict image
 - [x] [keras empty net: use pytorch loader and tensorboard-pytorch in keras](models/keras/empty_net.py)
 - [x] ~[notebook for keras and empty net](notebooks)~
