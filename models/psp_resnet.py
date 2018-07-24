@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+import torchvision
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -185,7 +185,61 @@ def resnet152(momentum=0.1):
     model = ResNet(Bottleneck, [3, 8, 36, 3], momentum=momentum)
     return model
 
+def get_backbone(momentum):
+    res101 = torchvision.models.resnet101()
+    layer1, layer2, layer3, layer4 = res101.layer1, res101.layer2, res101.layer3, res101.layer4
 
+    # modify res101 for pspnet
+    for n, m in layer1.named_modules():
+        if '0.conv1' == n:
+            m.in_channels = 128
+        elif '0.downsample.0' == n:
+            m.in_channels = 128
+    
+    # modify BN and ReLU config
+    for layer in [layer1, layer2, layer3, layer4]:
+        for n, m in layer.named_modules():
+            if isinstance(m, nn.BatchNorm2d):
+                m.momentum = momentum
+                
+    for n, m in layer3.named_modules():
+        if 'conv2' in n:
+            m.dilation, m.padding, m.stride = (2, 2), (2, 2), (1, 1)
+        elif 'downsample.0' in n:
+            m.stride = (1, 1)
+    for n, m in layer4.named_modules():
+        if 'conv2' in n:
+            m.dilation, m.padding, m.stride = (4, 4), (4, 4), (1, 1)
+        elif 'downsample.0' in n:
+            m.stride = (1, 1)
+
+    seq = nn.Sequential(layer1,
+                        layer2,
+                        layer3,
+                        layer4)
+
+    return seq
 if __name__ == '__main__':
     net = resnet101(momentum=0.5)
-    print(net)
+    fack_net=get_backbone(momentum=0.5)
+    
+    seq_true=nn.Sequential(net.layer1,net.layer2,net.layer3,net.layer4)
+    for a,b in zip(seq_true.modules(),fack_net.modules()):
+#        assert type(a)==type(b),'type not equal %s!=%s'%(type(a),type(b))
+        
+        if isinstance(a, nn.BatchNorm2d):
+            assert a.momentum==b.momentum,'momentum not equal'
+        elif isinstance(a,nn.Conv2d):
+            assert a.stride==b.stride,'stride not equal'
+            assert a.bias==b.bias,'bias not equal'
+            assert a.dilation==b.dilation,'dilation not equal'
+            assert a.kernel_size==b.kernel_size,'kernel size not equal'
+            assert a.padding==b.padding,'padding not equal'
+            assert a.in_channels==b.in_channels,'in_channels not equal'
+            assert a.out_channels==b.out_channels,'out_channels not equal'
+        elif isinstance(a,nn.ReLU):
+            assert a.inplace==b.inplace,'inplace not equal'
+        elif isinstance(a,nn.Sequential) or isinstance(a,Bottleneck):
+            pass
+        else:
+            print(type(a),a)

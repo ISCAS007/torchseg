@@ -14,8 +14,15 @@ def freeze_layer(layer):
         param.requires_grad = False
         
 def do_train_or_val(model, args, train_loader=None, val_loader=None):
+    if hasattr(model,'do_train_or_val'):
+        print('warning: use model do_train_or_val '+'*'*30)
+        model.do_train_or_val(args,train_loader,val_loader)
+        return 0
     # use gpu memory
     model.cuda()
+    if hasattr(model,'backbone'):
+        if hasattr(model.backbone,'model'):
+            model.backbone.model.cuda()
 
     if hasattr(model,'optimizer'):
         optimizer=model.optimizer

@@ -16,6 +16,7 @@ from models.psp_global import psp_global
 from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
 from utils.augmentor import Augmentations
+from utils.torch_tools import do_train_or_val
 
 if __name__ == '__main__':
     config=edict()
@@ -126,7 +127,7 @@ if __name__ == '__main__':
         config.model.dict_length=dict_lenght
         config.args.note='_'.join([config.args.note,'%dx%d'%(dict_number,dict_lenght)])
         net=psp_dict(config)
-        net.do_train_or_val(config.args,train_loader,val_loader)
+        do_train_or_val(net,config.args,train_loader,val_loader)
     elif test == 'fractal':
         config.args.n_epoch=100
         config.args.note='fractal'

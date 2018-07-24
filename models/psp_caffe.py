@@ -165,68 +165,6 @@ class psp_caffe(TN.Module):
 
         return seq
 
-    def get_backbone(self):
-        config = {}
-        config = self.update_config(config, self.config.model, 'momentum', 0.1)
-        config = self.update_config(
-            config, self.config.model, 'inplace', False)
-
-        layer0 = TN.Sequential(self.conv_bn_relu(in_channels=3,
-                                                 out_channels=64,
-                                                 kernel_size=3,
-                                                 stride=2,
-                                                 padding=1),
-                               self.conv_bn_relu(in_channels=64,
-                                                 out_channels=64,
-                                                 kernel_size=3,
-                                                 stride=1,
-                                                 padding=1),
-                               self.conv_bn_relu(in_channels=64,
-                                                 out_channels=64,
-                                                 kernel_size=3,
-                                                 stride=1,
-                                                 padding=1),
-                               TN.MaxPool2d(kernel_size=3,
-                                            stride=2,
-                                            padding=1))
-
-        res101 = torchvision.models.resnet101()
-        layer1, layer2, layer3, layer4 = res101.layer1, res101.layer2, res101.layer3, res101.layer4
-
-        # modify res101 for pspnet
-        for n, m in layer1.named_modules():
-            if '0.conv1' == n:
-                m.in_channels = 128
-            elif '0.downsample.0' == n:
-                m.in_channels = 128
-        
-        # modify BN and ReLU config
-        for layer in [layer1, layer2, layer3, layer4]:
-            for n, m in layer.named_modules():
-                if isinstance(m, TN.BatchNorm2d):
-                    m.momentum = config['momentum']
-                elif isinstance(m, TN.ReLU):
-                    m.inplace = config['inplace']
-                    
-        for n, m in layer3.named_modules():
-            if 'conv2' in n:
-                m.dilation, m.padding, m.stride = (2, 2), (2, 2), (1, 1)
-            elif 'downsample.0' in n:
-                m.stride = (1, 1)
-        for n, m in layer4.named_modules():
-            if 'conv2' in n:
-                m.dilation, m.padding, m.stride = (4, 4), (4, 4), (1, 1)
-            elif 'downsample.0' in n:
-                m.stride = (1, 1)
-
-        seq = TN.Sequential(layer0,
-                            layer1,
-                            layer2,
-                            layer3,
-                            layer4)
-
-        return seq
-
     def get_midnet(self):
         config = {}
         config = self.update_config(config, self.config.model, 'momentum', 0.1)
