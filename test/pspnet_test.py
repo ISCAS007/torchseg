@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import torch
 import torch.utils.data as TD
 import random
 from dataset.cityscapes import cityscapes
@@ -26,7 +27,8 @@ if __name__ == '__main__':
     config.model.class_number=20
     config.model.backbone_name='vgg16'
     config.model.layer_preference='last'
-    config.model.input_shape=(224,224)
+    input_shape=(240,240)
+    config.model.input_shape=input_shape
     
     config.model.midnet_pool_sizes=[6,3,2,1]
     config.model.midnet_scale=5
@@ -35,10 +37,8 @@ if __name__ == '__main__':
     config.dataset=edict()
     config.dataset.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
     config.dataset.cityscapes_split=random.choice(['test','val','train'])
-    config.dataset.resize_shape=(224,224)
+    config.dataset.resize_shape=input_shape
     config.dataset.name='cityscapes'
-    
-    
     
     config.args=edict()
     config.args.n_epoch=100
@@ -83,10 +83,24 @@ if __name__ == '__main__':
         config.args.ignore_index=True
         config.args.note='ignore_index'
         config.dataset.norm=True
+        config.dataset.ignore_index=255
+        config.model.class_number=19
         norm_str='norm'
         backbone_lr_ratio=1.0
         config.args.note='_'.join([config.args.note,'bb_lr',str(backbone_lr_ratio),norm_str])
+        
+        train_dataset=cityscapes(config.dataset,split='train',augmentations=augmentations)
+        train_loader=TD.DataLoader(dataset=train_dataset,batch_size=batch_size, shuffle=True,drop_last=True,num_workers=8)
+        
+        val_dataset=cityscapes(config.dataset,split='val',augmentations=augmentations)
+        val_loader=TD.DataLoader(dataset=val_dataset,batch_size=batch_size, shuffle=True,drop_last=False,num_workers=8)
+        
+        class_number=config.model.class_number
+        ignore_index=config.dataset.ignore_index
+        loss_fn=torch.nn.CrossEntropyLoss(ignore_index=ignore_index)
+        
         net=pspnet(config)
+        optimizer = torch.optim.Adam([p for p in net.parameters() if p.requires_grad], lr = 0.0001)
         net.do_train_or_val(config.args,train_loader,val_loader)
     elif test == 'norm':
         config.args.n_epoch=300

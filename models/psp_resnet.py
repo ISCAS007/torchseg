@@ -1,3 +1,9 @@
+"""modify version resnet for psp
+the detial change can see in get_backbone()
+1. the `layer0` from 7x7 to 3x`3x3`
+2. the BatchNorm2d momentum for 0.1 to 0.95
+3. the dilation in layer3, layer4 change to 2,4
+"""
 import torch.nn as nn
 import torchvision
 

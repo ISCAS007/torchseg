@@ -24,6 +24,14 @@ class upsample_duc(TN.Module):
             TN.ReLU(),
             TN.Dropout2d(p=0.1))
         self.duc = TN.PixelShuffle(upsample_ratio)
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+
 
     def forward(self, x):
         x = self.conv_bn_relu(x)
@@ -55,6 +63,14 @@ class upsample_bilinear(TN.Module):
                               kernel_size=1,
                               padding=1,
                               stride=1)
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+
 
     def forward(self, x):
         x = self.conv_bn_relu(x)
@@ -96,10 +112,19 @@ class transform_psp(TN.Module):
             pool_paths.append(pool_path)
 
         self.pool_paths = TN.ModuleList(pool_paths)
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
 
     def forward(self, x):
         output_slices = [x]
         min_input_size = max(self.pool_sizes)*self.scale
+        in_size=x.shape
+        assert in_size[2]==self.out_size[0],'psp in/out size not equal: %d!=%d'%(in_size[2],self.out_size[0])
         if self.out_size[0] != min_input_size:
             psp_x = F.upsample(input=x, size=min_input_size,
                                mode='bilinear', align_corners=False)

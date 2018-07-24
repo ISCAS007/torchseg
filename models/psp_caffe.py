@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
-
+"""write psp model directly from caffe proto.txt
+1. first model `from utils.torch_tools import do_train_or_val`
+2. exclusive `transfrom_psp`
+3. modified resnet
+4. layer-wise learning rate
+5. right pool size [6,3,2,1] and scale 5 due the limit of memory
+6. init model with `msra` or `kaiming_normal` mode
+7. no ignore_index supported, class number is 20 current
+"""
 import torch
 import torch.nn as TN
-import torchvision
+
 import torch.nn.functional as F
 from easydict import EasyDict as edict
 import torch.utils.data as TD
-from torch.autograd import Variable
 
-import numpy as np
-from tensorboardX import SummaryWriter
-import time
-import os
-import argparse
-
-from utils.metrics import runningScore
 from utils.torch_tools import do_train_or_val
 from dataset.cityscapes import cityscapes
 from utils.augmentor import Augmentations

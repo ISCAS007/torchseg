@@ -158,6 +158,9 @@ class cityscapes(TD.Dataset):
         return ann_dilation
     
     def get_benchmarkable_predict(self,img):
+        """
+        convert the id to origin image
+        """
         new_img=np.zeros_like(img)
         img_ids=np.unique(img)
         if self.ignore_index==0:

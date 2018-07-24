@@ -36,8 +36,8 @@ class pspnet(TN.Module):
         self.class_number = self.config.model.class_number
         self.input_shape = self.config.model.input_shape
         self.dataset_name=self.config.dataset.name
-        if hasattr(self.config,'ignore_index'):
-            self.ignore_index=self.config.ignore_index
+        if hasattr(self.config.dataset,'ignore_index'):
+            self.ignore_index=self.config.dataset.ignore_index
         else:
             self.ignore_index = 0
         
@@ -111,6 +111,7 @@ class pspnet(TN.Module):
 #        loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
         if hasattr(args,'ignore_index'):
             if args.ignore_index:
+                print('ignore_index=%s'%self.ignore_index + '*'*30)
                 loss_fn=torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
             else:
                 loss_fn=torch.nn.CrossEntropyLoss()

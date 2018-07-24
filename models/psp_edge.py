@@ -25,11 +25,6 @@ class psp_edge(TN.Module):
         self.name=self.__class__.__name__
         self.backbone=backbone(config.model)
         
-        if hasattr(self.config.model,'backbone_lr_ratio'):
-            backbone_lr_raio=self.config.model.backbone_lr_ratio
-            if backbone_lr_raio==0:
-                freeze_layer(self.backbone)
-        
         self.upsample_type = self.config.model.upsample_type
         self.upsample_layer = self.config.model.upsample_layer
         self.class_number = self.config.model.class_number
@@ -59,6 +54,12 @@ class psp_edge(TN.Module):
             self.edge_decoder=upsample_bilinear(2*self.midnet_out_channels,2,self.input_shape[0:2])
         else:
             assert False,'unknown upsample type %s'%self.upsample_type
+            
+        lr = 0.0001
+        self.optimizer = torch.optim.Adam(params=[{'params': self.backbone.parameters(), 'lr': lr},
+                                             {'params': self.midnet.parameters(),'lr': 10*lr},
+                                             {'params': self.seg_decoder.parameters(), 'lr': 20*lr},
+                                             {'params': self.edge_decoder.parameters(),'lr':20*lr}], lr=lr)
         
     def forward(self, x):        
         feature_map=self.backbone.forward(x,self.upsample_layer)
@@ -71,7 +72,7 @@ class psp_edge(TN.Module):
         # use gpu memory
         self.cuda()
         self.backbone.model.cuda()
-        optimizer = torch.optim.Adam([p for p in self.parameters() if p.requires_grad], lr = 0.0001)
+        optimizer = self.optimizer
 #        loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
         loss_fn=torch.nn.CrossEntropyLoss()
         
