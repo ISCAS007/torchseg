@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-
+import numpy as np
+import torch
+import time
+import os
+from tensorboardX import SummaryWriter
+from utils.metrics import runningScore
 
 def freeze_layer(layer):
     """
@@ -7,3 +12,121 @@ def freeze_layer(layer):
     """
     for param in layer.parameters():
         param.requires_grad = False
+        
+def do_train_or_val(model, args, train_loader=None, val_loader=None):
+    # use gpu memory
+    model.cuda()
+
+    if hasattr(model,'optimizer'):
+        optimizer=model.optimizer
+    else:
+        optimizer = torch.optim.Adam(
+            [p for p in model.parameters() if p.requires_grad], lr=0.0001)
+    
+    if hasattr(model,'loss_fn'):
+        loss_fn=model.loss_fn
+    else:
+        if model.class_number==20:
+            #loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
+            loss_fn = torch.nn.CrossEntropyLoss()
+        else:
+            loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.ignore_index)
+
+    #TODO metrics supprot ignore_index
+    running_metrics = runningScore(model.class_number)
+
+    time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
+    log_dir = os.path.join(args.log_dir, model.name,
+                           model.dataset_name, args.note, time_str)
+    checkpoint_path = os.path.join(
+        log_dir, "{}_{}_best_model.pkl".format(model.name, model.dataset_name))
+    os.makedirs(log_dir, exist_ok=True)
+    writer = SummaryWriter(log_dir=log_dir)
+    best_iou = 0.6
+
+    loaders = [train_loader, val_loader]
+    loader_names = ['train', 'val']
+    for epoch in range(args.n_epoch):
+        for loader, loader_name in zip(loaders, loader_names):
+            if loader is None:
+                continue
+
+            if loader_name == 'val':
+                if epoch % (1+args.n_epoch//10) == 0:
+                    val_image = True
+                else:
+                    val_image = False
+
+                if val_image or epoch % 10 == 0:
+                    val_log = True
+                else:
+                    val_log = False
+
+                if not val_log:
+                    continue
+
+                model.eval()
+            else:
+                model.train()
+
+            print(loader_name+'.'*50)
+            n_step = len(loader)
+            losses = []
+            running_metrics.reset()
+            for i, (images, labels) in enumerate(loader):
+                images = torch.autograd.Variable(images.cuda().float())
+                labels = torch.autograd.Variable(labels.cuda().long())
+
+                if loader_name == 'train':
+                    optimizer.zero_grad()
+                seg_output = model.forward(images)
+                loss = loss_fn(input=seg_output, target=labels)
+
+                if loader_name == 'train':
+                    loss.backward()
+                    optimizer.step()
+
+                losses.append(loss.data.cpu().numpy())
+                predicts = seg_output.data.cpu().numpy().argmax(1)
+                trues = labels.data.cpu().numpy()
+                running_metrics.update(trues, predicts)
+                score, class_iou = running_metrics.get_scores()
+
+                if (i+1) % 5 == 0:
+                    print("%s, Epoch [%d/%d] Step [%d/%d] Total Loss: %.4f" %
+                          (loader_name, epoch+1, args.n_epoch, i, n_step, loss.data))
+                    for k, v in score.items():
+                        print(k, v)
+
+            writer.add_scalar('%s/loss' % loader_name,
+                              np.mean(losses), epoch)
+            writer.add_scalar('%s/acc' % loader_name,
+                              score['Overall Acc: \t'], epoch)
+            writer.add_scalar('%s/iou' % loader_name,
+                              score['Mean IoU : \t'], epoch)
+
+            if loader_name == 'val':
+                if score['Mean IoU : \t'] >= best_iou:
+                    best_iou = score['Mean IoU : \t']
+                    state = {'epoch': epoch+1,
+                             'miou': best_iou,
+                             'model_state': model.state_dict(),
+                             'optimizer_state': optimizer.state_dict(), }
+
+                    torch.save(state, checkpoint_path)
+
+                if val_image:
+                    print('write image to tensorboard'+'.'*50)
+                    idx = np.random.choice(predicts.shape[0])
+                    writer.add_image(
+                        'val/images', images[idx, :, :, :], epoch)
+                    writer.add_image(
+                        'val/predicts', torch.from_numpy(predicts[idx, :, :]), epoch)
+                    writer.add_image(
+                        'val/trues', torch.from_numpy(trues[idx, :, :]), epoch)
+                    diff_img = (predicts[idx, :, :] ==
+                                trues[idx, :, :]).astype(np.uint8)
+                    writer.add_image('val/difference',
+                                     torch.from_numpy(diff_img), epoch)
+
+    writer.close()

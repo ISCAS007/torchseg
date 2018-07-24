@@ -84,7 +84,7 @@ class pspnet(TN.Module):
             elif args.optim in ['sgd','sgd_simple']:
                 #lr=1e-2 / math.sqrt(16 / args.batch_size)
                 lr=lr / math.sqrt(16 / args.batch_size)
-                optimizer = torch.optim.SGD([p for p in self.parameters() if p.requires_grad],
+                optimizer = torch.optim.SGD(params=[p for p in self.parameters() if p.requires_grad],
                                              lr=lr, momentum=0.9, nesterov=True)
             elif args.optim=='sgd_complex':
                 
