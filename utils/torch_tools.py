@@ -15,7 +15,7 @@ def freeze_layer(layer):
         
 def do_train_or_val(model, args, train_loader=None, val_loader=None):
     if hasattr(model,'do_train_or_val'):
-        print('warning: use model do_train_or_val '+'*'*30)
+        print('warning: use do_train_or_val in model'+'*'*30)
         model.do_train_or_val(args,train_loader,val_loader)
         return 0
     # use gpu memory
@@ -25,18 +25,22 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
             model.backbone.model.cuda()
 
     if hasattr(model,'optimizer'):
+        print('use optimizer in model'+'*'*30)
         optimizer=model.optimizer
     else:
+        print('use default optimizer'+'*'*30)
         optimizer = torch.optim.Adam(
             [p for p in model.parameters() if p.requires_grad], lr=0.0001)
     
     if hasattr(model,'loss_fn'):
+        print('use loss function in model'+'*'*30)
         loss_fn=model.loss_fn
     else:
         if model.class_number==20:
-            #loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
+            print('use default loss funtion without ignore_index','*'*30)
             loss_fn = torch.nn.CrossEntropyLoss()
         else:
+            print('use default loss funtion with ignore_index=%d'%model.ignore_index,'*'*30)
             loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.ignore_index)
 
     #TODO metrics supprot ignore_index
@@ -47,8 +51,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                            model.dataset_name, args.note, time_str)
     checkpoint_path = os.path.join(
         log_dir, "{}_{}_best_model.pkl".format(model.name, model.dataset_name))
-    os.makedirs(log_dir, exist_ok=True)
-    writer = SummaryWriter(log_dir=log_dir)
+    writer=None
     best_iou = 0.6
 
     loaders = [train_loader, val_loader]
@@ -104,7 +107,10 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                           (loader_name, epoch+1, args.n_epoch, i, n_step, loss.data))
                     for k, v in score.items():
                         print(k, v)
-
+            
+            if writer is None:
+                os.makedirs(log_dir, exist_ok=True)
+                writer = SummaryWriter(log_dir=log_dir)
             writer.add_scalar('%s/loss' % loader_name,
                               np.mean(losses), epoch)
             writer.add_scalar('%s/acc' % loader_name,

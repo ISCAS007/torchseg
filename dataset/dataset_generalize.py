@@ -26,11 +26,12 @@ import numpy as np
 from easydict import EasyDict as edict
 import random
 import matplotlib.pyplot as plt
+from PIL import Image
 
 from utils.augmentor import Augmentations
 
 def get_dataset_generalize_config(config,dataset_name):
-    support_datasets=['ADEChallengeData2016','ADE20K_2016_07_26','VOC2007','VOC2012','Kitti2015','Cityscapes']
+    support_datasets=['ADEChallengeData2016','VOC2012','Kitti2015','Cityscapes','Cityscapes_Fine','Cityscapes_Coarse']
     assert dataset_name in support_datasets,'unknown dataset %s, not in support dataset %s'%(dataset_name,str(support_datasets))
     if dataset_name=='ADEChallengeData2016':
         # train + val, no test
@@ -40,10 +41,28 @@ def get_dataset_generalize_config(config,dataset_name):
         config.foreground_class_ids=[i for i in range(1,151)]
         config.background_class_ids=[0]
         config.ignore_index=0
-        
-        return config
+    elif dataset_name=='VOC2012':
+        # train + val, no test
+        config.root_path='/media/sdb/CVDataset/VOC'
+        config.txt_note='voc2012'
+        config.txt_path='/home/yzbx/git/torchseg/dataset'
+        config.foreground_class_ids=[i for i in range(20)]
+        config.background_class_ids=[255]
+        config.ignore_index=255
+    elif dataset_name in ['Cityscapes','Cityscapes_Fine']:
+        # train + val + test
+        config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+        config.txt_note='cityscapes_fine'
+        config.txt_path='/home/yzbx/git/torchseg/dataset'
+        config.foreground_class_ids=[i for i in range(20)]
+        config.background_class_ids=[255]
+        config.ignore_index=255
+    elif dataset_name == 'Cityscapes_Coarse':
+        pass
     else:
         assert False,'Not Implement for dataset %s'%dataset_name
+        
+    return config
     
 class dataset_generalize(TD.Dataset):
     def __init__(self, config, augmentations=None, split=None, bchw=True):
@@ -54,6 +73,9 @@ class dataset_generalize(TD.Dataset):
             
         assert self.split in ['train','val','test'],'unexcepted split %s for dataset, must be one of [train,val,test]'%self.split
         
+        if hasattr(self.config,'txt_note'):
+            self.split=self.config.txt_note+'_'+self.split
+            
         if hasattr(self.config,'txt_path'):
             txt_file=os.path.join(config.txt_path,self.split+'.txt')
             self.image_files,self.annotation_files = self.get_files_from_txt(txt_file,self.config.root_path)
@@ -121,7 +143,9 @@ class dataset_generalize(TD.Dataset):
                 print('image path:',img_path)
                 print('label path:',lbl_path)
         img = cv2.imread(img_path,cv2.IMREAD_COLOR)
-        lbl = cv2.imread(lbl_path,cv2.IMREAD_GRAYSCALE)
+#        lbl = cv2.imread(lbl_path,cv2.IMREAD_GRAYSCALE)
+        lbl_pil=Image.open(lbl_path)
+        lbl=np.array(lbl_pil, dtype=np.uint8)
         
         ann = np.zeros_like(lbl)
         
@@ -177,23 +201,30 @@ class dataset_generalize(TD.Dataset):
             
 if __name__ == '__main__':
     config=edict()
-    dataset_name='ADEChallengeData2016'
+#    dataset_name='ADEChallengeData2016'
+    dataset_name='VOC2012'
+#    dataset_name='Cityscapes_Fine'
     config=get_dataset_generalize_config(config,dataset_name)
     
-    dataset=dataset_generalize(config,split='train')
-    for idx,image_file in enumerate(dataset.image_files):
-        print(idx,image_file)
-        img=cv2.imread(image_file,cv2.IMREAD_COLOR)
-        plt.imshow(img)
-        plt.show()
-        if idx>5:
-            break
+    dataset=dataset_generalize(config,split='val')
+#    for idx,image_file in enumerate(dataset.image_files):
+#        print(idx,image_file)
+#        img=cv2.imread(image_file,cv2.IMREAD_COLOR)
+#        plt.imshow(img)
+#        plt.show()
+#        if idx>5:
+#            break
+    
     for idx,annotation_file in enumerate(dataset.annotation_files):
 #        print(idx,annotation_file)
-        ann=cv2.imread(annotation_file,cv2.IMREAD_GRAYSCALE)
-        plt.imshow(ann)
-        plt.show()
+#        ann=cv2.imread(annotation_file,cv2.IMREAD_GRAYSCALE)
+        ann=Image.open(annotation_file)
+        ann=np.array(ann, dtype=np.uint8)
+        print(idx,ann.shape)
         print(np.unique(ann))
+#        plt.imshow(ann)
+#        plt.show()
         if idx>5:
             break
+        
     
