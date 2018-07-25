@@ -63,8 +63,8 @@ the miou is 0.8+
     - [x] max/mean feature
     - [ ] int parameter a learning for route (choice=int(a), a is the index for right class, for different class, we have different index)
     - [x] before upsample, otherwise will out of memory.
-- [ ] ~~the ignore_index for CrossEntropyLoss~~
-    - [ ] foreground ids[1-19], background ids[0], ignore_index[100,255 in labels?]
+- [x] the ignore_index for CrossEntropyLoss
+    - [x] foreground ids[0-18], background ids=ignore_index=255
 - [ ] multi outputs metrics support like keras
 - [x] [benchmark](test/benchmark_test.py)
     - [x] dataset loader with path

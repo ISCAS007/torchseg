@@ -16,6 +16,7 @@ from models.psp_edge import psp_edge
 from models.psp_global import psp_global
 from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
+from models.psp_caffe import psp_caffe
 from utils.augmentor import Augmentations
 from utils.torch_tools import do_train_or_val
 
@@ -60,7 +61,7 @@ if __name__ == '__main__':
     val_loader=TD.DataLoader(dataset=val_dataset,batch_size=batch_size, shuffle=True,drop_last=False,num_workers=8)
     
     
-    choices=['disc','ignore_index','norm','edge','global','backbone','dict','fractal','optim','upsample_type']
+    choices=['disc','ignore_index','norm','edge','global','backbone','dict','fractal','optim','upsample_type','caffe']
     parser=argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -176,5 +177,19 @@ if __name__ == '__main__':
             config.args.note='_'.join([backbone,upsample_type,'keras_psp'])
             net=pspnet(config)
             net.do_train_or_val(config.args,train_loader,val_loader)
+    elif test=='caffe':
+        config.args.n_epoch=100
+        backbone='resnet50'
+        config.model.backbone_name=backbone
+        input_shape=(240,240)
+        config.model.input_shape=input_shape
+        config.dataset.resize_shape=input_shape
+        config.model.class_number = 19
+        config.model.midnet_pool_sizes = [6, 3, 2, 1]
+        config.model.midnet_scale = 5
+        config.model.midnet_out_channels = 2048
+        config.model.momentum=0.95
+        config.model.inplace=False
+        config.model.align_corners=False
     else:
         raise NotImplementedError

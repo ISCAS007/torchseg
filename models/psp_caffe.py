@@ -18,8 +18,7 @@ import torch.utils.data as TD
 from utils.torch_tools import do_train_or_val
 from dataset.cityscapes import cityscapes
 from utils.augmentor import Augmentations
-from models.psp_resnet import resnet101
-
+from models.psp_resnet import resnet101,resnet50
 
 class transform_psp(TN.Module):
     def __init__(self, config, pool_sizes, scale, in_channels, out_channels, out_size):
@@ -101,9 +100,11 @@ class psp_caffe(TN.Module):
         self.input_shape = self.config.model.input_shape
         self.ignore_index = self.config.dataset.ignore_index
         self.dataset_name=self.config.dataset.name
-
-#        self.backbone = self.get_backbone()
-        self.backbone=resnet101(momentum=self.config.model.momentum)
+        if self.config.model.backbone_name == 'resnet50':
+            self.backbone=resnet50(momentum=self.config.model.momentum)
+        else:
+            self.backbone=resnet101(momentum=self.config.model.momentum)
+        
         self.midnet = self.get_midnet()
         self.suffix_net = self.get_suffix_net()
         
