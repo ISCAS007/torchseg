@@ -34,8 +34,8 @@ splits=['train','val','test']
 #test glob images 1525
 #test glob annotations 4575
 for split in splits:
-    glob_images=glob.glob(os.path.join(root_path,image_path,split,'*','*.png'))
-    glob_annotations=glob.glob(os.path.join(root_path,annotation_path,split,'*','*.png'))
+    glob_images=glob.glob(os.path.join(root_path,image_path,split,'*','*leftImg8bit.png'))
+    glob_annotations=glob.glob(os.path.join(root_path,annotation_path,split,'*','*labelIds.png'))
     print('%s glob images'%split,len(glob_images))
     print('%s glob annotations'%split,len(glob_annotations))
     

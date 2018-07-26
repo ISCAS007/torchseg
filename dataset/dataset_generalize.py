@@ -54,11 +54,17 @@ def get_dataset_generalize_config(config,dataset_name):
         config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
         config.txt_note='cityscapes_fine'
         config.txt_path='/home/yzbx/git/torchseg/dataset'
-        config.foreground_class_ids=[i for i in range(20)]
-        config.background_class_ids=[255]
+        config.foreground_class_ids=[7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
+        config.background_class_ids=[0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30]
         config.ignore_index=255
     elif dataset_name == 'Cityscapes_Coarse':
-        pass
+        # train + val + train_extra
+        config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+        config.txt_note='cityscapes_coarse'
+        config.txt_path='/home/yzbx/git/torchseg/dataset'
+        config.foreground_class_ids=[7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
+        config.background_class_ids=[0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30]
+        config.ignore_index=255
     else:
         assert False,'Not Implement for dataset %s'%dataset_name
         
@@ -70,8 +76,9 @@ class dataset_generalize(TD.Dataset):
         self.augmentations=augmentations
         self.bchw=bchw
         self.split=split
-            
-        assert self.split in ['train','val','test'],'unexcepted split %s for dataset, must be one of [train,val,test]'%self.split
+        
+        splits=['train','val','test','train_extra']
+        assert self.split in splits,'unexcepted split %s for dataset, must be one of %s'%(self.split,str(splits))
         
         if hasattr(self.config,'txt_note'):
             self.split=self.config.txt_note+'_'+self.split

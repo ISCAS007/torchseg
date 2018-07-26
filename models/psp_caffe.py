@@ -36,7 +36,6 @@ class transform_psp(TN.Module):
         self.out_size = out_size
         self.config = config
         self.align_corners=config['align_corners']
-        self.inplace=config['inplace']
         self.momentum=config['momentum']
         
         pool_paths = []
@@ -52,7 +51,7 @@ class transform_psp(TN.Module):
                                                 bias=False),
                                       TN.BatchNorm2d(
                                           num_features=out_c, momentum=self.momentum),
-                                      TN.ReLU(inplace=self.inplace),
+                                      TN.ReLU(inplace=False),
                                       TN.Upsample(size=out_size, mode='bilinear', align_corners=self.align_corners))
             pool_paths.append(pool_path)
 
@@ -155,8 +154,6 @@ class psp_caffe(TN.Module):
     def conv_bn_relu(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False):
         config = {}
         config = self.update_config(config, self.config.model, 'momentum', 0.1)
-        config = self.update_config(
-            config, self.config.model, 'inplace', False)
         seq = TN.Sequential(TN.Conv2d(in_channels=in_channels,
                                       out_channels=out_channels,
                                       kernel_size=kernel_size,
@@ -165,15 +162,13 @@ class psp_caffe(TN.Module):
                                       bias=bias),
                             TN.BatchNorm2d(num_features=out_channels,
                                            momentum=config['momentum']),
-                            TN.ReLU(inplace=config['inplace']))
+                            TN.ReLU(inplace=False))
 
         return seq
 
     def get_midnet(self):
         config = {}
         config = self.update_config(config, self.config.model, 'momentum', 0.1)
-        config = self.update_config(
-            config, self.config.model, 'inplace', False)
         config = self.update_config(
             config, self.config.model, 'align_corners', False)
 
@@ -203,8 +198,6 @@ class psp_caffe(TN.Module):
         config = {}
         config = self.update_config(config, self.config.model, 'momentum', 0.1)
         config = self.update_config(
-            config, self.config.model, 'inplace', False)
-        config = self.update_config(
             config, self.config.model, 'align_corners', False)
 
         seq = TN.Sequential(self.conv_bn_relu(in_channels=2048*2,
@@ -213,7 +206,7 @@ class psp_caffe(TN.Module):
                                               stride=1,
                                               padding=1,
                                               bias=False),
-                            TN.Dropout2d(p=0.1, inplace=config['inplace']),
+                            TN.Dropout2d(p=0.1, inplace=False),
                             TN.Conv2d(in_channels=512,
                                       out_channels=self.class_number,
                                       kernel_size=1,
@@ -237,9 +230,7 @@ if __name__ == '__main__':
 
     config.model.midnet_pool_sizes = [6, 3, 2, 1]
     config.model.midnet_scale = 5
-    config.model.midnet_out_channels = 2048
     config.model.momentum=0.95
-    config.model.inplace=False
     config.model.align_corners=False
 
     config.dataset = edict()
