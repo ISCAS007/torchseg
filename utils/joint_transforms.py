@@ -2,7 +2,7 @@ import math
 import numbers
 import random
 
-from PIL import Image, ImageOps
+from PIL import Image
 import numpy as np
 import torchvision
 import torchvision.transforms.functional as ttf
@@ -75,7 +75,7 @@ class RandomCrop(object):
         if self.padding > 0:
             img = ttf.pad(img, padding=self.padding, fill=0)
             mask = ttf.pad(mask, padding=self.padding, fill=0)
-        w, h = img.size
+        h, w = mask.shape
         tw, th = self.size
         if w == tw and h == th:
             return img, mask
@@ -95,7 +95,7 @@ class CenterCrop(object):
             self.size = size
 
     def __call__(self, img, mask):
-        w, h = img.size
+        h, w = mask.shape
         th, tw = self.size
         x1 = int(round((w - tw) / 2.))
         y1 = int(round((h - th) / 2.))
@@ -119,7 +119,7 @@ class Scale(object):
         self.size = size
 
     def __call__(self, img, mask):
-        w, h = img.size
+        h,w = mask.shape
         if (w >= h and w == self.size) or (h >= w and h == self.size):
             return img, mask
         if w > h:
@@ -147,8 +147,8 @@ class RandomSizedCrop(object):
         self.crop = RandomCrop(self.size)
 
     def __call__(self, img, mask):
-        w = int(random.uniform(0.5, 2) * img.size[0])
-        h = int(random.uniform(0.5, 2) * img.size[1])
+        w = int(random.uniform(0.5, 2) * mask.shape[1])
+        h = int(random.uniform(0.5, 2) * mask.shape[0])
 
         img, mask = ttf.resize(img,(h,w), Image.BILINEAR), ttf.resize(mask,(h,w), Image.NEAREST)
 
