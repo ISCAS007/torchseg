@@ -9,7 +9,7 @@ import random
 
 from PIL import Image, ImageOps
 import numpy as np
-import torchvision
+import torchvision.transforms.functional as ttf
 
 class Compose(object):
     def __init__(self, transforms):
@@ -41,8 +41,8 @@ class ToPILImage():
         pass
     
     def __call__(self, img, mask):
-        img=torchvision.transforms.ToPILImage(img)
-        mask=torchvision.transforms.ToPILImage(mask)
+        img=ttf.to_pil_image(img)
+        mask=ttf.to_pil_image(mask)
         return img, mask
 
 class ToTensor():
@@ -50,8 +50,8 @@ class ToTensor():
         pass
         
     def __call__(self,img,mask):
-        img=torchvision.transforms.ToTensor(img)
-        mask=torchvision.transforms.ToTensor(mask)
+        img=ttf.to_tensor(img)
+        mask=ttf.to_tensor(mask)
         return img, mask
 
 class ToNumpy():
