@@ -15,9 +15,10 @@ from torchvision import transforms as TT
 from utils import joint_transforms as JT
 from functools import partial
 
+
 class ImageAugmenter:
     def __init__(self, propability=0.25, use_imgaug=True):
-        self.use_imgaug=use_imgaug
+        self.use_imgaug = use_imgaug
         sometimes = lambda aug: iaa.Sometimes(propability, aug)
         blur = iaa.OneOf([
             iaa.GaussianBlur((0, 3.0)),
@@ -40,127 +41,128 @@ class ImageAugmenter:
              sometimes(bright)
              ],
             random_order=True)
-        
-        tt_aug=TT.RandomApply([
-                TT.ColorJitter(brightness=10, contrast=0.05, saturation=0.05, hue=0.01),
-                ],p=propability)
-        
-        self.tt_seq=TT.Compose([
-                TT.ToPILImage(),
-                tt_aug,
-                JT.ToNumpy(),
-                ])
-        
+
+        tt_aug = TT.RandomApply([
+            TT.ColorJitter(brightness=10, contrast=0.05, saturation=0.05, hue=0.01),
+        ], p=propability)
+
+        self.tt_seq = TT.Compose([
+            TT.ToPILImage(),
+            tt_aug,
+            JT.ToNumpy(),
+        ])
+
     def augument_image(self, image):
         if self.use_imgaug:
             return self.iaa_seq.augment_image(image)
         else:
             return self.tt_seq(image)
 
+
 class ImageTransformer(object):
-    def __init__(self,config,propability=0.25,use_iaa=True):
-        self.config=config
-        self.p=propability
-        self.use_iaa=use_iaa
-        
-    def transform_image_and_mask_tt(self,image,mask,angle=None,crop_size=None):
-        assert self.use_iaa==False
-        transforms=[JT.RandomHorizontallyFlip()]
+    def __init__(self, config, propability=0.25, use_imgaug=True):
+        self.config = config
+        self.p = propability
+        self.use_iaa = use_imgaug
+
+    def transform_image_and_mask_tt(self, image, mask, angle=None, crop_size=None):
+        assert self.use_iaa == False
+        transforms = [JT.RandomHorizontallyFlip()]
         if crop_size is not None:
             transforms.append(JT.RandomCrop(size=crop_size))
         if angle is not None:
             transforms.append(JT.RandomRotate(degree=angle))
-        jt_random=JT.RandomOrderApply(transforms)
-        
-        jt_transform=JT.Compose([
-                JT.ToPILImage(),
-                jt_random,
-                JT.ToTensor(),
-                ])
-        
-        return jt_transform(image,mask)
-    
-    def transform_image_and_mask_iaa(self,image,mask,angle=None,crop_size=None,hflip=False,vflip=False):
-        assert self.use_iaa==True
-        transforms=[]
-        
+        jt_random = JT.RandomOrderApply(transforms)
+
+        jt_transform = JT.Compose([
+            JT.ToPILImage(),
+            jt_random,
+            JT.ToTensor(),
+        ])
+
+        return jt_transform(image, mask)
+
+    def transform_image_and_mask_iaa(self, image, mask, angle=None, crop_size=None, hflip=False, vflip=False):
+        assert self.use_iaa == True
+        transforms = []
+
         if crop_size is not None:
-            transforms.append(partial(self.crop_transform,crop_size=crop_size))
+            transforms.append(partial(self.crop_transform, crop_size=crop_size))
         if angle is not None:
-            transforms.append(partial(self.rotate_transform,angle=angle))
+            transforms.append(partial(self.rotate_transform, rotate_angle=angle))
         if hflip:
             transforms.append(self.horizontal_flip_transform)
         if vflip:
             transforms.append(self.vertical_flip_transform)
-        
-        n=len(transforms)
-        
-        if n==0:
-            return image,mask
+
+        n = len(transforms)
+
+        if n == 0:
+            return image, mask
         else:
-            order=[i for i in range(n)]
+            order = [i for i in range(n)]
             np.random.shuffle(order)
             for i in order:
-                image,mask=transforms[i](image,mask)
-            
-            return image,mask
-        
-    def transform_image_and_mask(self,image,mask,propability=None,config=None):
+                image, mask = transforms[i](image, mask)
+
+            return image, mask
+
+    def transform_image_and_mask(self, image, mask, propability=None, config=None):
         if config is None:
-            config=self.config
-        
+            config = self.config
+
         if propability is None:
-            propability=self.p
-        
+            propability = self.p
+
         if propability == 0:
-            return image,mask
-        
-        assert propability >= 0 and propability <= 1,'propability %0.2f not in [0,1]'%propability
-        
-        a=np.random.rand()
-        if hasattr(config,'rotate') and a<propability:
-            if hasattr(config.rotate,'angle'):
-                angle=config.rotate.angle
-            elif hasattr(config.rotate,'max_angle'):
-                a=np.random.rand()
-                angle=a*config.rotate.max_angle
+            return image, mask
+
+        assert propability >= 0 and propability <= 1, 'propability %0.2f not in [0,1]' % propability
+
+        a = np.random.rand()
+        if hasattr(config, 'rotate') and a < propability:
+            if hasattr(config.rotate, 'angle'):
+                angle = config.rotate.angle
+            elif hasattr(config.rotate, 'max_angle'):
+                a = np.random.rand()
+                angle = a * config.rotate.max_angle
             else:
-                assert False,'angle and max_angle shoule have one and only one defined!'
+                assert False, 'angle and max_angle shoule have one and only one defined!'
         else:
-            angle=None
-        
-        a=np.random.rand()
-        crop_size=None
-        if hasattr(config,'crop') and a<propability:
-            if hasattr(config.crop,'crop_size'):
-                crop_size=config.crop.crop_size
-            elif hasattr(config.crop,'crop_ratio'):
-                crop_ratio=config.crop.crop_ratio
-                h,w=mask.shape
-                if type(crop_ratio) == list or type(crop_ratio)==tuple:
-                    ratio_max=max(crop_ratio)
-                    ratio_min=min(crop_ratio)
-                    a=np.random.rand()
-                    th=(ratio_min+(ratio_max-ratio_min)*a)*h
-                    tw=(ratio_min+(ratio_max-ratio_min)*a)*w
-                    crop_size=(int(th),int(tw))
+            angle = None
+
+        a = np.random.rand()
+        crop_size = None
+        if hasattr(config, 'crop') and a < propability:
+            if hasattr(config.crop, 'crop_size'):
+                crop_size = config.crop.crop_size
+            elif hasattr(config.crop, 'crop_ratio'):
+                crop_ratio = config.crop.crop_ratio
+                h, w = mask.shape
+                if type(crop_ratio) == list or type(crop_ratio) == tuple:
+                    ratio_max = max(crop_ratio)
+                    ratio_min = min(crop_ratio)
+                    a = np.random.rand()
+                    th = (ratio_min + (ratio_max - ratio_min) * a) * h
+                    tw = (ratio_min + (ratio_max - ratio_min) * a) * w
+                    crop_size = (int(th), int(tw))
                 else:
-                    crop_size=(int(crop_ratio*h),int(crop_ratio*w))
+                    crop_size = (int(crop_ratio * h), int(crop_ratio * w))
             else:
-                assert False,'crop size and crop ratio should have one and only one defined!'
-            
-        a=np.random.rand()
-        hflip=False
-        if hasattr(config,'horizontal_flip') and a<propability:
+                assert False, 'crop size and crop ratio should have one and only one defined!'
+
+        a = np.random.rand()
+        hflip = False
+        if hasattr(config, 'horizontal_flip') and a < propability:
             if config.horizontal_flip:
-                hflip=True
-            
-        a=np.random.rand()
-        vflip=False
-        if hasattr(config,'vertical_flip') and a<propability:
+                hflip = True
+
+        a = np.random.rand()
+        vflip = False
+        if hasattr(config, 'vertical_flip') and a < propability:
             if config.vertical_flip:
-                vflip=True
-        
+                vflip = True
+
         if self.use_iaa:
             return self.transform_image_and_mask_iaa(image,
                                                      mask,
@@ -173,136 +175,137 @@ class ImageTransformer(object):
                                                     mask,
                                                     angle=angle,
                                                     crop_size=crop_size)
-        
-    
+
     @staticmethod
-    def rotate_while_keep_size(image,rotation,interpolation):
+    def rotate_while_keep_size(image, rotation, interpolation):
         def rotateImage(image, angle):
-              image_center = tuple(np.array(image.shape[1::-1]) / 2)
-              rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-              result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=interpolation)
-              return result
+            image_center = tuple(np.array(image.shape[1::-1]) / 2)
+            rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+            result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=interpolation)
+            return result
+
         # Get size before we rotate
-        y,x=image.shape[0:2]
-#        rotation=rotation*2
-#        image_2a=rotateImage(image,rotation)
-        image_a=rotateImage(image,rotation/2)
-#        Y_2a,X_2a=image_2a.shape[0:2]
-        Y_a,X_a=image_a.shape[0:2]
-        assert y==Y_a and x==X_a,'rotate image has different size'
-    
-#        tan_angle=math.tan(math.radians(rotation))
-        tan_angle_half=math.tan(math.radians(rotation/2))
-        cos_angle=math.cos(math.radians(rotation))
-        cos_angle_half=math.cos(math.radians(rotation/2))
-        
-        width_new_float=2*(cos_angle_half*(x/2-tan_angle_half*y/2)/cos_angle)
-        height_new_float=2*(cos_angle_half*(y/2-tan_angle_half*x/2)/cos_angle)
-        
-        assert width_new_float>0,'half of the angle cannot bigger than arctan(width/height)'
-        assert height_new_float>0,'half of the angle cannot bigger than arctan(height/width)'
-#        height_new=2*int(cos_angle_half*(x/2-tan_angle_half*y/2)/cos_angle)
-#        width_new=2*int(cos_angle_half*(y/2-tan_angle_half*x/2)/cos_angle)
-#        print('old height is',y)
-#        print('old width is',x)
-#        print('new_height is',height_new_float)
-#        print('new_width is',width_new_float)
-    
-        x_new=int(math.ceil((x-width_new_float)/2))
-        y_new=int(math.ceil((y-height_new_float)/2))
-        x_new_end=int(math.floor(width_new_float+(x-width_new_float)/2))
-        y_new_end=int(math.floor(height_new_float+(y-height_new_float)/2))
-        
-        new_image=image_a[y_new:y_new_end,x_new:x_new_end]
-#        print(y,x)
+        y, x = image.shape[0:2]
+        #        rotation=rotation*2
+        #        image_2a=rotateImage(image,rotation)
+        image_a = rotateImage(image, rotation / 2)
+        #        Y_2a,X_2a=image_2a.shape[0:2]
+        Y_a, X_a = image_a.shape[0:2]
+        assert y == Y_a and x == X_a, 'rotate image has different size'
+
+        #        tan_angle=math.tan(math.radians(rotation))
+        tan_angle_half = math.tan(math.radians(rotation / 2))
+        cos_angle = math.cos(math.radians(rotation))
+        cos_angle_half = math.cos(math.radians(rotation / 2))
+
+        width_new_float = 2 * (cos_angle_half * (x / 2 - tan_angle_half * y / 2) / cos_angle)
+        height_new_float = 2 * (cos_angle_half * (y / 2 - tan_angle_half * x / 2) / cos_angle)
+
+        assert width_new_float > 0, 'half of the angle cannot bigger than arctan(width/height)'
+        assert height_new_float > 0, 'half of the angle cannot bigger than arctan(height/width)'
+        #        height_new=2*int(cos_angle_half*(x/2-tan_angle_half*y/2)/cos_angle)
+        #        width_new=2*int(cos_angle_half*(y/2-tan_angle_half*x/2)/cos_angle)
+        #        print('old height is',y)
+        #        print('old width is',x)
+        #        print('new_height is',height_new_float)
+        #        print('new_width is',width_new_float)
+
+        x_new = int(math.ceil((x - width_new_float) / 2))
+        y_new = int(math.ceil((y - height_new_float) / 2))
+        x_new_end = int(math.floor(width_new_float + (x - width_new_float) / 2))
+        y_new_end = int(math.floor(height_new_float + (y - height_new_float) / 2))
+
+        new_image = image_a[y_new:y_new_end, x_new:x_new_end]
+        #        print(y,x)
         # Return the image, re-sized to the size of the image passed originally
-        return cv2.resize(src=new_image,dsize=(x,y), interpolation=interpolation)
-    
+        return cv2.resize(src=new_image, dsize=(x, y), interpolation=interpolation)
+
     @staticmethod
-    def rotate_transform(image,mask,rotate_angle):
-        new_image=ImageTransformer.rotate_while_keep_size(image,rotate_angle,cv2.INTER_CUBIC)
-        new_mask=ImageTransformer.rotate_while_keep_size(mask,rotate_angle,cv2.INTER_NEAREST)
-        return new_image,new_mask
-    
+    def rotate_transform(image, mask, rotate_angle):
+        new_image = ImageTransformer.rotate_while_keep_size(image, rotate_angle, cv2.INTER_CUBIC)
+        new_mask = ImageTransformer.rotate_while_keep_size(mask, rotate_angle, cv2.INTER_NEAREST)
+        return new_image, new_mask
+
     @staticmethod
-    def crop_transform(image,mask,crop_size):
-        th,tw=crop_size
-        h,w=mask.shape
-        assert h>th,'crop size (%d,%d) should small than image size (%d,%d)'%(th,tw,h,w)
-        assert w>tw,'crop size (%d,%d) should small than image size (%d,%d)'%(th,tw,h,w)
-        
+    def crop_transform(image, mask, crop_size):
+        th, tw = crop_size
+        h, w = mask.shape
+        assert h > th, 'crop size (%d,%d) should small than image size (%d,%d)' % (th, tw, h, w)
+        assert w > tw, 'crop size (%d,%d) should small than image size (%d,%d)' % (th, tw, h, w)
+
         x1 = random.randint(0, w - tw)
         y1 = random.randint(0, h - th)
-        
+
         # image[y1:y1+th,x1:x1+tw] == image[y1:y1+th,x1:x1+tw,:]
-        new_image=image[y1:y1+th,x1:x1+tw]
-        new_mask=mask[y1:y1+th,x1:x1+tw]
-        return new_image,new_mask
-    
+        new_image = image[y1:y1 + th, x1:x1 + tw]
+        new_mask = mask[y1:y1 + th, x1:x1 + tw]
+        return new_image, new_mask
+
     @staticmethod
-    def horizontal_flip_transform(image,mask):
-        new_image=cv2.flip(image,1)
-        new_mask=cv2.flip(mask,1)
-        return new_image,new_mask
-    
+    def horizontal_flip_transform(image, mask):
+        new_image = cv2.flip(image, 1)
+        new_mask = cv2.flip(mask, 1)
+        return new_image, new_mask
+
     @staticmethod
-    def vertical_flip_transform(image,mask):
-        new_image=cv2.flip(image,0)
-        new_mask=cv2.flip(mask,0)
-        return new_image,new_mask
+    def vertical_flip_transform(image, mask):
+        new_image = cv2.flip(image, 0)
+        new_mask = cv2.flip(mask, 0)
+        return new_image, new_mask
+
 
 def get_default_augmentor_config():
-    config=edict()
-    config.rotate=edict()
-    config.rotate.max_angle=15
-    config.crop=edict()
-    config.crop.crop_ratio=[0.85,1.0]
-    config.horizontal_flip=True
-    config.vertical_filp=False
-    config.debug=False
-    
+    config = edict()
+    config.rotate = edict()
+    config.rotate.max_angle = 15
+    config.crop = edict()
+    config.crop.crop_ratio = [0.85, 1.0]
+    config.horizontal_flip = True
+    config.vertical_filp = False
+    config.debug = False
+
     return config
 
-        
+
 class Augmentations(object):
-    def __init__(self,p=0.25,config=None):
+    def __init__(self, p=0.25, config=None, use_imgaug=True):
         if config is None:
-            config=get_default_augmentor_config()
-        
-        self.aug=ImageAugmenter(propability=p)
-        self.tran=ImageTransformer(config=config,propability=p)
-        self.p=p
-        
-    def transform(self,image,mask=None):
+            config = get_default_augmentor_config()
+
+        self.aug = ImageAugmenter(propability=p, use_imgaug=use_imgaug)
+        self.tran = ImageTransformer(config=config, propability=p, use_imgaug=use_imgaug)
+        self.p = p
+
+    def transform(self, image, mask=None):
         if mask is None:
             return self.aug.augument_image(image)
         else:
-            return self.tran.transform_image_and_mask(image,mask)
-    
+            return self.tran.transform_image_and_mask(image, mask)
+
+
 if __name__ == '__main__':
-    
-    config=edict()
-    config.rotate=edict()
-    config.rotate.angle=30
-    config.crop=edict()
-    config.crop.crop_size=(100,100)
-    config.horizontal_flip=True
-    config.vertical_filp=False
-    config.debug=True
-    
+    config = edict()
+    config.rotate = edict()
+    config.rotate.angle = 30
+    config.crop = edict()
+    config.crop.crop_size = (100, 100)
+    config.horizontal_flip = True
+    config.vertical_filp = False
+    config.debug = True
+
     aug = ImageAugmenter()
     tran = ImageTransformer(config)
-    img = cv2.imread('test/image.png',cv2.IMREAD_COLOR)
-    mask = cv2.imread('test/mask.png',cv2.IMREAD_GRAYSCALE)
-#    img=np.random.rand(60,80)
-#    mask=np.random.rand(60,80)
-    
+    img = cv2.imread('test/image.png', cv2.IMREAD_COLOR)
+    mask = cv2.imread('test/mask.png', cv2.IMREAD_GRAYSCALE)
+    #    img=np.random.rand(60,80)
+    #    mask=np.random.rand(60,80)
+
     assert img is not None
     assert mask is not None
-    show_images([img,mask])
-    
-    aug_img=aug.augument_image(img)
-    tran_img,tran_mask=tran.transform_image_and_mask(img,mask,propability=1)
-    
-    imgs = [cv2.resize(img,(224,224),interpolation=cv2.INTER_NEAREST) for img in [aug_img,tran_img,tran_mask] ]
-    show_images(imgs,['aug','tran_img','tran_mask'])
+    show_images([img, mask])
+
+    aug_img = aug.augument_image(img)
+    tran_img, tran_mask = tran.transform_image_and_mask(img, mask, propability=1)
+
+    imgs = [cv2.resize(img, (224, 224), interpolation=cv2.INTER_NEAREST) for img in [aug_img, tran_img, tran_mask]]
+    show_images(imgs, ['aug', 'tran_img', 'tran_mask'])

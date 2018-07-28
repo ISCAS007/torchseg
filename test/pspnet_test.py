@@ -65,7 +65,7 @@ if __name__ == '__main__':
         dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
 
     choices = ['disc', 'ignore_index', 'norm', 'edge', 'global',
-               'backbone', 'dict', 'fractal', 'optim', 'upsample_type', 'caffe']
+               'backbone', 'dict', 'fractal', 'optim', 'upsample_type', 'caffe', 'augmentor']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -227,6 +227,31 @@ if __name__ == '__main__':
                                          ])
             net = psp_caffe(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
+    elif test=='augmentor':
+        config.args.epoch=100
 
+        for augmentor in ['none','iaa','tt']:
+            config.args.note = '_'.join([config.args.note, 'aug',augmentor])
+            if augmentor=='none':
+                augmentations=None
+                continue
+            elif augmentor=='iaa':
+                augmentations = Augmentations(p=0.25,use_imgaug=True)
+                continue
+            else:
+                augmentations = Augmentations(p=0.25, use_imgaug=False)
+
+            train_dataset = cityscapes(
+                config.dataset, split='train', augmentations=augmentations)
+            train_loader = TD.DataLoader(
+                dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
+
+            val_dataset = cityscapes(config.dataset, split='val',
+                                     augmentations=augmentations)
+            val_loader = TD.DataLoader(
+                dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
+
+            net = pspnet(config)
+            do_train_or_val(net,config.args, train_loader, val_loader)
     else:
         raise NotImplementedError
