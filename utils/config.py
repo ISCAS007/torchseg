@@ -2,6 +2,9 @@
 
 from easydict import EasyDict as edict
 import random
+import json
+import yaml
+import os
 
 def get_config():
     config=edict()
@@ -26,4 +29,20 @@ def get_config():
     return config
 
 def get_share_config(config):
+    return config
+
+def dump_config(config,log_dir,filename='config.txt'):
+    os.makedirs(log_dir,exists_ok=True)
+    config_path=os.path.join(log_dir,filename)
+    config_file=open(config_path,'w')
+    json.dump(config,config_file,sort_keys=True)
+    
+def load_config(config_file):
+    f=open(config_file,'r')
+    l=f.readline()
+    f.close()
+
+    d=yaml.load(l)
+    config=edict(d)
+
     return config

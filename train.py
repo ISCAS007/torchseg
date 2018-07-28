@@ -37,6 +37,13 @@ if __name__ == '__main__':
                         choices=['ADEChallengeData2016','VOC2012','Kitti2015','Cityscapes','Cityscapes_Fine','Cityscapes_Coarse'],
                         default='Cityscapes')
     
+    # train_extra is only available for Cityscapes_Coarse
+    splits=['train','train_extra']
+    parser.add_argument('--train_split',
+                        help='split for dataset: %s'%str(splits),
+                        choices=splits,
+                        default='train')
+    
     parser.add_argument("--batch_size",
                         help='batch size',
                         type=int,
@@ -117,12 +124,15 @@ if __name__ == '__main__':
                                    'bn%d'%args.batch_size,
                                    'aug'+str(args.augmentation)[0]])
     
+    if args.train_split=='train_extra':
+        config.args.note+='_train_extra'
+    
     if args.augmentation:
         augmentations=Augmentations(p=0.25)
     else:
         augmentations=None
     
-    train_dataset=dataset_generalize(config.dataset,split='train',augmentations=augmentations)
+    train_dataset=dataset_generalize(config.dataset,split=args.train_split,augmentations=augmentations)
     train_loader=TD.DataLoader(dataset=train_dataset,batch_size=args.batch_size, shuffle=True,drop_last=True,num_workers=8)
     
     val_dataset=dataset_generalize(config.dataset,split='val',augmentations=augmentations)

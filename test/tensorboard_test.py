@@ -3,11 +3,44 @@
 import torch
 import numpy as np
 from tensorboardX import SummaryWriter
+from easydict import EasyDict as edict
 import os
+import random
+import json
+
+def get_text():
+    config = edict()
+    config.model = edict()
+    config.model.upsample_type = 'duc'
+    config.model.upsample_layer = 3
+    config.model.class_number = 20
+    config.model.backbone_name = 'vgg16'
+    config.model.layer_preference = 'last'
+    input_shape = (240, 240)
+    config.model.input_shape = input_shape
+    
+    config.model.midnet_pool_sizes = [6, 3, 2, 1]
+    config.model.midnet_scale = 5
+    config.model.midnet_out_channels = 512
+    
+    config.dataset = edict()
+    config.dataset.root_path = '/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+    config.dataset.cityscapes_split = random.choice(['test', 'val', 'train'])
+    config.dataset.resize_shape = input_shape
+    config.dataset.name = 'cityscapes'
+    
+    config.args = edict()
+    config.args.n_epoch = 100
+    config.args.log_dir = '/home/yzbx/tmp/logs/pytorch'
+    config.args.note = 'aug'
+    
+    return json.dumps(config,indent=2,sort_keys=True).replace('\n','\n\n').replace('  ','\t')
 
 log_dir='/home/yzbx/tmp/logs/pytorch/test'
 os.makedirs(name=log_dir,exist_ok=True)
 writer = SummaryWriter(log_dir)
+
+writer.add_text(tag='config',text_string=get_text())
 
 for n_iter in range(100):
 

@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 import time
+import json
 import os
 from tensorboardX import SummaryWriter
 from utils.metrics import runningScore
@@ -12,7 +13,7 @@ def freeze_layer(layer):
     """
     for param in layer.parameters():
         param.requires_grad = False
-        
+
 def do_train_or_val(model, args, train_loader=None, val_loader=None):
     if hasattr(model,'do_train_or_val'):
         print('warning: use do_train_or_val in model'+'*'*30)
@@ -36,7 +37,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
         print('use loss function in model'+'*'*30)
         loss_fn=model.loss_fn
     else:
-        if model.class_number==20:
+        if model.class_number==20 and model.ignore_index==0:
             print('use default loss funtion without ignore_index','*'*30)
             loss_fn = torch.nn.CrossEntropyLoss()
         else:
@@ -111,6 +112,14 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
             if writer is None:
                 os.makedirs(log_dir, exist_ok=True)
                 writer = SummaryWriter(log_dir=log_dir)
+                config_str=json.dumps(model.config,indent=2,sort_keys=True).replace('\n','\n\n').replace('  ','\t')
+                writer.add_text(tag='config',text_string=config_str)
+                
+                # write config to config.txt
+                config_path=os.path.join(log_dir,'config.txt')
+                config_file=open(config_path,'w')
+                json.dump(model.config,config_file,sort_keys=True)
+        
             writer.add_scalar('%s/loss' % loader_name,
                               np.mean(losses), epoch)
             writer.add_scalar('%s/acc' % loader_name,

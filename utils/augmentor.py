@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-
+"""
+ImageAugmenter,TorchAugmenter: apply to input image
+ImageTransformer,TorchTransformer: apply to input image and annotations
+"""
 from imgaug import augmenters as iaa
 import numpy as np
 import cv2
@@ -8,9 +11,13 @@ import random
 from easydict import EasyDict as edict
 import matplotlib.pyplot as plt
 from utils.disc_tools import show_images
+from torchvision import transforms as TT
+from utils import joint_transforms as JT
+from functools import partial
 
 class ImageAugmenter:
-    def __init__(self, propability=0.25):
+    def __init__(self, propability=0.25, use_imgaug=True):
+        self.use_imgaug=use_imgaug
         sometimes = lambda aug: iaa.Sometimes(propability, aug)
         blur = iaa.OneOf([
             iaa.GaussianBlur((0, 3.0)),
@@ -26,28 +33,81 @@ class ImageAugmenter:
         bright = iaa.Add((-10, 10), per_channel=0.5)
         # change brightness of images (by -10 to 10 of original value)
         # randomly remove up to 10% of the pixels
-        self.seq = iaa.Sequential(
+        self.iaa_seq = iaa.Sequential(
             [sometimes(blur),
              sometimes(noise),
              sometimes(dropout),
              sometimes(bright)
              ],
             random_order=True)
-
+        
+        tt_aug=TT.RandomApply([
+                TT.ColorJitter(brightness=10, contrast=0.05, saturation=0.05, hue=0.01),
+                ],p=propability)
+        
+        self.tt_seq=TT.Compose([
+                TT.ToPILImage(),
+                tt_aug,
+                JT.ToNumpy(),
+                ])
+        
     def augument_image(self, image):
-        return self.seq.augment_image(image)
+        if self.use_imgaug:
+            return self.iaa_seq.augment_image(image)
+        else:
+            return self.tt_seq(image)
 
 class ImageTransformer(object):
-    def __init__(self,config,propability=0.25):
+    def __init__(self,config,propability=0.25,use_iaa=True):
         self.config=config
         self.p=propability
+        self.use_iaa=use_iaa
+        
+    def transform_image_and_mask_tt(self,image,mask,angle=None,crop_size=None):
+        assert self.use_iaa==False
+        transforms=[JT.RandomHorizontallyFlip()]
+        if crop_size is not None:
+            transforms.append(JT.RandomCrop(size=crop_size))
+        if angle is not None:
+            transforms.append(JT.RandomRotate(degree=angle))
+        jt_random=JT.RandomOrderApply(transforms)
+        
+        jt_transform=JT.Compose([
+                JT.ToPILImage(),
+                jt_random,
+                JT.ToTensor(),
+                ])
+        
+        return jt_transform(image,mask)
+    
+    def transform_image_and_mask_iaa(self,image,mask,angle=None,crop_size=None,hflip=False,vflip=False):
+        assert self.use_iaa==True
+        transforms=[]
+        
+        if crop_size is not None:
+            transforms.append(partial(self.crop_transform,crop_size=crop_size))
+        if angle is not None:
+            transforms.append(partial(self.rotate_transform,angle=angle))
+        if hflip:
+            transforms.append(self.horizontal_flip_transform)
+        if vflip:
+            transforms.append(self.vertical_flip_transform)
+        
+        n=len(transforms)
+        
+        if n==0:
+            return image,mask
+        else:
+            order=[i for i in range(n)]
+            np.random.shuffle(order)
+            for i in order:
+                image,mask=transforms[i](image,mask)
+            
+            return image,mask
         
     def transform_image_and_mask(self,image,mask,propability=None,config=None):
         if config is None:
             config=self.config
-            
-        if not hasattr(config,'debug'):
-            config.debug=False
         
         if propability is None:
             propability=self.p
@@ -66,12 +126,11 @@ class ImageTransformer(object):
                 angle=a*config.rotate.max_angle
             else:
                 assert False,'angle and max_angle shoule have one and only one defined!'
-            
-            if config.debug:
-                print('rotate image and mask with angle %0.2f'%angle)
-            image,mask=self.rotate_transform(image,mask,angle)
+        else:
+            angle=None
         
         a=np.random.rand()
+        crop_size=None
         if hasattr(config,'crop') and a<propability:
             if hasattr(config.crop,'crop_size'):
                 crop_size=config.crop.crop_size
@@ -90,25 +149,30 @@ class ImageTransformer(object):
             else:
                 assert False,'crop size and crop ratio should have one and only one defined!'
             
-            if config.debug:
-                print('crop image and mask with size (%d,%d)'%(crop_size[0],crop_size[1]))
-            image,mask=self.crop_transform(image,mask,crop_size)
-            
         a=np.random.rand()
+        hflip=False
         if hasattr(config,'horizontal_flip') and a<propability:
             if config.horizontal_flip:
-                if config.debug:
-                    print('horizontal flip')
-                image,mask=self.horizontal_flip_transform(image,mask)
+                hflip=True
             
         a=np.random.rand()
+        vflip=False
         if hasattr(config,'vertical_flip') and a<propability:
             if config.vertical_flip:
-                if config.debug:
-                    print('vertical flip')
-                image,mask=self.vertical_flip_transform(image,mask)
-            
-        return image,mask
+                vflip=True
+        
+        if self.use_iaa:
+            return self.transform_image_and_mask_iaa(image,
+                                                     mask,
+                                                     angle=angle,
+                                                     crop_size=crop_size,
+                                                     hflip=hflip,
+                                                     vflip=vflip)
+        else:
+            return self.transform_image_and_mask_tt(image,
+                                                    mask,
+                                                    angle=angle,
+                                                    crop_size=crop_size)
         
     
     @staticmethod
@@ -199,6 +263,7 @@ def get_default_augmentor_config():
     
     return config
 
+        
 class Augmentations(object):
     def __init__(self,p=0.25,config=None):
         if config is None:
