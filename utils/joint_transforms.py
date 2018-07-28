@@ -10,6 +10,7 @@ import random
 from PIL import Image, ImageOps
 import numpy as np
 import torchvision.transforms.functional as ttf
+import cv2
 
 class Compose(object):
     def __init__(self, transforms):
@@ -42,6 +43,7 @@ class ToPILImage():
     
     def __call__(self, img, mask):
         img=ttf.to_pil_image(img)
+        mask=cv2.cvtColor(mask,code=cv2.COLOR_GRAY2BGR)
         mask=ttf.to_pil_image(mask)
         return img, mask
 
@@ -65,6 +67,8 @@ class ToNumpy():
             return img
         else:
             mask=np.array(mask,dtype=np.uint8)
+            if mask.ndim==3:
+                mask=mask[:,:,0]
             return img,mask
 
 class RandomCrop(object):

@@ -77,7 +77,7 @@ class ImageTransformer(object):
         jt_transform = JT.Compose([
             JT.ToPILImage(),
             jt_random,
-            JT.ToTensor(),
+            JT.ToNumpy(),
         ])
 
         return jt_transform(image, mask)
