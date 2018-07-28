@@ -5,6 +5,7 @@ import random
 from PIL import Image, ImageOps
 import numpy as np
 import torchvision
+import torchvision.transforms.functional as ttf
 
 class Compose(object):
     def __init__(self, transforms):
@@ -72,18 +73,18 @@ class RandomCrop(object):
 
     def __call__(self, img, mask):
         if self.padding > 0:
-            img = ImageOps.expand(img, border=self.padding, fill=0)
-            mask = ImageOps.expand(mask, border=self.padding, fill=0)
+            img = ttf.pad(img, padding=self.padding, fill=0)
+            mask = ttf.pad(mask, padding=self.padding, fill=0)
         w, h = img.size
-        th, tw = self.size
+        tw, th = self.size
         if w == tw and h == th:
             return img, mask
         if w < tw or h < th:
-            return img.resize((tw, th), Image.BILINEAR), mask.resize((tw, th), Image.NEAREST)
+            return ttf.resize(img,(th,tw), Image.BILINEAR), ttf.resize(mask,(th,tw), Image.NEAREST)
 
         x1 = random.randint(0, w - tw)
         y1 = random.randint(0, h - th)
-        return img.crop((x1, y1, x1 + tw, y1 + th)), mask.crop((x1, y1, x1 + tw, y1 + th))
+        return ttf.crop(img,y1,x1,th,tw), ttf.crop(mask,y1,x1,th,tw)
 
 
 class CenterCrop(object):
@@ -98,22 +99,19 @@ class CenterCrop(object):
         th, tw = self.size
         x1 = int(round((w - tw) / 2.))
         y1 = int(round((h - th) / 2.))
-        return img.crop((x1, y1, x1 + tw, y1 + th)), mask.crop((x1, y1, x1 + tw, y1 + th))
+        return ttf.crop(img,y1,x1,th,tw), ttf.crop(mask,y1,x1,th,tw)
 
 
 class RandomHorizontallyFlip(object):
     def __call__(self, img, mask):
-        if random.random() < 0.5:
-            return img.transpose(Image.FLIP_LEFT_RIGHT), mask.transpose(Image.FLIP_LEFT_RIGHT)
-        return img, mask
-
+        return ttf.hflip(img), ttf.hflip(mask)
 
 class FreeScale(object):
     def __init__(self, size):
         self.size = tuple(reversed(size))  # size: (h, w)
 
     def __call__(self, img, mask):
-        return img.resize(self.size, Image.BILINEAR), mask.resize(self.size, Image.NEAREST)
+        return ttf.resize(img,self.size, Image.BILINEAR), ttf.resize(mask,self.size, Image.NEAREST)
 
 
 class Scale(object):
@@ -127,44 +125,11 @@ class Scale(object):
         if w > h:
             ow = self.size
             oh = int(self.size * h / w)
-            return img.resize((ow, oh), Image.BILINEAR), mask.resize((ow, oh), Image.NEAREST)
+            return ttf.resize(img,(oh,ow), Image.BILINEAR), ttf.resize(mask,(oh,ow), Image.NEAREST)
         else:
             oh = self.size
             ow = int(self.size * w / h)
-            return img.resize((ow, oh), Image.BILINEAR), mask.resize((ow, oh), Image.NEAREST)
-
-
-class RandomSizedCenterCrop(object):
-    def __init__(self, size):
-        self.size = size
-
-    def __call__(self, img, mask):
-        for attempt in range(10):
-            area = img.size[0] * img.size[1]
-            target_area = random.uniform(0.45, 1.0) * area
-            aspect_ratio = random.uniform(0.5, 2)
-
-            w = int(round(math.sqrt(target_area * aspect_ratio)))
-            h = int(round(math.sqrt(target_area / aspect_ratio)))
-
-            if random.random() < 0.5:
-                w, h = h, w
-
-            if w <= img.size[0] and h <= img.size[1]:
-                x1 = random.randint(0, img.size[0] - w)
-                y1 = random.randint(0, img.size[1] - h)
-
-                img = img.crop((x1, y1, x1 + w, y1 + h))
-                mask = mask.crop((x1, y1, x1 + w, y1 + h))
-
-                return img.resize((self.size, self.size), Image.BILINEAR), mask.resize((self.size, self.size),
-                                                                                       Image.NEAREST)
-
-        # Fallback
-        scale = Scale(self.size)
-        crop = CenterCrop(self.size)
-        return crop(*scale(img, mask))
-
+            return ttf.resize(img,(oh,ow), Image.BILINEAR), ttf.resize(mask,(oh,ow), Image.NEAREST)
 
 class RandomRotate(object):
     def __init__(self, degree):
@@ -172,7 +137,7 @@ class RandomRotate(object):
 
     def __call__(self, img, mask):
         rotate_degree = random.random() * 2 * self.degree - self.degree
-        return img.rotate(rotate_degree, Image.BILINEAR), mask.rotate(rotate_degree, Image.NEAREST)
+        return ttf.rotate(img=img,angle=rotate_degree,resample=Image.BILINEAR), ttf.rotate(img=mask,angle=rotate_degree, resample=Image.NEAREST)
 
 
 class RandomSizedCrop(object):
@@ -185,6 +150,6 @@ class RandomSizedCrop(object):
         w = int(random.uniform(0.5, 2) * img.size[0])
         h = int(random.uniform(0.5, 2) * img.size[1])
 
-        img, mask = img.resize((w, h), Image.BILINEAR), mask.resize((w, h), Image.NEAREST)
+        img, mask = ttf.resize(img,(h,w), Image.BILINEAR), ttf.resize(mask,(h,w), Image.NEAREST)
 
         return self.crop(*self.scale(img, mask))
