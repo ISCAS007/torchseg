@@ -11,7 +11,6 @@ class Compose(object):
         self.transforms = transforms
 
     def __call__(self, img, mask):
-        assert img.size == mask.size
         for t in self.transforms:
             img, mask = t(img, mask)
         return img, mask
@@ -75,8 +74,6 @@ class RandomCrop(object):
         if self.padding > 0:
             img = ImageOps.expand(img, border=self.padding, fill=0)
             mask = ImageOps.expand(mask, border=self.padding, fill=0)
-
-        assert img.size == mask.size
         w, h = img.size
         th, tw = self.size
         if w == tw and h == th:
@@ -97,7 +94,6 @@ class CenterCrop(object):
             self.size = size
 
     def __call__(self, img, mask):
-        assert img.size == mask.size
         w, h = img.size
         th, tw = self.size
         x1 = int(round((w - tw) / 2.))
@@ -125,7 +121,6 @@ class Scale(object):
         self.size = size
 
     def __call__(self, img, mask):
-        assert img.size == mask.size
         w, h = img.size
         if (w >= h and w == self.size) or (h >= w and h == self.size):
             return img, mask
@@ -144,7 +139,6 @@ class RandomSizedCenterCrop(object):
         self.size = size
 
     def __call__(self, img, mask):
-        assert img.size == mask.size
         for attempt in range(10):
             area = img.size[0] * img.size[1]
             target_area = random.uniform(0.45, 1.0) * area
@@ -162,7 +156,6 @@ class RandomSizedCenterCrop(object):
 
                 img = img.crop((x1, y1, x1 + w, y1 + h))
                 mask = mask.crop((x1, y1, x1 + w, y1 + h))
-                assert (img.size == (w, h))
 
                 return img.resize((self.size, self.size), Image.BILINEAR), mask.resize((self.size, self.size),
                                                                                        Image.NEAREST)
@@ -189,8 +182,6 @@ class RandomSizedCrop(object):
         self.crop = RandomCrop(self.size)
 
     def __call__(self, img, mask):
-        assert img.size == mask.size
-
         w = int(random.uniform(0.5, 2) * img.size[0])
         h = int(random.uniform(0.5, 2) * img.size[1])
 
