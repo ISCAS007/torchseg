@@ -13,6 +13,11 @@ from gluoncv.model_zoo.segbase import *
 from gluoncv.utils.parallel import *
 from gluoncv.data import get_segmentation_dataset
 
+#datasets = {
+#    'ade20k': ADE20KSegmentation,
+#    'pascal_voc': VOCSegmentation,
+#    'pascal_aug': VOCAugSegmentation,
+#}
 
 def parse_args():
     """Training Options for Segmentation Experiments"""
@@ -23,8 +28,9 @@ def parse_args():
                         help='model name (default: fcn)')
     parser.add_argument('--backbone', type=str, default='resnet50',
                         help='backbone name (default: resnet50)')
-    parser.add_argument('--dataset', type=str, default='pascalaug',
-                        help='dataset name (default: pascal)')
+    parser.add_argument('--dataset', type=str, default='pascal_voc',
+                        choices=['ade20k','pascal_voc','pascal_aug'],
+                        help='dataset name (default: pascal_voc)')
     parser.add_argument('--workers', type=int, default=16,
                         metavar='N', help='dataloader threads')
     # training hyper params
