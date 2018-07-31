@@ -109,14 +109,7 @@ class pspnet(TN.Module):
         self.backbone.model.cuda()
         optimizer = self.get_optim(args)
 #        loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
-        if hasattr(args,'ignore_index'):
-            if args.ignore_index:
-                print('ignore_index=%s'%self.ignore_index + '*'*30)
-                loss_fn=torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
-            else:
-                loss_fn=torch.nn.CrossEntropyLoss()
-        else:
-            loss_fn=torch.nn.CrossEntropyLoss()
+        loss_fn=torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
         
         # metrics
         running_metrics = runningScore(self.class_number)

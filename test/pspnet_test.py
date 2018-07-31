@@ -25,7 +25,7 @@ if __name__ == '__main__':
     config.model = edict()
     config.model.upsample_type = 'duc'
     config.model.upsample_layer = 3
-    config.model.class_number = 20
+    config.model.class_number = 19
     config.model.backbone_name = 'vgg16'
     config.model.layer_preference = 'last'
     input_shape = (240, 240)
@@ -40,13 +40,14 @@ if __name__ == '__main__':
     config.dataset.cityscapes_split = random.choice(['test', 'val', 'train'])
     config.dataset.resize_shape = input_shape
     config.dataset.name = 'cityscapes'
+    config.dataset.ignore_index = 255
 
     config.args = edict()
     config.args.n_epoch = 100
     config.args.log_dir = '/home/yzbx/tmp/logs/pytorch'
-    config.args.note = 'aug'
+    config.args.note = 'naive'
     # must change batch size here!!!
-    batch_size = 2
+    batch_size = 4
     config.args.batch_size = batch_size
 
     # prefer setting
@@ -133,11 +134,11 @@ if __name__ == '__main__':
         net.do_train_or_val(config.args, train_loader, val_loader)
     elif test == 'backbone':
         config.args.n_epoch = 100
-        for backbone in ['resnet50', 'resnet101']:
+        for backbone in ['resnet50', 'vgg19']:
             config.model.backbone_name = backbone
-            config.args.note = '_'.join([config.args.note, backbone])
+            config.args.note = '_'.join(['naive', backbone])
             net = pspnet(config)
-            net.do_train_or_val(config.args, train_loader, val_loader)
+            do_train_or_val(net,config.args, train_loader, val_loader)
     elif test == 'dict':
         config.args.n_epoch = 100
         config.args.note = 'dict'
@@ -177,7 +178,7 @@ if __name__ == '__main__':
             break
     elif test == 'upsample_type':
         config.args.n_epoch = 100
-        backbone = 'resnet101'
+        backbone = 'resnet52'
         config.model.backbone_name = backbone
         for upsample_type in ['duc', 'bilinear']:
             config.model.upsample_type = upsample_type
@@ -231,7 +232,7 @@ if __name__ == '__main__':
         config.args.epoch=100
 
         for augmentor in ['none','iaa','tt']:
-            config.args.note = '_'.join([config.args.note, 'aug',augmentor])
+            config.args.note = '_'.join(['naive','aug',augmentor])
             if augmentor=='none':
                 augmentations=None
                 continue

@@ -39,7 +39,7 @@ for split in splits:
     print('%s glob images'%split,len(glob_images))
     print('%s glob annotations'%split,len(glob_annotations))
     
-    write_file=open('dataset/cityscapes_fine_'+split+'.txt','w')
+    write_file=open('dataset/txt/cityscapes_fine_'+split+'.txt','w')
     for g_img in glob_images:
         #img_p: eg leftImg8bit_trainvaltest/leftImg8bit/val/frankfurt/frankfurt_000001_083852_leftImg8bit.png
         #ann_p: eg gtFine_trainvaltest/gtFine/val/frankfurt/frankfurt_000001_083852_gtFine_labelIds.png

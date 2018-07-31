@@ -31,7 +31,7 @@ from PIL import Image
 from utils.augmentor import Augmentations
 
 def get_dataset_generalize_config(config,dataset_name):
-    support_datasets=['ADEChallengeData2016','VOC2012','Kitti2015','Cityscapes','Cityscapes_Fine','Cityscapes_Coarse']
+    support_datasets=['ADEChallengeData2016','VOC2012','Kitti2015','Cityscapes','Cityscapes_Fine','Cityscapes_Coarse','ADE20K']
     assert dataset_name in support_datasets,'unknown dataset %s, not in support dataset %s'%(dataset_name,str(support_datasets))
     if dataset_name=='ADEChallengeData2016':
         # train + val, no test
@@ -41,11 +41,20 @@ def get_dataset_generalize_config(config,dataset_name):
         config.foreground_class_ids=[i for i in range(1,151)]
         config.background_class_ids=[0]
         config.ignore_index=0
+    elif dataset_name=='ADE20K':
+        assert False,'the ADE20K dataset luck some of detail'
+        # train + val 
+        config.root_path='/media/sdb/CVDataset/ObjectSegmentation/ADE20K_2016_07_26/images'
+        config.txt_note='ade20k'
+        config.txt_path='/home/yzbx/git/torchseg/dataset/txt'
+#        config.foreground_class_ids=[i for i in range(20)]
+#        config.background_class_ids=[255]
+#        config.ignore_index=255
     elif dataset_name=='VOC2012':
         # train + val, no test
         config.root_path='/media/sdb/CVDataset/VOC'
         config.txt_note='voc2012'
-        config.txt_path='/home/yzbx/git/torchseg/dataset'
+        config.txt_path='/home/yzbx/git/torchseg/dataset/txt'
         config.foreground_class_ids=[i for i in range(20)]
         config.background_class_ids=[255]
         config.ignore_index=255
@@ -53,7 +62,7 @@ def get_dataset_generalize_config(config,dataset_name):
         # train + val + test
         config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
         config.txt_note='cityscapes_fine'
-        config.txt_path='/home/yzbx/git/torchseg/dataset'
+        config.txt_path='/home/yzbx/git/torchseg/dataset/txt'
         config.foreground_class_ids=[7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
         config.background_class_ids=[0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30]
         config.ignore_index=255
@@ -61,7 +70,7 @@ def get_dataset_generalize_config(config,dataset_name):
         # train + val + train_extra
         config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
         config.txt_note='cityscapes_coarse'
-        config.txt_path='/home/yzbx/git/torchseg/dataset'
+        config.txt_path='/home/yzbx/git/torchseg/dataset/txt'
         config.foreground_class_ids=[7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
         config.background_class_ids=[0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30]
         config.ignore_index=255

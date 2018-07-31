@@ -49,7 +49,7 @@ for split in splits:
     print('%s glob annotations'%split,len(glob_annotations))
     assert len(glob_images)==len(glob_annotations),'image number %d != annotations number %d'%(len(glob_images),len(glob_annotations))
     
-    write_file=open('dataset/cityscapes_coarse_'+split+'.txt','w')
+    write_file=open('dataset/txt/cityscapes_coarse_'+split+'.txt','w')
     for g_img,g_ann in zip(glob_images,glob_annotations):
         img_p=g_img.replace(root_path+'/','')
         ann_p=g_ann.replace(root_path+'/','')
