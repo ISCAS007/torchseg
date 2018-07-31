@@ -104,3 +104,4 @@ venv.bak/
 .mypy_cache/
 notebooks
 .idea
+models/mxnet/runs
