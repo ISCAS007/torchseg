@@ -48,8 +48,8 @@ class cityscapes(TD.Dataset):
         self.images_base = os.path.join(self.config.root_path,'leftImg8bit_trainvaltest','leftImg8bit', self.split)
         self.annotations_base = os.path.join(self.config.root_path, 'gtFine_trainvaltest', 'gtFine', self.split)
         
-        self.image_files = glob.glob(os.path.join(self.images_base,'*','*.png'))
-        self.annotation_files = glob.glob(os.path.join(self.annotations_base,'*','*.png'))
+        self.image_files = glob.glob(os.path.join(self.images_base,'*','*leftImg8bit.png'))
+        self.annotation_files = glob.glob(os.path.join(self.annotations_base,'*','*labelIds.png'))
         assert len(self.image_files)>0, 'No files found in %s'%(self.images_base)
         assert len(self.annotation_files)>0, 'No files found in %s'%(self.annotations_base)
         

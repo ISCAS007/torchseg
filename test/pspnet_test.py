@@ -21,18 +21,74 @@ from utils.augmentor import Augmentations
 from utils.torch_tools import do_train_or_val
 
 if __name__ == '__main__':
+    choices = ['edge', 'global',
+               'backbone', 'dict', 'fractal', 'optim', 'upsample_type', 
+               'caffe', 'augmentor']
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--test",
+                        help="test for choices",
+                        choices=choices,
+                        default=random.choice(choices))
+    
+    parser.add_argument("--batch_size",
+                        help="batch size",
+                        type=int,
+                        default=2)
+    
+    parser.add_argument("--backbone_name",
+                        help="backbone name",
+                        choices=['vgg16','vgg19','vgg16_bn','vgg19_bn','resnet18','resnet34','resnet50','resnet101','resnet152'],
+                        default='resnet50')
+    
+    parser.add_argument('--net_name',
+                        help='net name for semantic segmentaion',
+                        choices=['pspnet','psp_edge','psp_global','psp_caffe','psp_fractal','psp_dict'],
+                        default='psp_caffe')
+    
+    parser.add_argument('--midnet_scale',
+                        help='pspnet scale',
+                        type=int,
+                        default=5)
+    
+    parser.add_argument('--n_epoch',
+                        help='training/validating epoch',
+                        type=int,
+                        default=100)
+    
+    parser.add_argument('--augmentation',
+                        help='true or false to do augmentation',
+                        type=bool,
+                        default=True)
+    
+    parser.add_argument('--upsample_type',
+                        help='bilinear or duc upsample',
+                        choices=['duc','bilinear'],
+                        default='duc')
+    
+    parser.add_argument('--upsample_layer',
+                        help='layer number for upsample',
+                        type=int,
+                        default=3)
+    
+    parser.add_argument('--note',
+                        help='comment for tensorboard log',
+                        default='naive')
+    args = parser.parse_args()
+    
     config = edict()
     config.model = edict()
-    config.model.upsample_type = 'duc'
-    config.model.upsample_layer = 3
+    config.model.upsample_type = args.upsample_type
+    config.model.upsample_layer = args.upsample_layer
     config.model.class_number = 19
-    config.model.backbone_name = 'vgg16'
+    config.model.backbone_name = args.backbone_name
     config.model.layer_preference = 'last'
-    input_shape = (240, 240)
-    config.model.input_shape = input_shape
+    
 
     config.model.midnet_pool_sizes = [6, 3, 2, 1]
-    config.model.midnet_scale = 5
+    config.model.midnet_scale = args.midnet_scale
+    min_input_size=max(config.model.midnet_pool_sizes)*config.model.midnet_scale*2**args.upsample_layer
+    input_shape = (min_input_size, min_input_size)
+    config.model.input_shape = input_shape
     config.model.midnet_out_channels = 512
 
     config.dataset = edict()
@@ -43,18 +99,23 @@ if __name__ == '__main__':
     config.dataset.ignore_index = 255
 
     config.args = edict()
-    config.args.n_epoch = 100
+    config.args.n_epoch = args.n_epoch
     config.args.log_dir = '/home/yzbx/tmp/logs/pytorch'
-    config.args.note = 'naive'
+    config.args.note = args.note
     # must change batch size here!!!
-    batch_size = 4
+    batch_size = args.batch_size
     config.args.batch_size = batch_size
 
     # prefer setting
     config.model.backbone_lr_ratio = 1.0
     config.dataset.norm = True
-
-    augmentations = Augmentations(p=0.25)
+    
+    if args.augmentation:
+#        augmentations = Augmentations(p=0.25,use_imgaug=False)
+        augmentations = Augmentations(p=0.25,use_imgaug=True)
+    else:
+        augmentations = None
+        
     train_dataset = cityscapes(
         config.dataset, split='train', augmentations=augmentations)
     train_loader = TD.DataLoader(
@@ -65,82 +126,35 @@ if __name__ == '__main__':
     val_loader = TD.DataLoader(
         dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
 
-    choices = ['disc', 'ignore_index', 'norm', 'edge', 'global',
-               'backbone', 'dict', 'fractal', 'optim', 'upsample_type', 'caffe', 'augmentor']
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--test",
-                        help="test for choices",
-                        choices=choices,
-                        default=random.choice(choices))
-
-    args = parser.parse_args()
+    config.args.note = '_'.join([args.note,
+                                 'bn'+str(batch_size),
+                                 'aug',str(args.augmentation)[0],
+                                 ])
+    note=config.args.note
     test = args.test
-    if test == 'disc':
-        for backbone_lr_ratio in [0.0, 1.0]:
-            config.model.backbone_lr_ratio = backbone_lr_ratio
-            for norm in [True, False]:
-                config.args.note = 'aug'
-                config.dataset.norm = norm
-                norm_str = 'norm' if norm else 'no_norm'
-                config.args.note = '_'.join(
-                    [config.args.note, 'bb_lr', str(backbone_lr_ratio), norm_str])
-                net = pspnet(config)
-                net.do_train_or_val(config.args, train_loader, val_loader)
-    elif test == 'ignore_index':
-        config.args.ignore_index = True
-        config.args.note = 'ignore_index'
-        config.dataset.norm = True
-        config.dataset.ignore_index = 255
-        config.model.class_number = 19
-        norm_str = 'norm'
-        backbone_lr_ratio = 1.0
-        config.args.note = '_'.join(
-            [config.args.note, 'bb_lr', str(backbone_lr_ratio), norm_str])
-
-        train_dataset = cityscapes(
-            config.dataset, split='train', augmentations=augmentations)
-        train_loader = TD.DataLoader(
-            dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
-
-        val_dataset = cityscapes(
-            config.dataset, split='val', augmentations=augmentations)
-        val_loader = TD.DataLoader(
-            dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
-
-        net = pspnet(config)
-        net.do_train_or_val(config.args, train_loader, val_loader)
-    elif test == 'norm':
-        config.args.n_epoch = 300
-        for norm in [True, False]:
-            config.args.note = 'norm'
-            config.dataset.norm = norm
-            config.args.note = '_'.join([config.args.note, str(norm)])
-            net = pspnet(config)
-            net.do_train_or_val(config.args, train_loader, val_loader)
-    elif test == 'edge':
-        config.args.n_epoch = 100
+    if test == 'edge':
         config.dataset.with_edge = True
         for edge_width in [10]:
-            config.args.note = 'edge_width'
             config.dataset.edge_width = edge_width
-            config.args.note = '_'.join([config.args.note, str(edge_width)])
+            config.args.note = '_'.join([note,'edge_width',str(edge_width)])
             net = psp_edge(config)
             net.do_train_or_val(config.args, train_loader, val_loader)
     elif test == 'global':
-        config.args.n_epoch = 100
         config.model.gnet_dilation_sizes = [16, 8, 4]
-        config.args.note = 'default'
+        config.args.note = note
         net = psp_global(config)
         net.do_train_or_val(config.args, train_loader, val_loader)
     elif test == 'backbone':
-        config.args.n_epoch = 100
-        for backbone in ['resnet50', 'vgg19']:
+        for backbone in ['vgg16','vgg19','vgg16_bn','vgg19_bn']:
             config.model.backbone_name = backbone
-            config.args.note = '_'.join(['naive', backbone])
+            config.args.note = '_'.join([args.note,
+                                 'bn'+str(batch_size),
+                                 'aug',str(args.augmentation)[0],
+                                 backbone
+                                 ])
             net = pspnet(config)
             do_train_or_val(net,config.args, train_loader, val_loader)
     elif test == 'dict':
-        config.args.n_epoch = 100
         config.args.note = 'dict'
         dict_number = config.model.class_number*5+1
         dict_lenght = config.model.class_number*2+1
@@ -151,8 +165,6 @@ if __name__ == '__main__':
         net = psp_dict(config)
         do_train_or_val(net, config.args, train_loader, val_loader)
     elif test == 'fractal':
-        config.args.n_epoch = 100
-        config.args.note = 'fractal'
         before_upsample = True
         fractal_depth = 8
         fractal_fusion_type = 'mean'
@@ -165,19 +177,7 @@ if __name__ == '__main__':
             fractal_depth), 'fusion', fractal_fusion_type])
         net = psp_fractal(config)
         net.do_train_or_val(config.args, train_loader, val_loader)
-    elif test == 'optim':
-        config.args.n_epoch = 100
-        for optim in ['adam', 'sgd_simple', 'sgd_complex']:
-            for lr in [0.01, 0.001, 0.0001]:
-                config.args.note = '_'.join([optim, str(lr)])
-                config.args.optim = optim
-
-                net = pspnet(config)
-                net.do_train_or_val(config.args, train_loader, val_loader)
-
-            break
     elif test == 'upsample_type':
-        config.args.n_epoch = 100
         backbone = 'resnet52'
         config.model.backbone_name = backbone
         for upsample_type in ['duc', 'bilinear']:
@@ -186,39 +186,9 @@ if __name__ == '__main__':
             net = pspnet(config)
             net.do_train_or_val(config.args, train_loader, val_loader)
     elif test == 'caffe':
-        config.args.n_epoch = 100
-        backbone = 'resnet50'
-        config.model.backbone_name = backbone
-        input_shape = (240, 240)
-        config.model.input_shape = input_shape
-        config.dataset.resize_shape = input_shape
-        config.dataset.ignore_index = 255
-        config.model.class_number = 19
-        config.model.midnet_pool_sizes = [6, 3, 2, 1]
-        config.model.midnet_scale = 5
         config.model.momentum = 0.95
         align_corners = False
         config.model.align_corners = align_corners
-
-        # change dataset setting, the dataloader need be update
-        train_dataset = cityscapes(
-            config.dataset, split='train', augmentations=augmentations)
-        train_loader = TD.DataLoader(
-            dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
-
-        val_dataset = cityscapes(
-            config.dataset, split='val', augmentations=augmentations)
-        val_loader = TD.DataLoader(
-            dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
-#        for momentum in [0.1, 0.5, 0.9]:
-#            config.model.momentum = momentum
-#            config.args.note = '_'.join([backbone,
-#                                         'cls'+str(config.model.class_number),
-#                                         'align'+str(align_corners)[0],
-#                                         'mo'+str(momentum)
-#                                         ])
-#            net = psp_caffe(config)
-#            do_train_or_val(net, config.args, train_loader, val_loader)
 
         for align_corners in [True, False]:
             config.model.align_corners = align_corners
@@ -228,31 +198,5 @@ if __name__ == '__main__':
                                          ])
             net = psp_caffe(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
-    elif test=='augmentor':
-        config.args.epoch=100
-
-        for augmentor in ['none','iaa','tt']:
-            config.args.note = '_'.join(['naive','aug',augmentor])
-            if augmentor=='none':
-                augmentations=None
-                continue
-            elif augmentor=='iaa':
-                augmentations = Augmentations(p=0.25,use_imgaug=True)
-                continue
-            else:
-                augmentations = Augmentations(p=0.25, use_imgaug=False)
-
-            train_dataset = cityscapes(
-                config.dataset, split='train', augmentations=augmentations)
-            train_loader = TD.DataLoader(
-                dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
-
-            val_dataset = cityscapes(config.dataset, split='val',
-                                     augmentations=augmentations)
-            val_loader = TD.DataLoader(
-                dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
-
-            net = pspnet(config)
-            do_train_or_val(net,config.args, train_loader, val_loader)
     else:
         raise NotImplementedError
