@@ -52,7 +52,7 @@ glob_annotations=glob.glob(os.path.join(root_path,annotation_path,'*.png'))
 for txt_file in txt_files:
     filename=os.path.join(txt_path,txt_file)
     with open(filename,'r') as f:
-        write_file=open('dataset/voc2012_'+txt_file,'w')
+        write_file=open('dataset/txt/voc2012_'+txt_file,'w')
         for line in f.readlines():
             line=line.strip()
             if len(line)==0:

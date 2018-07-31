@@ -6,8 +6,6 @@ import tarfile
 from gluoncv.utils import download, makedirs
 
 _TARGET_DIR = os.path.expanduser('~/.mxnet/datasets/voc')
-#_TARGET_DIR = os.path.expanduser('/media/sdb/CVDataset/VOC')
-
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -31,8 +29,8 @@ def download_voc(path, overwrite=False):
          '41a8d6e12baa5ab18ee7f8f8029b9e11805b4ef1'),
         ('http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar',
          '4e443f8a2eca6b1dac8a6c57641b67dd40621a49')]
-    _DOWNLOAD_URLS = _DOWNLOAD_URLS[:2]
     makedirs(path)
+    assert overwrite==False
     for url, checksum in _DOWNLOAD_URLS:
         filename = download(url, path=path, overwrite=overwrite, sha1_hash=checksum)
         # extract
@@ -83,11 +81,10 @@ if __name__ == '__main__':
             raise ValueError(('{} is not a valid directory, make sure it is present.'
                               ' Or you should not disable "--no-download" to grab it'.format(path)))
         else:
-            pass
-#            download_aug(path, overwrite=args.overwrite)
+            download_aug(path, overwrite=args.overwrite)
 
     # make symlink
-#    makedirs(os.path.expanduser('~/.mxnet/datasets'))
+    makedirs(os.path.expanduser('~/.mxnet/datasets'))
 #    if os.path.isdir(_TARGET_DIR):
 #        os.remove(_TARGET_DIR)
-#    os.symlink(path, _TARGET_DIR)
+    os.symlink(path, _TARGET_DIR)
