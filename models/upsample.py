@@ -75,10 +75,9 @@ class upsample_bilinear(TN.Module):
     def forward(self, x):
         x = self.conv_bn_relu(x)
         x = self.conv(x)
-        x = F.upsample(x, size=self.output_shape, mode='bilinear')
+        x = F.upsample(x, size=self.output_shape, mode='bilinear',align_corners=False)
         return x
 # TODO
-
 
 class transform_psp(TN.Module):
     def __init__(self, pool_sizes, scale, in_channels, out_channels, out_size):
@@ -106,7 +105,9 @@ class transform_psp(TN.Module):
                                                 stride=1,
                                                 padding=0,
                                                 bias=False),
-                                      TN.BatchNorm2d(num_features=out_c),
+                                      TN.BatchNorm2d(num_features=out_c,
+                                                     eps=1e-05, 
+                                                     momentum=0.1),
                                       TN.ReLU(),
                                       TN.Upsample(size=out_size, mode='bilinear', align_corners=False))
             pool_paths.append(pool_path)
@@ -278,3 +279,96 @@ class transform_fractal(TN.Module):
                 raise Exception('This is unexcepted Error')
 
         return outputs
+
+class transform_aspp(TN.Module):
+    def __init__(self,
+                 output_stride,
+                 input_shape,
+                 out_channels,
+                 eps=1e-05,
+                 momentum=0.1):
+        super().__init__()
+        b,in_channels,h,w=input_shape
+        assert h==w,'height=%d and width=%d must equal in input_shape'%(h,w)
+        if output_stride not in [8, 16]:
+            raise ValueError('output_stride must be either 8 or 16.')
+    
+        atrous_rates = [1, 6, 12, 18]
+        if output_stride == 8:
+            atrous_rates = [2*rate for rate in atrous_rates]
+            atrous_rates[0] = 1
+        
+        out_c=out_channels
+        self.out_channels=out_channels
+        
+        atrous_paths=[]
+        k_sizes=[1,3,3,3]
+        # in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True
+        for r,k in zip(atrous_rates,k_sizes):
+            path=TN.Sequential(TN.Conv2d(in_channels=in_channels,
+                                         out_channels=out_c,
+                                         kernel_size=k,
+                                         stride=1,
+                                         padding=r*(k-1)//2,
+                                         dilation=r,
+                                         bias=False
+                                         ),
+                               TN.BatchNorm2d(num_features=out_c,
+                                              eps=eps,
+                                              momentum=momentum),
+                               TN.ReLU())
+            atrous_paths.append(path)
+        
+        self.image_level_path=TN.Sequential(TN.AvgPool2d(kernel_size=h),
+                                       TN.Conv2d(in_channels=in_channels,
+                                                 out_channels=out_c,
+                                                 kernel_size=1,
+                                                 stride=1,
+                                                 padding=0,
+                                                 bias=False),
+                                       TN.BatchNorm2d(num_features=out_c,
+                                                      eps=eps,
+                                                      momentum=momentum),
+                                       TN.ReLU(),
+                                       TN.Upsample(size=(h,w),
+                                                   mode='bilinear',
+                                                   align_corners=False))
+                            
+        self.final_conv=TN.Sequential(TN.Conv2d(in_channels=out_c*5,
+                                                 out_channels=out_c,
+                                                 kernel_size=1,
+                                                 stride=1,
+                                                 padding=0,
+                                                 bias=False),
+                               TN.BatchNorm2d(num_features=out_c,
+                                              eps=eps,
+                                              momentum=momentum),
+                               TN.ReLU())
+                               
+        self.atrous_paths = TN.ModuleList(atrous_paths)
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+                
+    def forward(self,x):
+        output_slices = []
+        
+        
+        for module in self.atrous_paths:
+            y = module(x)
+            output_slices.append(y)
+        
+        y=self.image_level_path(x)
+        output_slices.append(y)
+        
+        y=torch.cat(output_slices,dim=1)
+        y=self.final_conv(y)
+        return y
+        
+    def compute_shape(self,input_shape):
+        b,c,h,w=input_shape
+        return (b,self.out_channels,h,w)

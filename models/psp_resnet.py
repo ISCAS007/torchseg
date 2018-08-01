@@ -53,12 +53,13 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, psp_mode=True, momentum=0.1):
+    def __init__(self, block, layers, psp_mode=True, momentum=0.1,upsample_layer=5):
         self.inplanes = 64
         self.momentum=momentum
         self.psp_mode=psp_mode
         super(ResNet, self).__init__()
-
+        
+        self.upsample_layer=upsample_layer
         if psp_mode:
             self.prefix_net = nn.Sequential(self.conv_bn_relu(in_channels=3,
                                                               out_channels=64,
@@ -159,36 +160,46 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         x = self.prefix_net(x)
-
+        if self.upsample_layer==1:
+            return x
         x = self.layer1(x)
+        if self.upsample_layer==2:
+            return x
         x = self.layer2(x)
+        if self.upsample_layer==3:
+            return x
         x = self.layer3(x)
+        if self.upsample_layer==4:
+            return x
         x = self.layer4(x)
-
+        if self.upsample_layer==5:
+            return x
+        
+        assert False,'upsample_layer=%d, not in [1-5]'%self.upsample_layer
         return x
 
 
-def resnet50(momentum=0.1):
+def resnet50(momentum=0.1,upsample_layer=5):
     """Constructs a ResNet-50 model.
 
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3], momentum=momentum)
+    model = ResNet(Bottleneck, [3, 4, 6, 3], momentum=momentum,upsample_layer=upsample_layer)
     return model
 
 
-def resnet101(momentum=0.1):
+def resnet101(momentum=0.1,upsample_layer=5):
     """Constructs a ResNet-101 model.
 
     """
-    model = ResNet(Bottleneck, [3, 4, 23, 3], momentum=momentum)
+    model = ResNet(Bottleneck, [3, 4, 23, 3], momentum=momentum,upsample_layer=upsample_layer)
     return model
 
 
-def resnet152(momentum=0.1):
+def resnet152(momentum=0.1,upsample_layer=5):
     """Constructs a ResNet-152 model.
 
     """
-    model = ResNet(Bottleneck, [3, 8, 36, 3], momentum=momentum)
+    model = ResNet(Bottleneck, [3, 8, 36, 3], momentum=momentum,upsample_layer=upsample_layer)
     return model
 
 def get_backbone(momentum):

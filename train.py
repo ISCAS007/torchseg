@@ -31,6 +31,11 @@ if __name__ == '__main__':
                         help="backbone name",
                         choices=['vgg16','vgg19','vgg16_bn','vgg19_bn','resnet18','resnet34','resnet50','resnet101','resnet152'],
                         default='resnet50')
+                        
+    parser.add_argument("--midnet_name",
+                        help="midnet name",
+                        choices=['psp','aspp'],
+                        default='psp')
     
     parser.add_argument('--dataset_name',
                         help='dataset name',
@@ -73,6 +78,12 @@ if __name__ == '__main__':
                         help='bilinear or duc upsample',
                         choices=['duc','bilinear'],
                         default='duc')
+                        
+    parser.add_argument('--upsample_layer',
+                        help='layer number for upsample',
+                        type=int,
+                        choices=[1,2,3,4,5],
+                        default=5)
     
     parser.add_argument('--note',
                         help='comment for tensorboard log',
@@ -82,20 +93,27 @@ if __name__ == '__main__':
     config=edict()
     config.model=edict()
     config.model.upsample_type=args.upsample_type
-    config.model.upsample_layer=3
+    config.model.upsample_layer=args.upsample_layer
     config.model.backbone_name=args.backbone_name
     config.model.layer_preference='last'
     config.model.midnet_pool_sizes=[6,3,2,1]
     config.model.midnet_scale=args.midnet_scale
-    # 2048 or counted???
+    #TODO 2048 or counted???
+    resnet_out_channels=[128,256,512,1024,2048]
+    config.model.midnet_in_channels=resnet_out_channels[args.upsample_layer-1]
     config.model.midnet_out_channels=512
+    config.model.suffix_out_channels=512
+    config.model.midnet_name=args.midnet_name
     config.model.momentum=0.95
     config.model.inplace=False
     config.model.align_corners=False
         
     if args.input_shape==0:
-        count_size=max(config.model.midnet_pool_sizes)*config.model.midnet_scale
-        input_shape=(count_size,count_size)
+        if args.midnet_name=='psp':
+            count_size=max(config.model.midnet_pool_sizes)*config.model.midnet_scale
+            input_shape=(count_size,count_size)
+        else:
+            input_shape=(72*8,72*8)
     else:
         input_shape=(args.input_shape,args.input_shape)
     config.model.input_shape=input_shape

@@ -18,14 +18,17 @@ import torch.utils.data as TD
 from utils.torch_tools import do_train_or_val
 from dataset.cityscapes import cityscapes
 from utils.augmentor import Augmentations
+from models.upsample import transform_aspp
 from models.psp_resnet import resnet101,resnet50
 
 class transform_psp(TN.Module):
-    def __init__(self, config, pool_sizes, scale, in_channels, out_channels, out_size):
+    def __init__(self, pool_sizes, scale, in_channels, out_channels, out_size, momentum=0.1):
         super(transform_psp, self).__init__()
         path_out_c_list = []
         N = len(pool_sizes)
-        mean_c = out_channels//N
+        mean_c = out_channels//(2*N)
+        assert out_channels%2==0,'psp output channels %d %%2 !=0'%out_channels
+        
         for i in range(N-1):
             path_out_c_list.append(mean_c)
 
@@ -34,9 +37,7 @@ class transform_psp(TN.Module):
         self.pool_sizes = pool_sizes
         self.scale = scale
         self.out_size = out_size
-        self.config = config
-        self.align_corners=config['align_corners']
-        self.momentum=config['momentum']
+        self.momentum=momentum
         
         pool_paths = []
         for pool_size, out_c in zip(pool_sizes, path_out_c_list):
@@ -52,7 +53,7 @@ class transform_psp(TN.Module):
                                       TN.BatchNorm2d(
                                           num_features=out_c, momentum=self.momentum),
                                       TN.ReLU(inplace=False),
-                                      TN.Upsample(size=out_size, mode='bilinear', align_corners=self.align_corners))
+                                      TN.Upsample(size=out_size, mode='bilinear'))
             pool_paths.append(pool_path)
 
         self.pool_paths = TN.ModuleList(pool_paths)
@@ -72,8 +73,7 @@ class transform_psp(TN.Module):
         if in_size[-1] != min_input_size:
             psp_x = F.upsample(input=x,
                                size=min_input_size,
-                               mode='bilinear',
-                               align_corners=self.align_corners)
+                               mode='bilinear')
         else:
             psp_x = x
         
@@ -99,11 +99,18 @@ class psp_caffe(TN.Module):
         self.input_shape = self.config.model.input_shape
         self.ignore_index = self.config.dataset.ignore_index
         self.dataset_name=self.config.dataset.name
+        self.momentum=self.config.model.momentum
         if self.config.model.backbone_name == 'resnet50':
-            self.backbone=resnet50(momentum=self.config.model.momentum)
+            self.backbone=resnet50(momentum=self.config.model.momentum,
+                                   upsample_layer=self.config.model.upsample_layer)
         else:
-            self.backbone=resnet101(momentum=self.config.model.momentum)
+            self.backbone=resnet101(momentum=self.config.model.momentum,
+                                    upsample_layer=self.config.model.upsample_layer)
         
+        if hasattr(self.config.model,'midnet_name'):
+            self.midnet_name=self.config.model.midnet_name
+        else:
+            self.midnet_name='psp'
         self.midnet = self.get_midnet()
         self.suffix_net = self.get_suffix_net()
         
@@ -166,47 +173,59 @@ class psp_caffe(TN.Module):
         return seq
 
     def get_midnet(self):
-        config = {}
-        config = self.update_config(config, self.config.model, 'momentum', 0.1)
-        config = self.update_config(
-            config, self.config.model, 'align_corners', False)
-
-        # [1,2,3,6]
-        midnet_pool_sizes = self.config.model.midnet_pool_sizes
-        #10 or 15
-        midnet_scale = self.config.model.midnet_scale
-
-        midnet_in_channels = 2048
-        midnet_out_channels = 2048
-        
-        min_in_size=max(midnet_pool_sizes)*midnet_scale
-        midnet_out_size = [min_in_size,min_in_size] 
-
-        return transform_psp(config=config,
-                             pool_sizes=midnet_pool_sizes,
-                             scale=midnet_scale,
-                             in_channels=midnet_in_channels,
-                             out_channels=midnet_out_channels,
-                             out_size=midnet_out_size)
+        if self.midnet_name=='psp':
+            # [1,2,3,6]
+            midnet_pool_sizes = self.config.model.midnet_pool_sizes
+            #10 or 15
+            midnet_scale = self.config.model.midnet_scale
+    
+            midnet_in_channels=self.config.model.midnet_in_channels
+            midnet_out_channels=self.config.model.midnet_out_channels
+            
+            min_in_size=max(midnet_pool_sizes)*midnet_scale
+            midnet_out_size = [min_in_size,min_in_size] 
+    
+            return transform_psp(pool_sizes=midnet_pool_sizes,
+                                 scale=midnet_scale,
+                                 in_channels=midnet_in_channels,
+                                 out_channels=midnet_out_channels,
+                                 out_size=midnet_out_size,
+                                 momentum=self.momentum)
+        elif self.midnet_name=='aspp':
+            output_stride=2**self.config.model.upsample_layer
+            batch_size=None
+            midnet_in_channels=self.config.model.midnet_in_channels
+            midnet_out_channels=self.config.model.midnet_out_channels
+            midnet_input_size=[a//output_stride for a in self.input_shape[0:2]]
+            input_shape=(batch_size,midnet_in_channels,midnet_input_size[0],midnet_input_size[1])
+            if hasattr(self.config.model,'eps'):
+                eps=self.config.model.eps
+            else:
+                eps=1e-5
+            
+            return transform_aspp(output_stride=output_stride,
+                                 input_shape=input_shape,
+                                 out_channels=midnet_out_channels,
+                                 eps=eps,
+                                 momentum=self.momentum)
+        else:
+            assert False,'unknown midnet name %s'%self.midnet_name
 
     # TODO bias=True? scale_factor=None
     def get_suffix_net(self):
         """
         the last conv: bias=True or False ?
         """
-        config = {}
-        config = self.update_config(config, self.config.model, 'momentum', 0.1)
-        config = self.update_config(
-            config, self.config.model, 'align_corners', False)
-
-        seq = TN.Sequential(self.conv_bn_relu(in_channels=2048*2,
-                                              out_channels=512,
+        midnet_out_channels=self.config.model.midnet_out_channels
+        suffix_out_channels=self.config.model.suffix_out_channels
+        seq = TN.Sequential(self.conv_bn_relu(in_channels=midnet_out_channels,
+                                              out_channels=suffix_out_channels,
                                               kernel_size=3,
                                               stride=1,
                                               padding=1,
                                               bias=False),
                             TN.Dropout2d(p=0.1, inplace=False),
-                            TN.Conv2d(in_channels=512,
+                            TN.Conv2d(in_channels=suffix_out_channels,
                                       out_channels=self.class_number,
                                       kernel_size=1,
                                       stride=1,
@@ -214,8 +233,7 @@ class psp_caffe(TN.Module):
                                       bias=True),
                             TN.Upsample(size=self.input_shape[0:2],
                                         scale_factor=None,
-                                        mode='bilinear',
-                                        align_corners=config['align_corners']))
+                                        mode='bilinear'))
 
         return seq
 
@@ -229,6 +247,11 @@ if __name__ == '__main__':
 
     config.model.midnet_pool_sizes = [6, 3, 2, 1]
     config.model.midnet_scale = 5
+    config.model.midnet_out_channels=2048*2
+    config.model.midnet_in_channels=2048
+    config.model.suffix_out_channels=512
+    config.model.upsample_layer=5
+    config.model.midnet_name='psp'
     config.model.momentum=0.95
     config.model.align_corners=False
 
