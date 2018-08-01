@@ -115,10 +115,10 @@ class backbone(TN.Module):
         if self.use_momentum:
 #            from models.psp_resnet import *
             assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
-            from models.psp_vgg import *
+            from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn
             return globals()[self.config.backbone_name](eps=self.eps, momentum=self.momentum)
         else:
-            from torchvision.models import *
+            from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101
             return globals()[self.config.backbone_name](pretrained=self.pretrained)
     
     def get_dataframe(self):
