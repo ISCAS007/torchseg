@@ -1,28 +1,6 @@
 import torch.nn as nn
-import torch.utils.model_zoo as model_zoo
-import math
-
-
-__all__ = [
-    'VGG', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
-    'vgg19_bn', 'vgg19',
-]
-
-
-model_urls = {
-    'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
-    'vgg13': 'https://download.pytorch.org/models/vgg13-c768596a.pth',
-    'vgg16': 'https://download.pytorch.org/models/vgg16-397923af.pth',
-    'vgg19': 'https://download.pytorch.org/models/vgg19-dcbb9e9d.pth',
-    'vgg11_bn': 'https://download.pytorch.org/models/vgg11_bn-6002323d.pth',
-    'vgg13_bn': 'https://download.pytorch.org/models/vgg13_bn-abd245e5.pth',
-    'vgg16_bn': 'https://download.pytorch.org/models/vgg16_bn-6c64b313.pth',
-    'vgg19_bn': 'https://download.pytorch.org/models/vgg19_bn-c79401a0.pth',
-}
-
 
 class VGG(nn.Module):
-
     def __init__(self, features, num_classes=1000, init_weights=True):
         super(VGG, self).__init__()
         self.features = features
@@ -58,17 +36,19 @@ class VGG(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def make_layers(cfg, batch_norm=False):
+def make_layers(cfg, batch_norm=False,eps=1e-5,momentum=0.1):
     layers = []
     in_channels = 3
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
         else:
-            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+            
             if batch_norm:
-                layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
+                conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=False)
+                layers += [conv2d, nn.BatchNorm2d(v,eps=eps,momentum=momentum), nn.ReLU(inplace=True)]
             else:
+                conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=True)
                 layers += [conv2d, nn.ReLU(inplace=True)]
             in_channels = v
     return nn.Sequential(*layers)
@@ -82,113 +62,41 @@ cfg = {
 }
 
 
-def vgg11(pretrained=False, **kwargs):
-    """VGG 11-layer model (configuration "A")
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    if pretrained:
-        kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg['A']), **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['vgg11']))
+def vgg11(eps=1e-5,momentum=0.1, **kwargs):
+    model = VGG(make_layers(cfg['A'],eps=eps,momentum=momentum), **kwargs)
     return model
 
 
-def vgg11_bn(pretrained=False, **kwargs):
-    """VGG 11-layer model (configuration "A") with batch normalization
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    if pretrained:
-        kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg['A'], batch_norm=True), **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['vgg11_bn']))
+def vgg11_bn(eps=1e-5,momentum=0.1, **kwargs):
+    model = VGG(make_layers(cfg['A'], batch_norm=True,eps=eps,momentum=momentum), **kwargs)
     return model
 
 
-def vgg13(pretrained=False, **kwargs):
-    """VGG 13-layer model (configuration "B")
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    if pretrained:
-        kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg['B']), **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['vgg13']))
+def vgg13(eps=1e-5,momentum=0.1, **kwargs):
+    model = VGG(make_layers(cfg['B'],eps=eps,momentum=momentum), **kwargs)
     return model
 
 
-def vgg13_bn(pretrained=False, **kwargs):
-    """VGG 13-layer model (configuration "B") with batch normalization
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    if pretrained:
-        kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg['B'], batch_norm=True), **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['vgg13_bn']))
+def vgg13_bn(eps=1e-5,momentum=0.1, **kwargs):
+    model = VGG(make_layers(cfg['B'], batch_norm=True,eps=eps,momentum=momentum), **kwargs)
     return model
 
 
-def vgg16(pretrained=False, **kwargs):
-    """VGG 16-layer model (configuration "D")
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    if pretrained:
-        kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg['D']), **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['vgg16']))
+def vgg16(eps=1e-5,momentum=0.1, **kwargs):
+    model = VGG(make_layers(cfg['D'],eps=eps,momentum=momentum), **kwargs)
     return model
 
 
-def vgg16_bn(pretrained=False, **kwargs):
-    """VGG 16-layer model (configuration "D") with batch normalization
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    if pretrained:
-        kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg['D'], batch_norm=True), **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['vgg16_bn']))
+def vgg16_bn(eps=1e-5,momentum=0.1, **kwargs):
+    model = VGG(make_layers(cfg['D'], batch_norm=True,eps=eps,momentum=momentum), **kwargs)
     return model
 
 
-def vgg19(pretrained=False, **kwargs):
-    """VGG 19-layer model (configuration "E")
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    if pretrained:
-        kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg['E']), **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['vgg19']))
+def vgg19(eps=1e-5,momentum=0.1, **kwargs):
+    model = VGG(make_layers(cfg['E'],eps=eps,momentum=momentum), **kwargs)
     return model
 
 
-def vgg19_bn(pretrained=False, **kwargs):
-    """VGG 19-layer model (configuration 'E') with batch normalization
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    if pretrained:
-        kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg['E'], batch_norm=True), **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['vgg19_bn']))
+def vgg19_bn(eps=1e-5,momentum=0.1, **kwargs):
+    model = VGG(make_layers(cfg['E'], batch_norm=True,eps=eps,momentum=momentum), **kwargs)
     return model
