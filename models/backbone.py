@@ -89,6 +89,13 @@ class backbone(TN.Module):
         x=Variable(x.cuda().float())
         x=self.forward(x,level)
         return x.shape[2:4]
+    
+    def get_output_shape(self,level,input_size):
+        self.cuda()
+        x=torch.rand(2,3,input_size[0],input_size[1])
+        x=torch.autograd.Variable(x.cuda().float())
+        x=self.forward(x,level)
+        return x.shape
         
     def get_model(self):
         assert self.config.backbone_name in globals().keys(), 'undefine backbone name %s'%self.config.backbone_name
@@ -163,7 +170,7 @@ class backbone(TN.Module):
 if __name__ == '__main__':
     config=edict()
     config.backbone_name='resnet152'
-    config.layer_preference='last'
+    config.layer_preference='first'
     
     for name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','resnet18','resnet34','resnet50','resnet101','resnet152']:
         print(name+'*'*50)
