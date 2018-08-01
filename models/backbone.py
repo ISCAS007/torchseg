@@ -17,14 +17,14 @@ class backbone(TN.Module):
             self.pretrained=False
         
         if hasattr(self.config,'eps'):
-            eps=self.config.eps
+            self.eps=self.config.eps
         else:
-            eps=1e-5
+            self.eps=1e-5
         
         if hasattr(self.config,'momentum'):
-            momentum=self.config.momentum
+            self.momentum=self.config.momentum
         else:
-            momentum=0.1
+            self.momentum=0.1
         
         if use_momentum == False:
             self.use_momentum=False
@@ -38,7 +38,7 @@ class backbone(TN.Module):
                 self.prefix_net = TN.Sequential(TN.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                                       bias=False),
                                             TN.BatchNorm2d(
-                                                64, eps=eps,momentum=momentum),
+                                                64, eps=self.eps,momentum=self.momentum),
                                             TN.ReLU(inplace=True),
                                             TN.MaxPool2d(kernel_size=3, stride=2, padding=1))
                 
@@ -111,15 +111,16 @@ class backbone(TN.Module):
         return x.shape
         
     def get_model(self):
-        assert self.config.backbone_name in globals().keys(), 'undefine backbone name %s'%self.config.backbone_name
         if self.use_momentum:
 #            from models.psp_resnet import *
-            assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn
-            return globals()[self.config.backbone_name](eps=self.eps, momentum=self.momentum)
+            assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
+            assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
+            return locals()[self.config.backbone_name](eps=self.eps, momentum=self.momentum)
         else:
             from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101
-            return globals()[self.config.backbone_name](pretrained=self.pretrained)
+            assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
+            return locals()[self.config.backbone_name](pretrained=self.pretrained)
     
     def get_dataframe(self):
         assert self.format=='vgg','only vgg models have features'
