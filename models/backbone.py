@@ -5,11 +5,10 @@ import torch.nn as TN
 import numpy as np
 import torch
 from torch.autograd import Variable
-from torchvision.models import *
 from easydict import EasyDict as edict
 
 class backbone(TN.Module):
-    def __init__(self,config,model=None):
+    def __init__(self,config,use_momentum=False):
         super(backbone,self).__init__()
         self.config=config
         if hasattr(self.config,'pretrained'):
@@ -17,30 +16,50 @@ class backbone(TN.Module):
         else:
             self.pretrained=False
         
-        if model is None:
+        if hasattr(self.config,'eps'):
+            eps=self.config.eps
+        else:
+            eps=1e-5
+        
+        if hasattr(self.config,'momentum'):
+            momentum=self.config.momentum
+        else:
+            momentum=0.1
+        
+        if use_momentum == False:
+            self.use_momentum=False
             self.model=self.get_model()
+            if self.config.backbone_name.find('vgg')>=0:
+                self.format='vgg'
+                self.df=self.get_dataframe()
+                self.layer_depths=self.get_layer_depths()
+            elif self.config.backbone_name.find('resnet')>=0:
+                self.format='resnet'
+                self.prefix_net = TN.Sequential(TN.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
+                                                      bias=False),
+                                            TN.BatchNorm2d(
+                                                64, eps=eps,momentum=momentum),
+                                            TN.ReLU(inplace=True),
+                                            TN.MaxPool2d(kernel_size=3, stride=2, padding=1))
+                
+                self.layer1=self.model.layer1
+                self.layer2=self.model.layer2
+                self.layer3=self.model.layer3
+                self.layer4=self.model.layer4
+            else:
+                assert False,'unknown backbone name %s'%self.config.backbone_name
         else:
-            self.model=model
-        
-        
-        if self.config.backbone_name.find('vgg')>=0:
-            self.format='vgg'
-            self.df=self.get_dataframe()
-            self.layer_depths=self.get_layer_depths()
-        elif self.config.backbone_name.find('resnet')>=0:
-            self.format='resnet'
-            self.conv1 = TN.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
-            self.bn1 = TN.BatchNorm2d(64)
-            self.relu = TN.ReLU(inplace=False)
-            self.maxpool = TN.MaxPool2d(kernel_size=3, stride=2, padding=1)
-            
-            self.layer1=self.model.layer1
-            self.layer2=self.model.layer2
-            self.layer3=self.model.layer3
-            self.layer4=self.model.layer4
-        else:
-            assert False,'unknown backbone name %s'%self.config.backbone_name
+            self.use_momentum=True
+            self.model=self.get_model()
+            if self.config.backbone_name.find('vgg')>=0:
+                self.format='vgg'
+                self.df=self.get_dataframe()
+                self.layer_depths=self.get_layer_depths()
+            elif self.config.backbone_name.find('resnet')>=0:
+                # the output size of resnet layer is different from stand model!
+                raise NotImplementedError
+            else:
+                assert False,'unknown backbone name %s'%self.config.backbone_name
         
     def forward(self,x,level):
         assert level in [1,2,3,4,5],'feature level %d not in range(0,5)'%level
@@ -53,13 +72,7 @@ class backbone(TN.Module):
                     return x
             
         elif self.format=='resnet':
-            x = self.conv1(x)
-            x = self.bn1(x)
-            x = self.relu(x)
-            if level==1:
-                return x
-            
-            x = self.maxpool(x)
+            x=self.prefix_net(x)
             x = self.layer1(x)
             # layer 1 not change feature map height and width
             if level==2:
@@ -99,7 +112,14 @@ class backbone(TN.Module):
         
     def get_model(self):
         assert self.config.backbone_name in globals().keys(), 'undefine backbone name %s'%self.config.backbone_name
-        return globals()[self.config.backbone_name](pretrained=self.pretrained)
+        if self.use_momentum:
+#            from models.psp_resnet import *
+            assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
+            from models.psp_vgg import *
+            return globals()[self.config.backbone_name](eps=self.eps, momentum=self.momentum)
+        else:
+            from torchvision.models import *
+            return globals()[self.config.backbone_name](pretrained=self.pretrained)
     
     def get_dataframe(self):
         assert self.format=='vgg','only vgg models have features'

@@ -1,14 +1,8 @@
 # -*- coding: utf-8 -*-
-import torch
 import torch.utils.data as TD
 import random
 from dataset.cityscapes import cityscapes
 from easydict import EasyDict as edict
-import numpy as np
-from tqdm import tqdm
-from tensorboardX import SummaryWriter
-import time
-import os
 import argparse
 
 from models.pspnet import pspnet
@@ -16,14 +10,12 @@ from models.psp_edge import psp_edge
 from models.psp_global import psp_global
 from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
-from models.psp_caffe import psp_caffe
 from utils.augmentor import Augmentations
 from utils.torch_tools import do_train_or_val
 
 if __name__ == '__main__':
-    choices = ['edge', 'global',
-               'backbone', 'dict', 'fractal', 'optim', 'upsample_type', 
-               'caffe', 'augmentor']
+    choices = ['edge', 'global', 'augmentor', 'momentum',
+               'backbone', 'dict', 'fractal', 'upsample_type']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -42,8 +34,8 @@ if __name__ == '__main__':
     
     parser.add_argument('--net_name',
                         help='net name for semantic segmentaion',
-                        choices=['pspnet','psp_edge','psp_global','psp_caffe','psp_fractal','psp_dict'],
-                        default='psp_caffe')
+                        choices=['pspnet','psp_edge','psp_global','psp_fractal','psp_dict'],
+                        default='pspnet')
     
     parser.add_argument('--midnet_scale',
                         help='pspnet scale',
@@ -70,6 +62,11 @@ if __name__ == '__main__':
                         type=int,
                         default=3)
     
+    parser.add_argument('--use_momentum',
+                        help='use mometnum or not?',
+                        type=bool,
+                        default=False)
+    
     parser.add_argument('--note',
                         help='comment for tensorboard log',
                         default='naive')
@@ -79,10 +76,12 @@ if __name__ == '__main__':
     config.model = edict()
     config.model.upsample_type = args.upsample_type
     config.model.upsample_layer = args.upsample_layer
+    config.model.use_momentum = args.use_momentum
+    config.model.eps=1e-5
+    config.model.momentum=0.9
     config.model.class_number = 19
     config.model.backbone_name = args.backbone_name
-    config.model.layer_preference = 'last'
-    
+    config.model.layer_preference = 'first'
 
     config.model.midnet_pool_sizes = [6, 3, 2, 1]
     config.model.midnet_scale = args.midnet_scale
@@ -138,12 +137,12 @@ if __name__ == '__main__':
             config.dataset.edge_width = edge_width
             config.args.note = '_'.join([note,'edge_width',str(edge_width)])
             net = psp_edge(config)
-            net.do_train_or_val(config.args, train_loader, val_loader)
+            do_train_or_val(net,config.args, train_loader, val_loader)
     elif test == 'global':
         config.model.gnet_dilation_sizes = [16, 8, 4]
         config.args.note = note
         net = psp_global(config)
-        net.do_train_or_val(config.args, train_loader, val_loader)
+        do_train_or_val(net,config.args, train_loader, val_loader)
     elif test == 'backbone':
         for backbone in ['vgg16','vgg19','vgg16_bn','vgg19_bn']:
             config.model.backbone_name = backbone
@@ -176,7 +175,7 @@ if __name__ == '__main__':
         config.args.note = '_'.join([config.args.note, location_str, 'depth', str(
             fractal_depth), 'fusion', fractal_fusion_type])
         net = psp_fractal(config)
-        net.do_train_or_val(config.args, train_loader, val_loader)
+        do_train_or_val(net,config.args, train_loader, val_loader)
     elif test == 'upsample_type':
         backbone = 'resnet52'
         config.model.backbone_name = backbone
@@ -184,19 +183,15 @@ if __name__ == '__main__':
             config.model.upsample_type = upsample_type
             config.args.note = '_'.join([backbone, upsample_type, 'keras_psp'])
             net = pspnet(config)
-            net.do_train_or_val(config.args, train_loader, val_loader)
-    elif test == 'caffe':
-        config.model.momentum = 0.95
-        align_corners = False
-        config.model.align_corners = align_corners
-
-        for align_corners in [True, False]:
-            config.model.align_corners = align_corners
-            config.args.note = '_'.join([backbone,
-                                         'cls'+str(config.model.class_number),
-                                         'align'+str(align_corners)[0]
-                                         ])
-            net = psp_caffe(config)
+            do_train_or_val(net, config.args, train_loader, val_loader)
+    elif test=='momentum':
+        backbone = 'vgg19_bn'
+        config.model.backbone_name = backbone
+        config.model.use_momentum = True
+        for momentum in [0.1,0.3,0.5,0.7,0.9]:
+            config.args.note= '_'.join([note,backbone,'mo',str(momentum)])
+            net = pspnet(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
     else:
         raise NotImplementedError
+        
