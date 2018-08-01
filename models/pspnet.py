@@ -26,20 +26,12 @@ class pspnet(TN.Module):
         self.name=self.__class__.__name__
         self.backbone=backbone(config.model)
         
-        if hasattr(self.config.model,'backbone_lr_ratio'):
-            backbone_lr_raio=self.config.model.backbone_lr_ratio
-            if backbone_lr_raio==0:
-                freeze_layer(self.backbone)
-        
         self.upsample_type = self.config.model.upsample_type
         self.upsample_layer = self.config.model.upsample_layer
         self.class_number = self.config.model.class_number
         self.input_shape = self.config.model.input_shape
         self.dataset_name=self.config.dataset.name
-        if hasattr(self.config.dataset,'ignore_index'):
-            self.ignore_index=self.config.dataset.ignore_index
-        else:
-            self.ignore_index = 0
+        self.ignore_index=self.config.dataset.ignore_index
         
 #        self.midnet_type = self.config.model.midnet_type
         self.midnet_pool_sizes=self.config.model.midnet_pool_sizes

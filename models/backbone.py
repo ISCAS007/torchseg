@@ -32,7 +32,7 @@ class backbone(TN.Module):
             self.conv1 = TN.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
             self.bn1 = TN.BatchNorm2d(64)
-            self.relu = TN.ReLU(inplace=True)
+            self.relu = TN.ReLU(inplace=False)
             self.maxpool = TN.MaxPool2d(kernel_size=3, stride=2, padding=1)
             
             self.layer1=self.model.layer1
@@ -159,7 +159,7 @@ class backbone(TN.Module):
             print(self.model.layer3)
             print('layer 4 '+'*'*50)
             print(self.model.layer4)
-    
+
 if __name__ == '__main__':
     config=edict()
     config.backbone_name='resnet152'

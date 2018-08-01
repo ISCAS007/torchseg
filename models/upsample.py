@@ -7,9 +7,10 @@ import torch
 
 
 class upsample_duc(TN.Module):
-    def __init__(self, in_channels, out_channels, upsample_ratio):
+    def __init__(self, in_channels, out_channels, upsample_ratio, eps=1e-5, momentum=0.1):
         """
         out_channels: class number
+        upsample_ratio: 2**upsample_layer
         """
         super(upsample_duc, self).__init__()
 
@@ -20,7 +21,9 @@ class upsample_duc(TN.Module):
                                                     stride=1,
                                                     bias=False),
                                           TN.BatchNorm2d(
-            num_features=out_channels*upsample_ratio*upsample_ratio),
+            num_features=out_channels*upsample_ratio*upsample_ratio,
+            eps=eps,
+            momentum=momentum),
             TN.ReLU(),
             TN.Dropout2d(p=0.1))
         self.duc = TN.PixelShuffle(upsample_ratio)
@@ -41,7 +44,7 @@ class upsample_duc(TN.Module):
 
 
 class upsample_bilinear(TN.Module):
-    def __init__(self, in_channels, out_channels, output_shape):
+    def __init__(self, in_channels, out_channels, output_shape, eps=1e-5,momentum=0.1):
         """
         out_channels: class number
         """
@@ -54,15 +57,18 @@ class upsample_bilinear(TN.Module):
                                                     padding=1,
                                                     bias=False),
                                           TN.BatchNorm2d(
-                                              num_features=512),
+                                              num_features=512,
+                                              eps=eps,
+                                              momentum=momentum),
                                           TN.ReLU(),
                                           TN.Dropout2d(p=0.1))
 
         self.conv = TN.Conv2d(in_channels=512,
                               out_channels=out_channels,
                               kernel_size=1,
-                              padding=1,
-                              stride=1)
+                              padding=0,
+                              stride=1,
+                              bias=False)
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
                 TN.init.kaiming_normal_(
@@ -77,23 +83,34 @@ class upsample_bilinear(TN.Module):
         x = self.conv(x)
         x = F.upsample(x, size=self.output_shape, mode='bilinear',align_corners=False)
         return x
-# TODO
 
 class transform_psp(TN.Module):
-    def __init__(self, pool_sizes, scale, in_channels, out_channels, out_size):
+    def __init__(self, pool_sizes, scale, input_shape, out_channels, eps=1e-5, momentum=0.1):
+        """
+        pool_sizes = [1,2,3,6]
+        scale = 5,10
+        out_channels = the output channel for transform_psp
+        out_size = ?
+        """
         super(transform_psp, self).__init__()
-
+        self.input_shape=input_shape
+        b,in_channels,height,width=input_shape
+        
         path_out_c_list = []
         N = len(pool_sizes)
-        mean_c = out_channels//N
+        
+        assert out_channels>in_channels, 'out_channels will concat inputh, so out_chanels=%d should >= in_chanels=%d'%(out_channels,in_channels)
+        # the output channel for pool_paths
+        pool_out_channels=out_channels-in_channels
+        
+        mean_c = pool_out_channels//N
         for i in range(N-1):
             path_out_c_list.append(mean_c)
 
-        path_out_c_list.append(out_channels+mean_c-mean_c*N)
+        path_out_c_list.append(pool_out_channels+mean_c-mean_c*N)
 
         self.pool_sizes = pool_sizes
         self.scale = scale
-        self.out_size = out_size
         pool_paths = []
         for pool_size, out_c in zip(pool_sizes, path_out_c_list):
             pool_path = TN.Sequential(TN.AvgPool2d(kernel_size=pool_size*scale,
@@ -106,13 +123,14 @@ class transform_psp(TN.Module):
                                                 padding=0,
                                                 bias=False),
                                       TN.BatchNorm2d(num_features=out_c,
-                                                     eps=1e-05, 
-                                                     momentum=0.1),
+                                                     eps=eps, 
+                                                     momentum=momentum),
                                       TN.ReLU(),
-                                      TN.Upsample(size=out_size, mode='bilinear', align_corners=False))
+                                      TN.Upsample(size=(height,width), mode='bilinear', align_corners=False))
             pool_paths.append(pool_path)
 
         self.pool_paths = TN.ModuleList(pool_paths)
+        
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
                 TN.init.kaiming_normal_(
@@ -125,42 +143,54 @@ class transform_psp(TN.Module):
         output_slices = [x]
         min_input_size = max(self.pool_sizes)*self.scale
         in_size=x.shape
-        assert in_size[2]==self.out_size[0],'psp in/out size not equal: %d!=%d'%(in_size[2],self.out_size[0])
-        if self.out_size[0] != min_input_size:
-            psp_x = F.upsample(input=x, size=min_input_size,
-                               mode='bilinear', align_corners=False)
-        else:
-            psp_x = x
+        assert in_size[2]>=min_input_size,'psp in size %d should >= %d'%(in_size[2],min_input_size)
 
         for module in self.pool_paths:
-            x = module(psp_x)
-            output_slices.append(x)
+            y = module(x)
+            output_slices.append(y)
 
         x = torch.cat(output_slices, dim=1)
         return x
 
 
 class transform_global(TN.Module):
-    def __init__(self, dilation_sizes, class_number):
+    def __init__(self, dilation_sizes, class_number,eps=1e-5,momentum=0.1):
         """
         in_channels=class_number
         out_channels=class_number
+        backbone->mid_net->global_net->upsample
         """
         super(transform_global, self).__init__()
         dil_paths = []
         for dilation_size in dilation_sizes:
             # for stride=1, to keep size: 2*padding=dilation*(kernel_size-1)
-            dil_paths.append(TN.Conv2d(in_channels=class_number,
-                                       out_channels=class_number,
-                                       kernel_size=3,
-                                       padding=dilation_size,
-                                       dilation=dilation_size))
+            seq=TN.Sequential(TN.Conv2d(in_channels=class_number,
+                                           out_channels=class_number,
+                                           kernel_size=3,
+                                           stride=dilation_size,
+                                           padding=dilation_size,
+                                           bias=False),
+                                 TN.BatchNorm2d(
+                num_features=class_number,
+                eps=eps,
+                momentum=momentum),
+                TN.ReLU(inplace=False))
+                                 
+            dil_paths.append(seq)
         self.dil_paths = TN.ModuleList(dil_paths)
         self.conv = TN.Conv2d(in_channels=class_number*(1+len(dilation_sizes)),
                               out_channels=class_number,
                               kernel_size=1,
-                              padding=0)
-
+                              padding=0,
+                              bias=False)
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+                
     def forward(self, x):
         global_features = [x]
         for model in self.dil_paths:
@@ -195,7 +225,7 @@ class transform_dict(TN.Module):
 
 
 class transform_fractal(TN.Module):
-    def __init__(self, in_channels, depth, class_number, fusion_type='max', do_fusion=False):
+    def __init__(self, in_channels, depth, class_number, fusion_type='max', do_fusion=False, eps=1e-5, momentum=0.1):
         """
         input [b,in_channels,h,w]
         output [b,class_number,h,w]
@@ -222,10 +252,13 @@ class transform_fractal(TN.Module):
                                            out_channels=class_number,
                                            kernel_size=1,
                                            stride=1,
-                                           padding=0),
+                                           padding=0,
+                                           bias=False),
                                  TN.BatchNorm2d(
-                num_features=class_number),
-                TN.ReLU(inplace=True))
+                num_features=class_number,
+                eps=eps,
+                momentum=momentum),
+                TN.ReLU(inplace=False))
             fractal_paths.append(path)
         else:
             for i in range(depth):
@@ -238,15 +271,23 @@ class transform_fractal(TN.Module):
                                                        2**i)*class_number,
                                                    kernel_size=1,
                                                    stride=1,
-                                                   padding=0),
+                                                   padding=0,
+                                                   bias=False),
                                          TN.BatchNorm2d(
                                              num_features=(2**i)*class_number),
-                                         TN.ReLU(inplace=True),
+                                         TN.ReLU(inplace=False),
                                          transform_fractal((2**i)*class_number, i, class_number, fusion_type))
 
                 fractal_paths.append(path)
         self.fractal_paths = TN.ModuleList(fractal_paths)
-
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+                
     def forward(self, x):
         outputs = []
         for model in self.fractal_paths:
@@ -287,6 +328,11 @@ class transform_aspp(TN.Module):
                  out_channels,
                  eps=1e-05,
                  momentum=0.1):
+        """
+        output_stride=2**upsample_layer
+        input_shape=b,c,h,w
+        output_shape=b,out_channels,h,w
+        """
         super().__init__()
         b,in_channels,h,w=input_shape
         assert h==w,'height=%d and width=%d must equal in input_shape'%(h,w)
@@ -357,7 +403,6 @@ class transform_aspp(TN.Module):
     def forward(self,x):
         output_slices = []
         
-        
         for module in self.atrous_paths:
             y = module(x)
             output_slices.append(y)
@@ -368,7 +413,3 @@ class transform_aspp(TN.Module):
         y=torch.cat(output_slices,dim=1)
         y=self.final_conv(y)
         return y
-        
-    def compute_shape(self,input_shape):
-        b,c,h,w=input_shape
-        return (b,self.out_channels,h,w)
