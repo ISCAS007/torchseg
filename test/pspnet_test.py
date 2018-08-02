@@ -192,6 +192,7 @@ if __name__ == '__main__':
             config.args.note= '_'.join([note,backbone,'mo',str(momentum)])
             net = pspnet(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
+            break
     else:
         raise NotImplementedError
         
