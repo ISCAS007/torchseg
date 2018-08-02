@@ -2,7 +2,7 @@
 
 import torch.nn as TN
 from models.backbone import backbone
-from models.upsample import upsample_duc,upsample_bilinear,transform_psp
+from models.upsample import upsample_duc,upsample_bilinear,transform_psp,transfrom_aspp
 
 class pspnet(TN.Module):
     def __init__(self,config):
@@ -24,9 +24,7 @@ class pspnet(TN.Module):
         self.dataset_name=self.config.dataset.name
         self.ignore_index=self.config.dataset.ignore_index
         
-#        self.midnet_type = self.config.model.midnet_type
-        self.midnet_pool_sizes=self.config.model.midnet_pool_sizes
-        self.midnet_scale=self.config.model.midnet_scale
+        self.midnet_name = self.config.model.midnet_name
         
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=self.config.model.midnet_out_channels
@@ -41,12 +39,22 @@ class pspnet(TN.Module):
         else:
             momentum=0.1
         
-        self.midnet=transform_psp(self.midnet_pool_sizes,
-                                  self.midnet_scale,
-                                  self.midnet_input_shape,
-                                  self.midnet_out_channels,
-                                  eps=eps, 
-                                  momentum=momentum)
+        if self.midnet_name='psp':
+            self.midnet_pool_sizes=self.config.model.midnet_pool_sizes
+            self.midnet_scale=self.config.model.midnet_scale
+            self.midnet=transform_psp(self.midnet_pool_sizes,
+                                      self.midnet_scale,
+                                      self.midnet_input_shape,
+                                      self.midnet_out_channels,
+                                      eps=eps, 
+                                      momentum=momentum)
+        elif self.midnet_name='aspp':
+            output_stride=2**self.config.model.upsample_layer
+            self.midnet=transform_aspp(ouput_stride=output_stride,
+                                       input_shape=self.midnet_input_shape,
+                                       out_channels=self.midnet_out_channels,
+                                       eps=eps,
+                                       momentum=momentum)
         
         # psp net will output channels with 2*self.midnet_out_channels
         if self.upsample_type=='duc':
