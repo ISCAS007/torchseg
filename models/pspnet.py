@@ -2,7 +2,7 @@
 
 import torch.nn as TN
 from models.backbone import backbone
-from models.upsample import upsample_duc,upsample_bilinear,transform_psp,transfrom_aspp
+from models.upsample import upsample_duc,upsample_bilinear,transform_psp,transform_aspp
 
 class pspnet(TN.Module):
     def __init__(self,config):
@@ -24,7 +24,10 @@ class pspnet(TN.Module):
         self.dataset_name=self.config.dataset.name
         self.ignore_index=self.config.dataset.ignore_index
         
-        self.midnet_name = self.config.model.midnet_name
+        if hasattr(self.config.model,'midnet_name'):
+            self.midnet_name = self.config.model.midnet_name
+        else:
+            self.midnet_name = 'psp'
         
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=self.config.model.midnet_out_channels
@@ -39,7 +42,8 @@ class pspnet(TN.Module):
         else:
             momentum=0.1
         
-        if self.midnet_name='psp':
+        if self.midnet_name=='psp':
+            print('midnet is psp'+'*'*50)
             self.midnet_pool_sizes=self.config.model.midnet_pool_sizes
             self.midnet_scale=self.config.model.midnet_scale
             self.midnet=transform_psp(self.midnet_pool_sizes,
@@ -48,9 +52,10 @@ class pspnet(TN.Module):
                                       self.midnet_out_channels,
                                       eps=eps, 
                                       momentum=momentum)
-        elif self.midnet_name='aspp':
+        elif self.midnet_name=='aspp':
+            print('midnet is aspp'+'*'*50)
             output_stride=2**self.config.model.upsample_layer
-            self.midnet=transform_aspp(ouput_stride=output_stride,
+            self.midnet=transform_aspp(output_stride=output_stride,
                                        input_shape=self.midnet_input_shape,
                                        out_channels=self.midnet_out_channels,
                                        eps=eps,

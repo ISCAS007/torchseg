@@ -14,7 +14,7 @@ from utils.augmentor import Augmentations
 from utils.torch_tools import do_train_or_val
 
 if __name__ == '__main__':
-    choices = ['edge', 'global', 'augmentor', 'momentum',
+    choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
                'backbone', 'dict', 'fractal', 'upsample_type']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
@@ -193,6 +193,14 @@ if __name__ == '__main__':
             net = pspnet(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
             break
+    elif test=='midnet':
+        midnet_name='aspp'
+        config.model.midnet_name=midnet_name
+        for backbone in ['vgg16','vgg19','vgg19_bn']:
+            config.model.backbone_name = backbone
+            config.args.note= '_'.join([note,backbone,midnet_name])
+            net = pspnet(config)
+#            do_train_or_val(net, config.args, train_loader, val_loader)
     else:
         raise NotImplementedError
         
