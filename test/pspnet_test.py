@@ -225,9 +225,9 @@ if __name__ == '__main__':
 #        config.model.midnet_name=midnet_name
         for backbone in ['vgg19_bn','resnet50']:
             config.model.backbone_name = backbone
-                config.args.note= '_'.join([note,backbone,args.midnet_name])
-                net = pspnet(config)
-                do_train_or_val(net, config.args, train_loader, val_loader)
+            config.args.note= '_'.join([note,backbone,args.midnet_name])
+            net = pspnet(config)
+            do_train_or_val(net, config.args, train_loader, val_loader)
     elif test=='pretrained':
         midnet_name='aspp'
         backbone=config.model.backbone_name
