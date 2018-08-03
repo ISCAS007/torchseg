@@ -116,6 +116,7 @@ if __name__ == '__main__':
             input_shape=(72*8,72*8)
     else:
         input_shape=(args.input_shape,args.input_shape)
+        
     config.model.input_shape=input_shape
     
     config.dataset=edict()

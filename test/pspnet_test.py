@@ -78,6 +78,11 @@ if __name__ == '__main__':
                         type=bool,
                         default=False)
     
+    parser.add_argument('--input_shape',
+                        help='input shape',
+                        type=int,
+                        default=0)
+    
     parser.add_argument('--note',
                         help='comment for tensorboard log',
                         default='naive')
@@ -98,9 +103,17 @@ if __name__ == '__main__':
     config.model.midnet_pool_sizes = [6, 3, 2, 1]
     config.model.midnet_scale = args.midnet_scale
     config.model.midnet_name=args.midnet_name
-    min_input_size=max(config.model.midnet_pool_sizes)*config.model.midnet_scale*2**args.upsample_layer
-    input_shape = (min_input_size, min_input_size)
-    config.model.input_shape = input_shape
+    
+    if args.input_shape==0:
+        if args.midnet_name=='psp':
+            count_size=max(config.model.midnet_pool_sizes)*config.model.midnet_scale*2**args.upsample_layer
+            input_shape=(count_size,count_size)
+        else:
+            input_shape=(72*8,72*8)
+    else:
+        input_shape=(args.input_shape,args.input_shape)
+        
+    config.model.input_shape=input_shape
     config.model.midnet_out_channels = 512
 
     config.dataset = edict()
@@ -207,13 +220,14 @@ if __name__ == '__main__':
             do_train_or_val(net, config.args, train_loader, val_loader)
             break
     elif test=='midnet':
-        midnet_name='aspp'
-        config.model.midnet_name=midnet_name
-        for backbone in ['vgg16','vgg19','vgg19_bn']:
+        # midnet will change input shape
+#        for midnet_name in ['psp','aspp']:
+#        config.model.midnet_name=midnet_name
+        for backbone in ['vgg19_bn','resnet50']:
             config.model.backbone_name = backbone
-            config.args.note= '_'.join([note,backbone,midnet_name])
-            net = pspnet(config)
-            do_train_or_val(net, config.args, train_loader, val_loader)
+                config.args.note= '_'.join([note,backbone,args.midnet_name])
+                net = pspnet(config)
+                do_train_or_val(net, config.args, train_loader, val_loader)
     elif test=='pretrained':
         midnet_name='aspp'
         backbone=config.model.backbone_name
