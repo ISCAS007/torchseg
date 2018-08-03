@@ -19,6 +19,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
         print('warning: use do_train_or_val in model'+'*'*30)
         model.do_train_or_val(args,train_loader,val_loader)
         return 0
+    
     # use gpu memory
     model.cuda()
     if hasattr(model,'backbone'):
@@ -37,12 +38,8 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
         print('use loss function in model'+'*'*30)
         loss_fn=model.loss_fn
     else:
-        if model.class_number==20 and model.ignore_index==0:
-            print('use default loss funtion without ignore_index','*'*30)
-            loss_fn = torch.nn.CrossEntropyLoss()
-        else:
-            print('use default loss funtion with ignore_index=%d'%model.ignore_index,'*'*30)
-            loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.ignore_index)
+        print('use default loss funtion with ignore_index=%d'%model.ignore_index,'*'*30)
+        loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.ignore_index)
 
     #TODO metrics supprot ignore_index
     running_metrics = runningScore(model.class_number)

@@ -128,13 +128,8 @@ class psp_caffe(TN.Module):
                                               'lr': 10*lr},
                                              {'params': self.suffix_net.parameters(), 'lr': 20*lr}], lr=lr)
         
-        if self.class_number==20 and self.ignore_index==0:
-            print('class number is %d'%self.class_number,'*'*30)
-            #loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
-            self.loss_fn = torch.nn.CrossEntropyLoss()
-        else:
-            print('class number is %d'%self.class_number,'ignore_index is %d'%self.ignore_index,'*'*30)
-            self.loss_fn = torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
+        print('class number is %d'%self.class_number,'ignore_index is %d'%self.ignore_index,'*'*30)
+        self.loss_fn = torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
             
 #        print(self.backbone)
 

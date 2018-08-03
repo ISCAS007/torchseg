@@ -15,7 +15,8 @@ from utils.torch_tools import do_train_or_val
 
 if __name__ == '__main__':
     choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
-               'backbone', 'dict', 'fractal', 'upsample_type']
+               'backbone', 'dict', 'fractal', 'upsample_type',
+               'pretrained']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -42,6 +43,11 @@ if __name__ == '__main__':
                         type=int,
                         default=5)
     
+    parser.add_argument('--midnet_name',
+                        help='midnet name',
+                        choices=['psp','aspp'],
+                        default='psp')
+    
     parser.add_argument('--n_epoch',
                         help='training/validating epoch',
                         type=int,
@@ -67,6 +73,11 @@ if __name__ == '__main__':
                         type=bool,
                         default=False)
     
+    parser.add_argument('--backbone_pretrained',
+                        help='when not use momentum, we can use weights pretrained on imagenet',
+                        type=bool,
+                        default=False)
+    
     parser.add_argument('--note',
                         help='comment for tensorboard log',
                         default='naive')
@@ -77,6 +88,7 @@ if __name__ == '__main__':
     config.model.upsample_type = args.upsample_type
     config.model.upsample_layer = args.upsample_layer
     config.model.use_momentum = args.use_momentum
+    config.model.backbone_pretrained=args.backbone_pretrained
     config.model.eps=1e-5
     config.model.momentum=0.9
     config.model.class_number = 19
@@ -85,6 +97,7 @@ if __name__ == '__main__':
 
     config.model.midnet_pool_sizes = [6, 3, 2, 1]
     config.model.midnet_scale = args.midnet_scale
+    config.model.midnet_name=args.midnet_name
     min_input_size=max(config.model.midnet_pool_sizes)*config.model.midnet_scale*2**args.upsample_layer
     input_shape = (min_input_size, min_input_size)
     config.model.input_shape = input_shape
@@ -200,7 +213,16 @@ if __name__ == '__main__':
             config.model.backbone_name = backbone
             config.args.note= '_'.join([note,backbone,midnet_name])
             net = pspnet(config)
-#            do_train_or_val(net, config.args, train_loader, val_loader)
+            do_train_or_val(net, config.args, train_loader, val_loader)
+    elif test=='pretrained':
+        midnet_name='aspp'
+        backbone=config.model.backbone_name
+        config.model.midnet_name=midnet_name
+        for pretrained in [True,False]:
+            config.model.backbone_pretrained = pretrained
+            config.args.note= '_'.join([note,'pretrain',str(pretrained)[0],backbone,midnet_name])
+            net = pspnet(config)
+            do_train_or_val(net, config.args, train_loader, val_loader)
     else:
         raise NotImplementedError
         
