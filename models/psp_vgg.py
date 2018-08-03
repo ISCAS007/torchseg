@@ -1,4 +1,16 @@
 import torch.nn as nn
+import torch.utils.model_zoo as model_zoo
+
+model_urls = {
+    'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
+    'vgg13': 'https://download.pytorch.org/models/vgg13-c768596a.pth',
+    'vgg16': 'https://download.pytorch.org/models/vgg16-397923af.pth',
+    'vgg19': 'https://download.pytorch.org/models/vgg19-dcbb9e9d.pth',
+    'vgg11_bn': 'https://download.pytorch.org/models/vgg11_bn-6002323d.pth',
+    'vgg13_bn': 'https://download.pytorch.org/models/vgg13_bn-abd245e5.pth',
+    'vgg16_bn': 'https://download.pytorch.org/models/vgg16_bn-6c64b313.pth',
+    'vgg19_bn': 'https://download.pytorch.org/models/vgg19_bn-c79401a0.pth',
+}
 
 class VGG(nn.Module):
     def __init__(self, features, num_classes=1000, init_weights=True):
@@ -62,41 +74,74 @@ cfg = {
 }
 
 
-def vgg11(eps=1e-5,momentum=0.1, **kwargs):
+def vgg11(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
     model = VGG(make_layers(cfg['A'],eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg11']))
     return model
 
 
-def vgg11_bn(eps=1e-5,momentum=0.1, **kwargs):
+def vgg11_bn(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
     model = VGG(make_layers(cfg['A'], batch_norm=True,eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg11_bn']))
     return model
 
 
-def vgg13(eps=1e-5,momentum=0.1, **kwargs):
+def vgg13(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
     model = VGG(make_layers(cfg['B'],eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg13']))
     return model
 
 
-def vgg13_bn(eps=1e-5,momentum=0.1, **kwargs):
+def vgg13_bn(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
     model = VGG(make_layers(cfg['B'], batch_norm=True,eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg13_bn']))
     return model
 
 
-def vgg16(eps=1e-5,momentum=0.1, **kwargs):
+def vgg16(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
     model = VGG(make_layers(cfg['D'],eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg16']))
+    
     return model
 
 
-def vgg16_bn(eps=1e-5,momentum=0.1, **kwargs):
+def vgg16_bn(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
     model = VGG(make_layers(cfg['D'], batch_norm=True,eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg16_bn']))
     return model
 
 
-def vgg19(eps=1e-5,momentum=0.1, **kwargs):
+def vgg19(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
     model = VGG(make_layers(cfg['E'],eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg19']))
     return model
 
 
-def vgg19_bn(eps=1e-5,momentum=0.1, **kwargs):
+def vgg19_bn(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
     model = VGG(make_layers(cfg['E'], batch_norm=True,eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg19_bn']))
     return model

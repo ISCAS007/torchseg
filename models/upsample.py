@@ -413,6 +413,18 @@ class transform_aspp(TN.Module):
         y=torch.cat(output_slices,dim=1)
         y=self.final_conv(y)
         return y
+
+class GlobalAvgPool2d(TN.Module):
+    """ Global Average pooling over last two spatial dimensions. """
+    
+    def __init__(self):
+        super(GlobalAvgPool2d, self).__init__()
+
+    def forward(self, input):
+        return input.mean(dim=3, keepdim=True).mean(dim=2, keepdim=True)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '( )'
     
 def get_midnet(config,midnet_input_shape,midnet_out_channels):
     if hasattr(config.model,'midnet_name'):

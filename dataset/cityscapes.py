@@ -133,8 +133,18 @@ class cityscapes(TD.Dataset):
             img=cv2.resize(src=img,dsize=tuple(self.config.resize_shape),interpolation=cv2.INTER_LINEAR)
             ann=cv2.resize(src=ann,dsize=tuple(self.config.resize_shape),interpolation=cv2.INTER_NEAREST)
         
+        img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)            
         if self.norm:
-            img=2*img/255-1.0
+            # to [-1,1]
+#            img=2*img/255.0-1.0
+            # to [0,1]
+#            img=img/255.0
+            # to basic image net
+            mean=[0.485, 0.456, 0.406]
+            std=[0.229, 0.224, 0.225]
+            new_img=img.copy()
+            for i in range(3):
+                img[:,:,i]=(new_img[:,:,i]-mean[i])/std[i]
         
         if self.bchw:
             # convert image from (height,width,channel) to (channel,height,width)
