@@ -196,7 +196,7 @@ class dataset_generalize(TD.Dataset):
             # to [-1,1]
 #            img=2*img/255.0-1.0
             # to [0,1]
-#            img=img/255.0
+            img=img/255.0
             # to basic image net
             mean=[0.485, 0.456, 0.406]
             std=[0.229, 0.224, 0.225]

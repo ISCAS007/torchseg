@@ -73,7 +73,7 @@ class empty_net(SS):
         checkpoint_path=os.path.join(log_dir,"{}_{}_best_model.pkl".format(self.name, self.dataset_name))
         os.makedirs(log_dir,exist_ok=True)
         writer = SummaryWriter(log_dir=log_dir)
-        best_iou=0.0
+        best_iou=0.6
         
         loaders=[train_loader,val_loader]
         loader_names=['train','val']
@@ -136,16 +136,12 @@ class empty_net(SS):
         writer.close()
                 
 if __name__ == '__main__':
-    #进行配置，使用30%的GPU
     config = tf.ConfigProto()
     # config.gpu_options.per_process_gpu_memory_fraction = 0.3
-    config.gpu_options.allow_growth=True   #不全部占满显存, 按需分配
+    config.gpu_options.allow_growth=True
     session = tf.Session(config=config)
-    
-    # 设置session
     KTF.set_session(session)
 
     config = empty_net.get_default_config()
-    config.model_name = 'empty_net'
     m = empty_net(config)
     m.train()

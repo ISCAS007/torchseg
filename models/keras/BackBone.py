@@ -14,53 +14,42 @@ import warnings
 #                                  'weights',#None or ImageNet
 #                                  'layer_preference',#first,last,rand
 #                                  ])
+mobilenet=MobileNet
+vgg16=VGG16
+resnet50=ResNet50
+resnet101=ResNet101
+resnet152=ResNet152
+densenet121=DenseNet121
+densenet169=DenseNet169
+densenet201=DenseNet201
+nasnetmobile=NASNetMobile
+inceptionv3=InceptionV3
+xception=Xception
+inceptionresnetv2=InceptionResNetV2
 
 class BackBone_Standard():
     def __init__(self,config):
         self.config=config
-        self.model = self.get_applications()
-#        self.model.summary()
-        self.df=self.get_dataframe()
         
-    def get_applications(self):
-        encoder = self.config.application
+        backbone = self.config.application
         h, w, c = self.config.input_shape
-#        model_path = os.path.join(os.getenv('HOME'), '.keras', 'models')
         weights=self.config.weights
         
-        if h is None or w is None:
-            warnings.warn('input shape is None for models, load 224x224 weights')
-#        assert h is not None
-#        assert w is not None
-        if encoder == 'mobilenet':            
-            return MobileNet(include_top=False, weights=weights, input_shape=(h, w, 3))
-        elif encoder == 'vgg16':
-            return VGG16(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'vgg19':
-            return VGG19(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'resnet50':
-            return ResNet50(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'resnet101':
-            return ResNet101(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'resnet152':
-            return ResNet152(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'densenet121':
-            return DenseNet121(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'densenet169':
-            return DenseNet169(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'densenet201':
-            return DenseNet201(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'NASNetMobile'.lower():
-            return NASNetMobile(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'InceptionV3'.lower():
-            return InceptionV3(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'Xception'.lower():
-            return Xception(include_top=False,weights=weights,input_shape=(h, w, 3))
-        elif encoder == 'InceptionResNetV2'.lower():
-            return InceptionResNetV2(include_top=False,weights=weights,input_shape=(h, w, 3))
+        if self.config.weights is None:
+            self.model = globals()[backbone](include_top=False,weights=weights,input_shape=(h,w,3))
         else:
-            print('unknown encoder',encoder)
-            assert False
+            h, w, c = self.config.input_shape
+            assert h==w,'height and width must be the same'
+            if h is not None and h !=224:
+                self.model=globals()[backbone](include_top=False, weights=None, input_shape=(h, w, 3))
+                weight_model=globals()[backbone](include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+                for new_layer, layer in zip(self.model.layers[1:], weight_model.layers[1:]):
+                    new_layer.set_weights(layer.get_weights())
+            else:
+                self.model = globals()[backbone](include_top=False,weights=weights,input_shape=(h,w,3))
+                
+#        self.model.summary()
+        self.df=self.get_dataframe()
                          
     def get_dataframe(self):
         df=pd.DataFrame(columns=['output_size','output_width','output_height','layer_depth','layer_name'])

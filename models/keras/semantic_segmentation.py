@@ -7,9 +7,19 @@ import sys
 import time
 import glob
 import matplotlib.pyplot as plt
+import torch
+import torch.utils.data as TD
+from keras.utils import to_categorical
+import numpy as np
+from tensorboardX import SummaryWriter
+import tensorflow as tf
+import keras.backend.tensorflow_backend as KTF
 
+from utils.metrics import runningScore
+from dataset.dataset_generalize import dataset_generalize
 from utils.config import get_config
 from models.keras import metrics_fmeasure
+from models.keras.miou import MeanIoU
 from models.keras.BackBone import BackBone_Standard
 
 def get_newest_file(files):
@@ -24,6 +34,97 @@ def get_newest_file(files):
 
     return newest_file
 
+def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
+    gpu_config = tf.ConfigProto()
+    # config.gpu_options.per_process_gpu_memory_fraction = 0.3
+    gpu_config.gpu_options.allow_growth=True
+    session = tf.Session(config=gpu_config)
+    KTF.set_session(session)
+
+    if args is None:
+        args=net.config.training
+    metrics = net.get_metrics(net.class_number)
+    opt = net.get_optimizer(args)
+    net.model.compile(loss='categorical_crossentropy',
+                           optimizer=opt,
+                           metrics=metrics)
+    
+    if train_loader is None and val_loader is None:
+        train_dataset=dataset_generalize(net.config.dataset,split='train',bchw=False)
+        train_loader=TD.DataLoader(dataset=train_dataset,batch_size=net.config.dataset.batch_size, shuffle=True,drop_last=False)
+        
+        val_dataset=dataset_generalize(net.config.dataset,split='val',bchw=False)
+        val_loader=TD.DataLoader(dataset=val_dataset,batch_size=net.config.dataset.batch_size, shuffle=True,drop_last=False)
+    
+    running_metrics = runningScore(net.class_number)
+    
+    time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
+    log_dir=os.path.join(args.log_dir,net.name,net.dataset_name,args.note,time_str)
+    checkpoint_path=os.path.join(log_dir,"{}_{}_best_model.pkl".format(net.name, net.dataset_name))
+    os.makedirs(log_dir,exist_ok=True)
+    writer = SummaryWriter(log_dir=log_dir)
+    best_iou=0.6
+    
+    loaders=[train_loader,val_loader]
+    loader_names=['train','val']
+    for epoch in range(args.n_epoch):
+        for loader,loader_name in zip(loaders,loader_names):
+            if loader is None:
+                continue
+            
+            if loader_name == 'val':
+                if epoch % 10 != 0:
+                    continue
+        
+            print(loader_name+'.'*50)
+            n_step=len(loader)
+            losses=[]
+            
+            for i, (images, labels) in enumerate(loader):   
+                x=images.data.numpy()
+                trues=labels.data.numpy()
+                y=to_categorical(trues,net.class_number)
+                if loader_name=='train':
+                    outputs = net.model.train_on_batch(x,y)
+                else:
+                    outputs = net.model.test_on_batch(x,y)
+                    
+                predict_outputs = net.model.predict_on_batch(x)
+                predicts=np.argmax(predict_outputs,axis=-1)
+                
+                losses.append(outputs[0])
+                if i % 5 == 0:
+                    print("%s Epoch [%d/%d] Step [%d/%d]" % (loader_name,epoch+1, args.n_epoch, i, n_step))
+                    for name,value in zip(net.model.metrics_names,outputs):
+                        print(name,value)
+                    
+                    running_metrics.update(trues,predicts)
+                    score, class_iou = running_metrics.get_scores()
+                    for k, v in score.items():
+                        print(k, v)
+                    
+                    
+            writer.add_scalar('%s/loss'%loader_name, np.mean(losses), epoch)
+            writer.add_scalar('%s/acc'%loader_name, score['Overall Acc: \t'], epoch)
+            writer.add_scalar('%s/iou'%loader_name, score['Mean IoU : \t'], epoch)
+            
+            running_metrics.reset()
+            if loader_name == 'val':
+                if score['Mean IoU : \t'] >= best_iou:
+                    best_iou = score['Mean IoU : \t']
+                    net.model.save(checkpoint_path)
+                
+                if epoch % (1+args.n_epoch//10) == 0:
+                    print('write image to tensorboard'+'.'*50)
+                    idx=np.random.choice(predicts.shape[0])
+                    writer.add_image('val/images',x[idx,:,:,:],epoch)
+                    writer.add_image('val/predicts', torch.from_numpy(predicts[idx,:,:]), epoch)
+                    writer.add_image('val/trues', torch.from_numpy(trues[idx,:,:]), epoch)
+                    diff_img=(predicts[idx,:,:]==trues[idx,:,:]).astype(np.uint8)
+                    writer.add_image('val/difference', torch.from_numpy(diff_img), epoch)
+    
+    writer.close()
+    
 class SS():
     def __init__(self,config):
         self.config=config
@@ -88,20 +189,6 @@ class SS():
             assert False
 
     @staticmethod
-    def get_version(class_name):
-        version_dict={}
-        version_dict['ss']="1.0"
-        version_dict['imagenet_ss']="1.1"
-        version_dict['custome_ss']="1.2"
-        version_dict['edge_ss']='1.3'
-        version_dict['global_ss']='1.4'
-        
-        if class_name not in version_dict.keys():
-            return "0.0"
-        else:
-            return version_dict[class_name]
-
-    @staticmethod
     def get_optimizer(config):
         optimizer_str=config['optimizer']
         learning_rate=config['learning_rate']
@@ -130,9 +217,8 @@ class SS():
                     metrics_fmeasure.recall,
                     metrics_fmeasure.fmeasure]
         else:
-            k_mean_iou = metrics_fmeasure.k_mean_iou(class_num)
-
-            return [k_mean_iou,
+            miou_metric = MeanIoU(class_num)
+            return [miou_metric.mean_iou,
                     metrics_fmeasure.precision,
                     metrics_fmeasure.recall,
                     metrics_fmeasure.fmeasure]
