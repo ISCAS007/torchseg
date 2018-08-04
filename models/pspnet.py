@@ -24,7 +24,8 @@ class pspnet(TN.Module):
         self.ignore_index=self.config.dataset.ignore_index
         
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
-        self.midnet_out_channels=self.config.model.midnet_out_channels
+#        self.midnet_out_channels=self.config.model.midnet_out_channels
+        self.midnet_out_channels=2*self.midnet_input_shape[1]
         
         self.midnet=get_midnet(self.config,
                                self.midnet_input_shape,
