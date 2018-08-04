@@ -40,7 +40,8 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
     gpu_config.gpu_options.allow_growth=True
     session = tf.Session(config=gpu_config)
     KTF.set_session(session)
-
+    session.run(tf.global_variables_initializer())
+    
     if args is None:
         args=net.config.training
     metrics = net.get_metrics(net.class_number)
