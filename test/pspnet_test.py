@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import torch.utils.data as TD
 import random
-from dataset.cityscapes import cityscapes
+from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
 from easydict import EasyDict as edict
 import argparse
 import torchsummary
+import torch
 
 from models.pspnet import pspnet
 from models.psp_edge import psp_edge
@@ -97,7 +98,6 @@ if __name__ == '__main__':
     config.model.backbone_pretrained=args.backbone_pretrained
     config.model.eps=1e-5
     config.model.momentum=0.9
-    config.model.class_number = 19
     config.model.backbone_name = args.backbone_name
     config.model.layer_preference = 'first'
 
@@ -116,13 +116,16 @@ if __name__ == '__main__':
         
     config.model.input_shape=input_shape
     config.model.midnet_out_channels = 512
-
-    config.dataset = edict()
-    config.dataset.root_path = '/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
-    config.dataset.cityscapes_split = random.choice(['test', 'val', 'train'])
-    config.dataset.resize_shape = input_shape
-    config.dataset.name = 'cityscapes'
-    config.dataset.ignore_index = 255
+    
+    config.dataset=edict()
+    config.dataset=get_dataset_generalize_config(config.dataset,args.dataset_name)
+    if config.dataset.ignore_index == 0:
+        config.model.class_number=len(config.dataset.foreground_class_ids)+1
+    else:
+        config.model.class_number=len(config.dataset.foreground_class_ids)
+    config.dataset.resize_shape=input_shape
+    config.dataset.name=args.dataset_name.lower()
+    config.dataset.norm=True
 
     config.args = edict()
     config.args.n_epoch = args.n_epoch
@@ -131,10 +134,6 @@ if __name__ == '__main__':
     # must change batch size here!!!
     batch_size = args.batch_size
     config.args.batch_size = batch_size
-
-    # prefer setting
-    config.model.backbone_lr_ratio = 1.0
-    config.dataset.norm = True
     
     if args.augmentation:
 #        augmentations = Augmentations(p=0.25,use_imgaug=False)
@@ -142,12 +141,12 @@ if __name__ == '__main__':
     else:
         augmentations = None
         
-    train_dataset = cityscapes(
+    train_dataset = dataset_generalize(
         config.dataset, split='train', augmentations=augmentations)
     train_loader = TD.DataLoader(
         dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
 
-    val_dataset = cityscapes(config.dataset, split='val',
+    val_dataset = dataset_generalize(config.dataset, split='val',
                              augmentations=augmentations)
     val_loader = TD.DataLoader(
         dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
@@ -241,7 +240,8 @@ if __name__ == '__main__':
     elif test=='summary':
         net=pspnet(config)
         height,width=input_shape
-        torchsummary.summary(net,(3,height,width))
+        device=torch.device('cuda' if torch.cuda_is_available() else 'cpu')
+        torchsummary.summary(net.to(device),(3,height,width))
     else:
         raise NotImplementedError
         
