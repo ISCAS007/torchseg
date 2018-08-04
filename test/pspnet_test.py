@@ -30,6 +30,11 @@ if __name__ == '__main__':
                         type=int,
                         default=2)
     
+    parser.add_argument('--dataset_name',
+                        help='dataset name',
+                        choices=['ADEChallengeData2016','VOC2012','Kitti2015','Cityscapes','Cityscapes_Fine','Cityscapes_Coarse'],
+                        default='Cityscapes')
+    
     parser.add_argument("--backbone_name",
                         help="backbone name",
                         choices=['vgg16','vgg19','vgg16_bn','vgg19_bn','resnet18','resnet34','resnet50','resnet101','resnet152'],
