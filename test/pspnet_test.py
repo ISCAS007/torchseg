@@ -17,7 +17,7 @@ from utils.torch_tools import do_train_or_val
 if __name__ == '__main__':
     choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
                'backbone', 'dict', 'fractal', 'upsample_type',
-               'pretrained']
+               'pretrained','summary']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
