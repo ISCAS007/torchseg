@@ -4,6 +4,7 @@ import random
 from dataset.cityscapes import cityscapes
 from easydict import EasyDict as edict
 import argparse
+import torchsummary
 
 from models.pspnet import pspnet
 from models.psp_edge import psp_edge
@@ -237,6 +238,10 @@ if __name__ == '__main__':
             config.args.note= '_'.join([note,'pretrain',str(pretrained)[0],backbone,midnet_name])
             net = pspnet(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
+    elif test=='summary':
+        net=pspnet(config)
+        height,width=input_shape
+        torchsummary.summary(net,(3,height,width))
     else:
         raise NotImplementedError
         

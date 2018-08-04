@@ -30,12 +30,10 @@ class backbone(TN.Module):
                 self.layer_depths=self.get_layer_depths()
             elif self.config.backbone_name.find('resnet')>=0:
                 self.format='resnet'
-                self.prefix_net = TN.Sequential(TN.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                                                      bias=False),
-                                            TN.BatchNorm2d(
-                                                64, eps=self.eps,momentum=self.momentum),
-                                            TN.ReLU(inplace=True),
-                                            TN.MaxPool2d(kernel_size=3, stride=2, padding=1))
+                self.prefix_net = TN.Sequential(self.model.conv1,
+                                            self.model.bn1,
+                                            self.model.relu,
+                                            self.model.maxpool)
                 
                 self.layer1=self.model.layer1
                 self.layer2=self.model.layer2
