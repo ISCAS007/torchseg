@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from dataset.cityscapes import cityscapes
+from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
 import torch.utils.data as TD
 from easydict import EasyDict as edict
 
@@ -42,20 +42,19 @@ def test_network():
     optimizer = torch.optim.Adam([p for p in net.parameters() if p.requires_grad], lr = 0.0001)
     
     config=edict()
-    config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
-    config.cityscapes_split='train'
+    config=get_dataset_generalize_config(config,'Cityscapes')
     config.resize_shape=(224,224)
-    config.ignore_index=255
     
     augmentations=None
-    dataset=cityscapes(config,split='train',augmentations=augmentations)
+    dataset=dataset_generalize(config,split='train',augmentations=augmentations)
     loader=TD.DataLoader(dataset=dataset,batch_size=2, shuffle=True,drop_last=False)
     
-    net.cuda()
+    device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    net.to(device)
     net.train()
     for i, (images, labels) in enumerate(loader):
-        images = torch.autograd.Variable(images.cuda().float())
-        labels = torch.autograd.Variable(labels.cuda().long())
+        images = torch.autograd.Variable(images.to(device).float())
+        labels = torch.autograd.Variable(labels.to(device).long())
         
         optimizer.zero_grad()
         outputs = net.forward(images)

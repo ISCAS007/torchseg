@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from torch.autograd import Variable
 import torch.utils.data as TD
 import random
-from dataset.cityscapes import cityscapes
+from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
 from easydict import EasyDict as edict
 import matplotlib.pyplot as plt
 
@@ -16,9 +16,9 @@ config.cityscapes_split=random.choice(['test','val','train'])
 config.resize_shape=(224,224)
 config.print_path=True
 config.with_path=True
+config=get_dataset_generalize_config(config,'Cityscapes')
 
-
-dataset=cityscapes(config)
+dataset=dataset_generalize(config)
 loader=TD.DataLoader(dataset=dataset,batch_size=2, shuffle=True,drop_last=False)
 
 for i, data in enumerate(loader):

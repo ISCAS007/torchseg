@@ -100,8 +100,9 @@ class psp_fractal(TN.Module):
 
     def do_train_or_val(self, args, train_loader=None, val_loader=None):
         # use gpu memory
-        self.cuda()
-        self.backbone.model.cuda()
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(device)
+        self.backbone.model.to(device)
         optimizer = torch.optim.Adam(
             [p for p in self.parameters() if p.requires_grad], lr=0.0001)
 #        loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
@@ -149,8 +150,8 @@ class psp_fractal(TN.Module):
                 losses = []
                 running_metrics.reset()
                 for i, (images, labels) in enumerate(loader):
-                    images = Variable(images.cuda().float())
-                    labels = Variable(labels.cuda().long())
+                    images = Variable(images.to(device).float())
+                    labels = Variable(labels.to(device).long())
 
                     if loader_name == 'train':
                         optimizer.zero_grad()

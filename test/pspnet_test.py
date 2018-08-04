@@ -245,7 +245,7 @@ if __name__ == '__main__':
     elif test=='summary':
         net=pspnet(config)
         height,width=input_shape
-        device=torch.device('cuda' if torch.cuda_is_available() else 'cpu')
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         torchsummary.summary(net.to(device),(3,height,width))
     else:
         raise NotImplementedError

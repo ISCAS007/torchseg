@@ -2,7 +2,7 @@
 """
 python -m pytest -q test/dataset_test.py
 """
-from dataset.cityscapes import cityscapes
+from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
 from easydict import EasyDict as edict
 import torch.utils.data as TD
 import matplotlib.pyplot as plt
@@ -16,11 +16,12 @@ def test_ignore_index():
     config.print_path=True
     config.resize_shape=(224,224)
     config.ignore_index=255
+    config=get_dataset_generalize_config(config,'Cityscapes')
     
     fg_ids=[i for i in range(19)]
     
     augmentations=None
-    dataset=cityscapes(config,split='train',augmentations=augmentations)
+    dataset=dataset_generalize(config,split='train',augmentations=augmentations)
     loader=TD.DataLoader(dataset=dataset,batch_size=2, shuffle=True,drop_last=False)
     for i, data in enumerate(loader):
         imgs, labels = data

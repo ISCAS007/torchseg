@@ -1,22 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import torch
 import torch.nn as TN
-from torch.nn import functional as F
-from torch.autograd import Variable
-import torch.utils.data as TD
-import random
-from dataset.cityscapes import cityscapes
 from models.backbone import backbone
-from utils.metrics import runningScore
 from utils.torch_tools import freeze_layer
-from models.upsample import upsample_duc, upsample_bilinear, transform_psp, transform_global, transform_dict
-from easydict import EasyDict as edict
-import numpy as np
-from tensorboardX import SummaryWriter
-from utils.augmentor import Augmentations
-import time
-import os
+from models.upsample import transform_dict,upsample_bilinear,upsample_duc
 
 
 class psp_dict(TN.Module):

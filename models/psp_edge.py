@@ -48,8 +48,9 @@ class psp_edge(TN.Module):
     
     def do_train_or_val(self,args,train_loader=None,val_loader=None):
         # use gpu memory
-        self.cuda()
-        self.backbone.model.cuda()
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(device)
+        self.backbone.model.to(device)
         optimizer = self.optimizer
         loss_fn=torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
         
@@ -95,9 +96,9 @@ class psp_edge(TN.Module):
                 seg_losses=[]                
                 running_metrics.reset()
                 for i, (images, labels, edges) in enumerate(loader):
-                    images = torch.autograd.Variable(images.cuda().float())
-                    labels = torch.autograd.Variable(labels.cuda().long())
-                    edges = torch.autograd.Variable(edges.cuda().long())
+                    images = torch.autograd.Variable(images.to(device).float())
+                    labels = torch.autograd.Variable(labels.to(device).long())
+                    edges = torch.autograd.Variable(edges.to(device).long())
                     
                     if loader_name=='train':
                         optimizer.zero_grad()

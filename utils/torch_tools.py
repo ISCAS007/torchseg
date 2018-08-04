@@ -21,10 +21,11 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
         return 0
     
     # use gpu memory
-    model.cuda()
+    device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
     if hasattr(model,'backbone'):
         if hasattr(model.backbone,'model'):
-            model.backbone.model.cuda()
+            model.backbone.model.to(device)
 
     if hasattr(model,'optimizer'):
         print('use optimizer in model'+'*'*30)
@@ -82,8 +83,8 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
             losses = []
             running_metrics.reset()
             for i, (images, labels) in enumerate(loader):
-                images = torch.autograd.Variable(images.cuda().float())
-                labels = torch.autograd.Variable(labels.cuda().long())
+                images = torch.autograd.Variable(images.to(device).float())
+                labels = torch.autograd.Variable(labels.to(device).long())
 
                 if loader_name == 'train':
                     optimizer.zero_grad()

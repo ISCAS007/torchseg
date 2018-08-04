@@ -162,7 +162,8 @@ class dataset_generalize(TD.Dataset):
 #        lbl = cv2.imread(lbl_path,cv2.IMREAD_GRAYSCALE)
         lbl_pil=Image.open(lbl_path)
         lbl=np.array(lbl_pil, dtype=np.uint8)
-        
+        assert img is not None,'empty image for path %s'%img_path
+
         ann = np.zeros_like(lbl)
         
 #        lbl_ids = np.unique(lbl)

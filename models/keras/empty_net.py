@@ -15,7 +15,7 @@ import tensorflow as tf
 import keras.backend.tensorflow_backend as KTF
 
 from utils.metrics import runningScore,get_scores
-from dataset.cityscapes import cityscapes
+from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
 from models.keras.semantic_segmentation import SS
 
 
@@ -36,6 +36,7 @@ class empty_net(SS):
         config.dataset.resize_shape=(32,32)
         config.model.input_shape=(32,32)
         config.dataset.batch_size=2
+        config.dataset=get_dataset_generalize_config(config.dataset,'Cityscapes')
         return config
 
     def get_model(self):
@@ -59,10 +60,10 @@ class empty_net(SS):
                            metrics=['acc'])
         
         if train_loader is None and val_loader is None:
-            train_dataset=cityscapes(config.dataset,split='train',bchw=False)
+            train_dataset=dataset_generalize(config.dataset,split='train',bchw=False)
             train_loader=TD.DataLoader(dataset=train_dataset,batch_size=self.config.dataset.batch_size, shuffle=True,drop_last=False)
             
-            val_dataset=cityscapes(config.dataset,split='val',bchw=False)
+            val_dataset=dataset_generalize(config.dataset,split='val',bchw=False)
             val_loader=TD.DataLoader(dataset=val_dataset,batch_size=self.config.dataset.batch_size, shuffle=True,drop_last=False)
         
         running_metrics = runningScore(self.class_number)

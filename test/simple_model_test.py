@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from torch.autograd import Variable
 import torch.utils.data as TD
 import random
-from dataset.cityscapes import cityscapes
+from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
 from easydict import EasyDict as edict
 
 class simple_net(Module):
@@ -36,14 +36,15 @@ class simple_net(Module):
         super(simple_net,self).train()
         
         # use gpu memory
-        self.cuda()
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(device)
         optimizer = torch.optim.Adam(self.parameters(), lr = 0.0001)
 #        loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
         loss_fn=torch.nn.CrossEntropyLoss()
         for epoch in range(args.n_epoch):
             for i, (images, labels) in enumerate(trainloader):
-                images = Variable(images.cuda().float())
-                labels = Variable(labels.cuda().long())
+                images = Variable(images.to(device).float())
+                labels = Variable(labels.to(device).long())
                 
                 optimizer.zero_grad()
                 outputs = self.forward(images)
@@ -63,8 +64,8 @@ if __name__ == '__main__':
     config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
     config.cityscapes_split=random.choice(['test','val','train'])
     config.resize_shape=(224,224)
-    
-    dataset=cityscapes(config)
+    config=get_dataset_generalize_config(config,'Cityscapes')
+    dataset=dataset_generalize(config)
     loader=TD.DataLoader(dataset=dataset,batch_size=2, shuffle=True,drop_last=False)
     args=edict()
     args.n_epoch=3

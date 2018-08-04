@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from torch.autograd import Variable
 import torch.utils.data as TD
 import random
-from dataset.cityscapes import cityscapes
+from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
 from easydict import EasyDict as edict
 import matplotlib.pyplot as plt
 import os
@@ -19,9 +19,9 @@ config.cityscapes_split='val'
 config.resize_shape=(224,224)
 config.print_path=False
 config.with_path=True
+config=get_dataset_generalize_config(config,'Cityscapes')
 
-
-dataset=cityscapes(config)
+dataset=dataset_generalize(config)
 loader=TD.DataLoader(dataset=dataset,batch_size=2, shuffle=False,drop_last=False)
 
 save_root='/media/sdc/yzbx/benchmark_output/cityscapes'

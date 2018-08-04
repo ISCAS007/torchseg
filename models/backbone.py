@@ -83,23 +83,26 @@ class backbone(TN.Module):
         assert False,'unexpected level %d for format %s'%(level,self.format)
         
     def get_feature_map_channel(self,level):
-        self.cuda()
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(device)
         x=torch.rand(2,3,224,224)
-        x=Variable(x.cuda().float())
+        x=Variable(x.to(device).float())
         x=self.forward(x,level)
         return x.shape[1]
     
     def get_feature_map_size(self,level,input_size):
-        self.cuda()
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(device)
         x=torch.rand(2,3,input_size[0],input_size[1])
-        x=Variable(x.cuda().float())
+        x=Variable(x.to(device).float())
         x=self.forward(x,level)
         return x.shape[2:4]
     
     def get_output_shape(self,level,input_size):
-        self.cuda()
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(device)
         x=torch.rand(2,3,input_size[0],input_size[1])
-        x=torch.autograd.Variable(x.cuda().float())
+        x=torch.autograd.Variable(x.to(device).float())
         x=self.forward(x,level)
         return x.shape
         

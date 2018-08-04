@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from torch.autograd import Variable
 import torch.utils.data as TD
 import random
-from dataset.cityscapes import cityscapes
+from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
 from models.backbone import backbone
 from utils.metrics import runningScore,get_scores
 from utils.torch_tools import freeze_layer
@@ -54,8 +54,9 @@ class motionnet(TN.Module):
         
     def train(self,args,trainloader,valloader=None):
         # use gpu memory
-        self.cuda()
-        self.backbone.model.cuda()
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(device)
+        self.backbone.model.to(device)
         optimizer = torch.optim.Adam(self.parameters(), lr = 0.0001)
 #        loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
         loss_fn=torch.nn.CrossEntropyLoss()
@@ -73,8 +74,8 @@ class motionnet(TN.Module):
             # set model to train mode
             super(motionnet,self).train(True)
             for i, (images, labels) in enumerate(trainloader):
-                images = Variable(images.cuda().float())
-                labels = Variable(labels.cuda().long())
+                images = Variable(images.to(device).float())
+                labels = Variable(labels.to(device).long())
                 
                 optimizer.zero_grad()
                 outputs = self.forward(images)
@@ -105,8 +106,8 @@ class motionnet(TN.Module):
                 running_metrics.reset()
                 for i_val, (images_val, labels_val) in tqdm(enumerate(valloader)):
                     with torch.no_grad:
-                        images_val = Variable(images_val.cuda().float())
-                        labels_val = Variable(labels_val.cuda().long())
+                        images_val = Variable(images_val.to(device).float())
+                        labels_val = Variable(labels_val.to(device).long())
             
                         outputs_val = self.forward(images_val)
                         predicts_val = outputs_val.data.cpu().numpy().argmax(1)
@@ -158,11 +159,11 @@ if __name__ == '__main__':
     config.dataset.cityscapes_split=random.choice(['test','val','train'])
     config.dataset.resize_shape=(224,224)
     config.dataset.name='cityscapes'
-    
-    train_dataset=cityscapes(config.dataset,split='train')
+    config=get_dataset_generalize_config(config,'Cityscapes')
+    train_dataset=dataset_generalize(config.dataset,split='train')
     train_loader=TD.DataLoader(dataset=train_dataset,batch_size=32, shuffle=True,drop_last=False)
     
-    val_dataset=cityscapes(config.dataset,split='val')
+    val_dataset=dataset_generalize(config.dataset,split='val')
     val_loader=TD.DataLoader(dataset=val_dataset,batch_size=32, shuffle=True,drop_last=False)
     config.args=edict()
     config.args.n_epoch=300

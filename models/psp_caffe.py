@@ -12,12 +12,6 @@ import torch
 import torch.nn as TN
 
 import torch.nn.functional as F
-from easydict import EasyDict as edict
-import torch.utils.data as TD
-
-from utils.torch_tools import do_train_or_val
-from dataset.cityscapes import cityscapes
-from utils.augmentor import Augmentations
 from models.upsample import transform_aspp
 from models.psp_resnet import resnet101,resnet50
 
@@ -231,53 +225,3 @@ class psp_caffe(TN.Module):
                                         mode='bilinear'))
 
         return seq
-
-if __name__ == '__main__':
-    config = edict()
-    
-    input_shape=(240,240)
-    config.model = edict()
-    config.model.class_number = 20
-    config.model.input_shape = input_shape
-
-    config.model.midnet_pool_sizes = [6, 3, 2, 1]
-    config.model.midnet_scale = 5
-    config.model.midnet_out_channels=2048*2
-    config.model.midnet_in_channels=2048
-    config.model.suffix_out_channels=512
-    config.model.upsample_layer=5
-    config.model.midnet_name='psp'
-    config.model.momentum=0.95
-    config.model.align_corners=False
-
-    config.dataset = edict()
-    config.dataset.root_path = '/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
-    config.dataset.cityscapes_split = 'train'
-    config.dataset.resize_shape = input_shape
-    config.dataset.name = 'cityscapes'
-    config.dataset.ignore_index=0
-
-    config.args = edict()
-    config.args.n_epoch = 100
-    config.args.log_dir = '/home/yzbx/tmp/logs/pytorch'
-    config.args.note = 'resnet_psp'
-    # must change batch size here!!!
-    batch_size = 2
-    config.args.batch_size = batch_size
-
-    # prefer setting
-    config.dataset.norm = True
-
-    augmentations = Augmentations(p=0.25)
-    train_dataset = cityscapes(
-        config.dataset, split='train', augmentations=augmentations)
-    train_loader = TD.DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
-
-    val_dataset = cityscapes(config.dataset, split='val',
-                             augmentations=augmentations)
-    val_loader = TD.DataLoader(
-        dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
-    
-    net=psp_caffe(config)
-    do_train_or_val(net,config.args,train_loader,val_loader)
