@@ -39,7 +39,7 @@ class keras_pspnet(SS):
         filters=x.shape[bn_axis].value
         
         # may change feature map shape
-        min_feature_size=lcm(lcm_list(levels),scale)
+        min_feature_size=lcm_list(levels)*scale
         if feature.shape[2].value<min_feature_size:
             feature=layers.BilinearUpsampling(output_size=(min_feature_size,min_feature_size))(feature)
         
@@ -75,7 +75,8 @@ if __name__ == '__main__':
     
     config.dataset=get_dataset_generalize_config(config.dataset,'Cityscapes')
     
-    config.model.class_number=19
+    config.model.class_number=len(config.dataset.foreground_class_ids)+1
+    config.dataset.ignore_index=0
     config.model.upsample_type='duc'
     config.model.upsample_layer=3
     config.model.midnet_pool_sizes = [6,3,2,1]
@@ -85,19 +86,21 @@ if __name__ == '__main__':
     config.model.backbone_type='standard'
     config.model.layer_preference='first'
     config.model.data_format='channels_last'
-    config.model.backbone='mobilenet'
+    config.model.backbone='vgg19'
     config.model.merge_type='concat'
+    config.model.activation='softmax'
     
     config.training.optimizer='adam'
     config.training.learning_rate=0.01
     config.training.n_epoch=100
     config.training.log_dir=os.path.join(os.getenv('HOME'),'tmp','logs')
     config.training.note='keras'
-    
+    config.training.dataset_name='cityscapes'
     
     count_size=max(config.model.midnet_pool_sizes)*config.model.midnet_scale*2**config.model.upsample_layer
-    input_shape=(count_size,count_size)
+    input_shape=(224,224)
     config.model.input_shape=input_shape
+    config.dataset.resize_shape=input_shape
     
     batch_size=2
     config.training.batch_size=batch_size

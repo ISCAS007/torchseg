@@ -19,11 +19,11 @@ class BilinearUpsampling(Layer):
            output_size: used instead of upsampling arg if passed!
     """
 
-    def __init__(self, upsampling=(2, 2), output_size=None, data_format=None, **kwargs):
+    def __init__(self, upsampling=(2, 2), output_size=None, data_format='channels_last', **kwargs):
 
         super(BilinearUpsampling, self).__init__(**kwargs)
-
-        self.data_format = conv_utils.normalize_data_format(data_format)
+        
+        self.data_format = data_format
         self.input_spec = InputSpec(ndim=4)
         if output_size:
             self.output_size = conv_utils.normalize_tuple(
@@ -73,7 +73,7 @@ def duc(x, factor=8, output_shape=(224, 224, 1),name=None):
         bn_axis = -1
     else:
         bn_axis = 1
-        
+    
     if name is None:
         name='duc_%s'%factor
     H, W, c, r = output_shape[0], output_shape[1], output_shape[2], factor
@@ -227,5 +227,5 @@ def pyramid_pooling_module(x,resize_x,num_filters=512, levels=[6, 3, 2, 1], scal
             name='pyramid_out_%s'%scale)(y)
     y = KL.BatchNormalization(axis=bn_axis, name='bn_pyramid_out_%s'%scale)(y)
     y = KL.Activation('relu')(y)
-
+    
     return y

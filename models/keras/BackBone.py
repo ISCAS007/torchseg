@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 from keras.applications import MobileNet,VGG16,VGG19,ResNet50, DenseNet121, DenseNet169, DenseNet201,NASNetMobile, InceptionV3, Xception, InceptionResNetV2
-from resnet import ResNet101,ResNet152
+#from resnet import ResNet101,ResNet152
 import pandas as pd
 import numpy as np
 from easydict import EasyDict as edict
@@ -16,9 +16,10 @@ import warnings
 #                                  ])
 mobilenet=MobileNet
 vgg16=VGG16
+vgg19=VGG19
 resnet50=ResNet50
-resnet101=ResNet101
-resnet152=ResNet152
+#resnet101=ResNet101
+#resnet152=ResNet152
 densenet121=DenseNet121
 densenet169=DenseNet169
 densenet201=DenseNet201
@@ -55,7 +56,7 @@ class BackBone_Standard():
         df=pd.DataFrame(columns=['output_size','output_width','output_height','layer_depth','layer_name'])
         for idx,layer in enumerate(self.model.layers):
             name=layer.__class__.__name__
-            if name in ['ZeroPadding2D','Dropout','Reshape'] or name.find('Pooling')>=0:
+            if name in ['ZeroPadding2D','Dropout','Reshape']:
                 continue
             df=df.append({'output_size':layer.output_shape,
                        'output_width':layer.output_shape[1],
@@ -108,10 +109,10 @@ class BackBone_Custome():
 
 if __name__ == '__main__':
     config=edict()
-    config.application='resnet152'
+    config.application='vgg19'
     config.input_shape=(224,224,3)
     config.weights='imagenet'
-    config.layer_preference='rand'
+    config.layer_preference='first'
     
     backbone=BackBone_Standard(config)
     print(backbone.df)

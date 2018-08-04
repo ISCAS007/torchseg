@@ -59,8 +59,8 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
     running_metrics = runningScore(net.class_number)
     
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
-    log_dir=os.path.join(args.log_dir,net.name,net.dataset_name,args.note,time_str)
-    checkpoint_path=os.path.join(log_dir,"{}_{}_best_model.pkl".format(net.name, net.dataset_name))
+    log_dir=os.path.join(args.log_dir,net.name,args.dataset_name,args.note,time_str)
+    checkpoint_path=os.path.join(log_dir,"{}_{}_best_model.pkl".format(net.name, args.dataset_name))
     os.makedirs(log_dir,exist_ok=True)
     writer = SummaryWriter(log_dir=log_dir)
     best_iou=0.6
