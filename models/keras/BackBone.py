@@ -34,6 +34,7 @@ class BackBone_Standard():
         
         backbone = self.config.application
         h, w, c = self.config.input_shape
+        print('input shape is',self.config.input_shape)
         weights=self.config.weights
         
         if self.config.weights is None:

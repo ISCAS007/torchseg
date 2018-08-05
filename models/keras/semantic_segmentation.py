@@ -143,7 +143,8 @@ class SS():
         if self.config.model.backbone_type=='standard':
             bb_config=edict()
             bb_config.application=self.config.model.backbone
-            bb_config.input_shape=(224,224,3)
+            h,w=self.config.model.input_shape[0:2]
+            bb_config.input_shape=(h,w,3)
             if self.config.model.load_imagenet_weights:
                 bb_config.weights='imagenet'
             else:

@@ -40,10 +40,11 @@ class keras_pspnet(SS):
         
         # may change feature map shape
         min_feature_size=lcm_list(levels)*scale
+        assert feature.shape[2].value<=min_feature_size,'backbone output size %d should <= duc input size %d'%(x.sahpe[2].value,min_feature_size)
         if feature.shape[2].value<min_feature_size:
             feature=layers.BilinearUpsampling(output_size=(min_feature_size,min_feature_size))(feature)
         
-        psp_feature = layers.pyramid_pooling_module(x,
+        psp_feature = layers.pyramid_pooling_module(feature,
                                                  feature,
                                                  num_filters=filters,
                                                  levels=levels,
@@ -93,12 +94,12 @@ if __name__ == '__main__':
     config.training.optimizer='adam'
     config.training.learning_rate=0.01
     config.training.n_epoch=100
-    config.training.log_dir=os.path.join(os.getenv('HOME'),'tmp','logs')
+    config.training.log_dir=os.path.join(os.getenv('HOME'),'tmp','logs','pytorch')
     config.training.note='keras'
     config.training.dataset_name='cityscapes'
     
     count_size=max(config.model.midnet_pool_sizes)*config.model.midnet_scale*2**config.model.upsample_layer
-    input_shape=(224,224)
+    input_shape=(count_size,count_size)
     config.model.input_shape=input_shape
     config.dataset.resize_shape=input_shape
     
@@ -106,4 +107,5 @@ if __name__ == '__main__':
     config.training.batch_size=batch_size
     config.dataset.batch_size=batch_size
     m = keras_pspnet(config)
+    m.model.summary()
     do_train_or_val(m)
