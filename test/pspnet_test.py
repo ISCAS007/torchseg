@@ -18,12 +18,12 @@ from utils.torch_tools import do_train_or_val
 if __name__ == '__main__':
     choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
                'backbone', 'dict', 'fractal', 'upsample_type',
-               'pretrained','summary']
+               'pretrained','summary','naive']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
                         choices=choices,
-                        default=random.choice(choices))
+                        default='naive')
     
     parser.add_argument("--batch_size",
                         help="batch size",
@@ -162,7 +162,10 @@ if __name__ == '__main__':
                                  ])
     note=config.args.note
     test = args.test
-    if test == 'edge':
+    if test=='naive':
+        net=globals()[args.net_name](config)
+        do_train_or_val(net,config.args, train_loader, val_loader)
+    elif test == 'edge':
         config.dataset.with_edge = True
         for edge_width in [10]:
             config.dataset.edge_width = edge_width
