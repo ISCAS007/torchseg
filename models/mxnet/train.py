@@ -82,7 +82,8 @@ def parse_args():
         args.ctx = mx.cpu(0)
     else:
         print('Number of GPUs:', args.ngpus)
-        args.ctx = [mx.gpu(i) for i in range(args.ngpus)]
+        gpus = [int(x) for x in os.environ["CUDA_VISIBLE_DEVICES"].split(',')]
+        args.ctx = [mx.gpu(i) for i in gpus]
     # Synchronized BatchNorm
     if args.syncbn:
         from gluoncv.model_zoo.syncbn import BatchNorm
