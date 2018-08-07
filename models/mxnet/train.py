@@ -13,11 +13,19 @@ from gluoncv.model_zoo.segbase import *
 from gluoncv.utils.parallel import *
 from gluoncv.data import get_segmentation_dataset
 
+from models.mxnet.MxnetSegmentation import MxnetSegmentation
+
 #datasets = {
 #    'ade20k': ADE20KSegmentation,
 #    'pascal_voc': VOCSegmentation,
 #    'pascal_aug': VOCAugSegmentation,
 #}
+
+def get_mxnet_dataset(dataset_name,**kwargs):
+    if dataset_name in ['ade20k','pascal_voc','pascal_aug']:
+        return get_segmentation_dataset(name=dataset_name,**kwargs)
+    else:
+        return MxnetSegmentation(name=dataset_name,**kwargs)
 
 def parse_args():
     """Training Options for Segmentation Experiments"""
@@ -102,9 +110,9 @@ class Trainer(object):
             transforms.Normalize([.485, .456, .406], [.229, .224, .225]),
         ])
         # dataset and dataloader
-        trainset = get_segmentation_dataset(
+        trainset = get_mxnet_dataset(
             args.dataset, split='train', transform=input_transform)
-        valset = get_segmentation_dataset(
+        valset = get_mxnet_dataset(
             args.dataset, split='val', transform=input_transform)
         self.train_data = gluon.data.DataLoader(
             trainset, args.batch_size, shuffle=True, last_batch='rollover',
