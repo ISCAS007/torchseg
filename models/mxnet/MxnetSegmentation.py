@@ -71,9 +71,9 @@ class MxnetSegmentation(SegmentationDataset):
         target = np.array(mask).astype('int32')
         ann=np.zeros_like(target)
         self.ignore_index=-1
-        for class_id in self.background_class_ids:
+        for class_id in self.config.background_class_ids:
             ann[target == class_id] = self.ignore_index
-        for idx, class_id in enumerate(self.foreground_class_ids):
+        for idx, class_id in enumerate(self.config.foreground_class_ids):
             ann[target == class_id] = idx
         return F.array(ann, cpu(0))
     
