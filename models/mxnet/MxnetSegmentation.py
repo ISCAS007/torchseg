@@ -11,11 +11,12 @@ from dataset.dataset_generalize import get_dataset_generalize_config
 
 class MxnetSegmentation(SegmentationDataset):
     def __init__(self,root=None,split='train',mode=None,transform=None,config=edict(),name='Cityscapes'):
-        super().__init__(root,split,mode,transform)
+        
         self.config=get_dataset_generalize_config(config,name)
         self.NUM_CLASS = len(self.config.foreground_class_ids)
         if root is None:
             root=self.config.root_path
+        super().__init__(root,split,mode,transform)
         
         splits=['train','val','test','train_extra']
         assert self.split in splits,'unexcepted split %s for dataset, must be one of %s'%(self.split,str(splits))
