@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument('--backbone', type=str, default='resnet50',
                         help='backbone name (default: resnet50)')
     parser.add_argument('--dataset', type=str, default='pascal_voc',
-                        choices=['ade20k','pascal_voc','pascal_aug'],
+                        choices=['ade20k','pascal_voc','pascal_aug','Cityscapes'],
                         help='dataset name (default: pascal_voc)')
     parser.add_argument('--workers', type=int, default=16,
                         metavar='N', help='dataloader threads')
@@ -91,7 +91,7 @@ def parse_args():
     else:
         print('Number of GPUs:', args.ngpus)
         gpus = [int(x) for x in os.environ["CUDA_VISIBLE_DEVICES"].split(',')]
-        args.ctx = [mx.gpu(i) for i in gpus]
+        args.ctx = [mx.gpu(i) for i in range(len(gpus))]
     # Synchronized BatchNorm
     if args.syncbn:
         from gluoncv.model_zoo.syncbn import BatchNorm
