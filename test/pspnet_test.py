@@ -90,6 +90,16 @@ if __name__ == '__main__':
                         type=int,
                         default=0)
     
+    parser.add_argument('--augmentations_blur',
+                        help='augmentations blur',
+                        type=bool,
+                        default=True)
+    
+    parser.add_argument('--augmentations_rotate',
+                        help='augmentations rotate',
+                        type=bool,
+                        default=True)
+    
     parser.add_argument('--note',
                         help='comment for tensorboard log',
                         default='naive')
@@ -131,6 +141,7 @@ if __name__ == '__main__':
     config.dataset.resize_shape=input_shape
     config.dataset.name=args.dataset_name.lower()
     config.dataset.norm=True
+    config.dataset.augmentations_blur=args.augmentations_blur
 
     config.args = edict()
     config.args.n_epoch = args.n_epoch
@@ -142,7 +153,7 @@ if __name__ == '__main__':
     
     if args.augmentation:
 #        augmentations = Augmentations(p=0.25,use_imgaug=False)
-        augmentations = Augmentations(p=0.25,use_imgaug=True)
+        augmentations = Augmentations(p=0.25,use_imgaug=True,rotate=args.augmentations_rotate)
     else:
         augmentations = None
         

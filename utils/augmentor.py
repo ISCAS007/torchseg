@@ -254,10 +254,11 @@ class ImageTransformer(object):
         return new_image, new_mask
 
 
-def get_default_augmentor_config():
+def get_default_augmentor_config(rotate):
     config = edict()
-    config.rotate = edict()
-    config.rotate.max_angle = 15
+    if rotate:
+        config.rotate = edict()
+        config.rotate.max_angle = 15
     config.crop = edict()
     config.crop.crop_ratio = [0.85, 1.0]
     config.horizontal_flip = True
@@ -268,9 +269,9 @@ def get_default_augmentor_config():
 
 
 class Augmentations(object):
-    def __init__(self, p=0.25, config=None, use_imgaug=True):
+    def __init__(self, p=0.25, config=None, use_imgaug=True, rotate=True):
         if config is None:
-            config = get_default_augmentor_config()
+            config = get_default_augmentor_config(rotate)
 
         self.aug = ImageAugmenter(propability=p, use_imgaug=use_imgaug)
         self.tran = ImageTransformer(config=config, propability=p, use_imgaug=use_imgaug)

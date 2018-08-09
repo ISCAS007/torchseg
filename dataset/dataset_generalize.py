@@ -180,7 +180,12 @@ class dataset_generalize(TD.Dataset):
                 ann[lbl == class_id] = idx
         
         if self.augmentations is not None and self.split=='train':
-            img = self.augmentations.transform(img)
+            if hasattr(self.config,'augmentations_blur'):
+                if self.config.augmentations_blur:
+                    img = self.augmentations.transform(img)
+            else:
+                img = self.augmentations.transform(img)
+            
             img, ann = self.augmentations.transform(img, ann)
 #            print('augmentation',img.shape,ann.shape)
             
