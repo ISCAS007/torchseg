@@ -3,6 +3,8 @@ import shutil
 import argparse
 import numpy as np
 from tqdm import tqdm
+import time
+import json
 
 import mxnet as mx
 from mxnet import gluon, autograd
@@ -12,7 +14,7 @@ from gluoncv.utils import LRScheduler
 from gluoncv.model_zoo.segbase import *
 from gluoncv.utils.parallel import *
 from gluoncv.data import get_segmentation_dataset
-
+from tensorboardX import SummaryWriter
 from models.mxnet.MxnetSegmentation import MxnetSegmentation
 
 #datasets = {
@@ -81,6 +83,9 @@ def parse_args():
     # synchronized Batch Normalization
     parser.add_argument('--syncbn', action='store_true', default= False,
                         help='using Synchronized Cross-GPU BatchNorm')
+    #logdir
+    parser.add_argument('--logdir',default=os.path.expanduser('~/tmp/logs/mxnet'),
+                        help='root logdir for tensorboard')
     # the parser
     args = parser.parse_args()
     # handle contexts
@@ -146,6 +151,15 @@ class Trainer(object):
                                         'momentum': args.momentum,
                                         'multi_precision': True},
                                         kvstore = kv)
+        time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
+        net_name = args.model
+        dataset_name = args.dataset
+        note=args.backbone
+        log_dir=os.path.join(self.args.logdir,net_name,dataset_name,note,time_str)
+        os.makedirs(log_dir, exist_ok=True)
+        self.writer = SummaryWriter(log_dir=log_dir)
+        config_str=json.dumps(self.args,indent=2,sort_keys=True).replace('\n','\n\n').replace('  ','\t')
+        self.writer.add_text(tag='config',text_string=config_str)
 
     def training(self, epoch):
         tbar = tqdm(self.train_data)
@@ -163,6 +177,8 @@ class Trainer(object):
             tbar.set_description('Epoch %d, training loss %.3f'%\
                 (epoch, train_loss/(i+1)))
             mx.nd.waitall()
+        
+        self.writer.add_scalar('train/loss',train_loss,epoch)
 
         # save every epoch
         save_checkpoint(self.net.module, self.args, False)
@@ -183,6 +199,9 @@ class Trainer(object):
             tbar.set_description('Epoch %d, validation pixAcc: %.3f, mIoU: %.3f'%\
                 (epoch, pixAcc, mIoU))
             mx.nd.waitall()
+        
+        self.writer.add_scalar('val/acc',pixAcc,epoch)
+        self.writer.add_scalar('val/miou',mIoU,epoch)
 
 
 def save_checkpoint(net, args, is_best=False):
@@ -209,3 +228,5 @@ if __name__ == "__main__":
         for epoch in range(args.start_epoch, args.epochs):
             trainer.training(epoch)
             trainer.validation(epoch)
+    
+    trainer.writer.close()

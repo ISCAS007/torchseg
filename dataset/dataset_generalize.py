@@ -191,12 +191,15 @@ class dataset_generalize(TD.Dataset):
             img=cv2.resize(src=img,dsize=tuple(self.config.resize_shape),interpolation=cv2.INTER_LINEAR)
             ann=cv2.resize(src=ann,dsize=tuple(self.config.resize_shape),interpolation=cv2.INTER_NEAREST)
         
-        img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)            
+#        print('bgr',np.min(img),np.max(img),np.mean(img),np.std(img))
+        img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)         
+#        print('rgb',np.min(img),np.max(img),np.mean(img),np.std(img))
         if self.norm:
             # to [-1,1]
 #            img=2*img/255.0-1.0
             # to [0,1]
             img=img/255.0
+#            print('norm',np.min(img),np.max(img),np.mean(img),np.std(img))
             # to basic image net
             mean=[0.485, 0.456, 0.406]
             std=[0.229, 0.224, 0.225]
@@ -228,9 +231,10 @@ class dataset_generalize(TD.Dataset):
             
 if __name__ == '__main__':
     config=edict()
+    config.norm=True
 #    dataset_name='ADEChallengeData2016'
-    dataset_name='VOC2012'
-#    dataset_name='Cityscapes_Fine'
+#    dataset_name='VOC2012'
+    dataset_name='Cityscapes_Fine'
     config=get_dataset_generalize_config(config,dataset_name)
     
     dataset=dataset_generalize(config,split='val')
@@ -242,16 +246,21 @@ if __name__ == '__main__':
 #        if idx>5:
 #            break
     
-    for idx,annotation_file in enumerate(dataset.annotation_files):
-#        print(idx,annotation_file)
-#        ann=cv2.imread(annotation_file,cv2.IMREAD_GRAYSCALE)
-        ann=Image.open(annotation_file)
-        ann=np.array(ann, dtype=np.uint8)
-        print(idx,ann.shape)
-        print(np.unique(ann))
-#        plt.imshow(ann)
-#        plt.show()
-        if idx>5:
-            break
-        
+#    for idx,annotation_file in enumerate(dataset.annotation_files):
+##        print(idx,annotation_file)
+##        ann=cv2.imread(annotation_file,cv2.IMREAD_GRAYSCALE)
+#        ann=Image.open(annotation_file)
+#        ann=np.array(ann, dtype=np.uint8)
+#        print(idx,ann.shape)
+#        print(np.unique(ann))
+##        plt.imshow(ann)
+##        plt.show()
+#        if idx>5:
+#            break
+    
+    print('test norm'+'*'*50)
+    for i in range(50):
+        img,ann=dataset.__getitem__(i)
+        print(i,np.min(img),np.max(img),np.mean(img),np.std(img))
+        print(i,np.unique(ann))
     
