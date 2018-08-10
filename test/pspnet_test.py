@@ -18,7 +18,7 @@ from utils.torch_tools import do_train_or_val
 if __name__ == '__main__':
     choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
                'backbone', 'dict', 'fractal', 'upsample_type',
-               'pretrained','summary','naive']
+               'pretrained','summary','naive', 'coarse']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -167,7 +167,8 @@ if __name__ == '__main__':
     val_loader = TD.DataLoader(
         dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
 
-    config.args.note = '_'.join([args.note,
+    config.args.note = '_'.join([args.test,
+                                 args.note,
                                  'bn'+str(batch_size),
                                  'aug',str(args.augmentation)[0],
                                  ])
@@ -256,6 +257,22 @@ if __name__ == '__main__':
             config.args.note= '_'.join([note,'pretrain',str(pretrained)[0],backbone,midnet_name])
             net = pspnet(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
+    elif test=='coarse':
+        net=globals()[args.net_name](config)
+        for dataset_name in ['Cityscapes','Cityscapes_Fine']:
+            config.dataset=get_dataset_generalize_config(config.dataset,dataset_name)
+            config.dataset.name=dataset_name.lower()
+            
+            coarse_train_dataset = dataset_generalize(
+            config.dataset, split='train', augmentations=augmentations)
+            coarse_train_loader = TD.DataLoader(
+            dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
+    
+            coarse_val_dataset = dataset_generalize(config.dataset, split='val',
+                                 augmentations=augmentations)
+            coarse_val_loader = TD.DataLoader(
+            dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
+            do_train_or_val(net,config.args, coarse_train_loader, coarse_val_loader)
     elif test=='summary':
         net=pspnet(config)
         height,width=input_shape

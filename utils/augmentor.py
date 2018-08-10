@@ -9,7 +9,6 @@ import cv2
 import math
 import random
 from easydict import EasyDict as edict
-import matplotlib.pyplot as plt
 from utils.disc_tools import show_images
 from torchvision import transforms as TT
 from utils import joint_transforms as JT
@@ -257,6 +256,7 @@ class ImageTransformer(object):
 def get_default_augmentor_config(rotate):
     config = edict()
     if rotate:
+        print('use rotate augmentations'+'*'*50)
         config.rotate = edict()
         config.rotate.max_angle = 15
     config.crop = edict()
