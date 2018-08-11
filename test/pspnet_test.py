@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import torch.utils.data as TD
-from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
+from dataset.dataset_generalize import dataset_generalize, get_dataset_generalize_config
 from easydict import EasyDict as edict
 import argparse
 import torchsummary
@@ -19,154 +19,159 @@ from utils.torch_tools import do_train_or_val
 if __name__ == '__main__':
     choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
                'backbone', 'dict', 'fractal', 'upsample_type',
-               'pretrained','summary','naive', 'coarse']
+               'pretrained', 'summary', 'naive', 'coarse']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
                         choices=choices,
                         default='naive')
-    
+
     parser.add_argument("--batch_size",
                         help="batch size",
                         type=int,
                         default=2)
-    
+
     parser.add_argument("--learning_rate",
                         help="learning rate",
                         type=float,
                         default=0.0001)
-    
+
     parser.add_argument("--optimizer",
                         help="optimizer name",
-                        choices=['adam','sgd'],
+                        choices=['adam', 'sgd'],
                         default='adam')
-    
+
     parser.add_argument('--dataset_name',
                         help='dataset name',
-                        choices=['ADEChallengeData2016','VOC2012','Kitti2015','Cityscapes','Cityscapes_Fine','Cityscapes_Coarse'],
+                        choices=['ADEChallengeData2016', 'VOC2012', 'Kitti2015',
+                                 'Cityscapes', 'Cityscapes_Fine', 'Cityscapes_Coarse'],
                         default='Cityscapes')
-    
+
     parser.add_argument("--backbone_name",
                         help="backbone name",
-                        choices=['vgg16','vgg19','vgg16_bn','vgg19_bn','resnet18','resnet34','resnet50','resnet101','resnet152'],
+                        choices=['vgg16', 'vgg19', 'vgg16_bn', 'vgg19_bn', 'resnet18',
+                                 'resnet34', 'resnet50', 'resnet101', 'resnet152'],
                         default='resnet50')
-    
+
     parser.add_argument('--net_name',
                         help='net name for semantic segmentaion',
-                        choices=['pspnet','psp_edge','psp_global','psp_fractal','psp_dict','fcn','psp_aux'],
+                        choices=['pspnet', 'psp_edge', 'psp_global',
+                                 'psp_fractal', 'psp_dict', 'fcn', 'psp_aux'],
                         default='pspnet')
-    
+
     parser.add_argument('--midnet_scale',
                         help='pspnet scale',
                         type=int,
                         default=5)
-    
+
     parser.add_argument('--midnet_name',
                         help='midnet name',
-                        choices=['psp','aspp'],
+                        choices=['psp', 'aspp'],
                         default='psp')
-    
+
     parser.add_argument('--n_epoch',
                         help='training/validating epoch',
                         type=int,
                         default=100)
-    
+
     parser.add_argument('--augmentation',
                         help='true or false to do augmentation',
                         type=bool,
                         default=True)
-    
+
     parser.add_argument('--upsample_type',
                         help='bilinear or duc upsample',
-                        choices=['duc','bilinear'],
+                        choices=['duc', 'bilinear'],
                         default='duc')
-    
+
     parser.add_argument('--auxnet_type',
                         help='bilinear or duc upsample',
-                        choices=['duc','bilinear'],
+                        choices=['duc', 'bilinear'],
                         default='duc')
-    
+
     parser.add_argument('--upsample_layer',
                         help='layer number for upsample',
                         type=int,
                         default=3)
-    
+
     parser.add_argument('--auxnet_layer',
                         help='layer number for auxnet',
                         type=int,
                         default=4)
-    
+
     parser.add_argument('--use_momentum',
                         help='use mometnum or not?',
                         type=bool,
                         default=False)
-    
+
     parser.add_argument('--backbone_pretrained',
                         help='when not use momentum, we can use weights pretrained on imagenet',
                         type=bool,
                         default=False)
-    
+
     parser.add_argument('--input_shape',
                         help='input shape',
                         type=int,
                         default=0)
-    
+
     parser.add_argument('--augmentations_blur',
                         help='augmentations blur',
                         type=bool,
                         default=True)
-    
+
     parser.add_argument('--augmentations_rotate',
                         help='augmentations rotate',
                         type=bool,
                         default=True)
-    
+
     parser.add_argument('--note',
                         help='comment for tensorboard log',
                         default='naive')
     args = parser.parse_args()
-    
+
     config = edict()
     config.model = edict()
     config.model.upsample_type = args.upsample_type
-    config.model.auxnet_type=args.auxnet_type
+    config.model.auxnet_type = args.auxnet_type
     config.model.upsample_layer = args.upsample_layer
-    config.model.auxnet_layer=args.auxnet_layer
+    config.model.auxnet_layer = args.auxnet_layer
     config.model.use_momentum = args.use_momentum
-    config.model.backbone_pretrained=args.backbone_pretrained
-    config.model.eps=1e-5
-    config.model.momentum=0.9
-    config.model.learning_rate=args.learning_rate
-    config.model.optimizer=args.optimzer
+    config.model.backbone_pretrained = args.backbone_pretrained
+    config.model.eps = 1e-5
+    config.model.momentum = 0.9
+    config.model.learning_rate = args.learning_rate
+    config.model.optimizer = args.optimzer
     config.model.backbone_name = args.backbone_name
     config.model.layer_preference = 'first'
 
     config.model.midnet_pool_sizes = [6, 3, 2, 1]
     config.model.midnet_scale = args.midnet_scale
-    config.model.midnet_name=args.midnet_name
-    
-    if args.input_shape==0:
-        if args.midnet_name=='psp':
-            count_size=max(config.model.midnet_pool_sizes)*config.model.midnet_scale*2**args.upsample_layer
-            input_shape=(count_size,count_size)
+    config.model.midnet_name = args.midnet_name
+
+    if args.input_shape == 0:
+        if args.midnet_name == 'psp':
+            count_size = max(config.model.midnet_pool_sizes) * \
+                config.model.midnet_scale*2**args.upsample_layer
+            input_shape = (count_size, count_size)
         else:
-            input_shape=(72*8,72*8)
+            input_shape = (72*8, 72*8)
     else:
-        input_shape=(args.input_shape,args.input_shape)
-        
-    config.model.input_shape=input_shape
+        input_shape = (args.input_shape, args.input_shape)
+
+    config.model.input_shape = input_shape
     config.model.midnet_out_channels = 512
-    
-    config.dataset=edict()
-    config.dataset=get_dataset_generalize_config(config.dataset,args.dataset_name)
+
+    config.dataset = edict()
+    config.dataset = get_dataset_generalize_config(
+        config.dataset, args.dataset_name)
     if config.dataset.ignore_index == 0:
-        config.model.class_number=len(config.dataset.foreground_class_ids)+1
+        config.model.class_number = len(config.dataset.foreground_class_ids)+1
     else:
-        config.model.class_number=len(config.dataset.foreground_class_ids)
-    config.dataset.resize_shape=input_shape
-    config.dataset.name=args.dataset_name.lower()
-    config.dataset.norm=True
-    config.dataset.augmentations_blur=args.augmentations_blur
+        config.model.class_number = len(config.dataset.foreground_class_ids)
+    config.dataset.resize_shape = input_shape
+    config.dataset.name = args.dataset_name.lower()
+    config.dataset.norm = True
+    config.dataset.augmentations_blur = args.augmentations_blur
 
     config.args = edict()
     config.args.n_epoch = args.n_epoch
@@ -175,55 +180,56 @@ if __name__ == '__main__':
     # must change batch size here!!!
     batch_size = args.batch_size
     config.args.batch_size = batch_size
-    
+
     if args.augmentation:
-#        augmentations = Augmentations(p=0.25,use_imgaug=False)
-        augmentations = Augmentations(p=0.25,use_imgaug=True,rotate=args.augmentations_rotate)
+        #        augmentations = Augmentations(p=0.25,use_imgaug=False)
+        augmentations = Augmentations(
+            p=0.25, use_imgaug=True, rotate=args.augmentations_rotate)
     else:
         augmentations = None
-        
+
     train_dataset = dataset_generalize(
         config.dataset, split='train', augmentations=augmentations)
     train_loader = TD.DataLoader(
         dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
 
     val_dataset = dataset_generalize(config.dataset, split='val',
-                             augmentations=augmentations)
+                                     augmentations=augmentations)
     val_loader = TD.DataLoader(
         dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
 
     config.args.note = '_'.join([args.test,
                                  args.note,
                                  'bn'+str(batch_size),
-                                 'aug',str(args.augmentation)[0],
+                                 'aug', str(args.augmentation)[0],
                                  ])
-    note=config.args.note
+    note = config.args.note
     test = args.test
-    if test=='naive':
-        net=globals()[args.net_name](config)
-        do_train_or_val(net,config.args, train_loader, val_loader)
+    if test == 'naive':
+        net = globals()[args.net_name](config)
+        do_train_or_val(net, config.args, train_loader, val_loader)
     elif test == 'edge':
         config.dataset.with_edge = True
         for edge_width in [10]:
             config.dataset.edge_width = edge_width
-            config.args.note = '_'.join([note,'edge_width',str(edge_width)])
+            config.args.note = '_'.join([note, 'edge_width', str(edge_width)])
             net = psp_edge(config)
-            do_train_or_val(net,config.args, train_loader, val_loader)
+            do_train_or_val(net, config.args, train_loader, val_loader)
     elif test == 'global':
         config.model.gnet_dilation_sizes = [16, 8, 4]
         config.args.note = note
         net = psp_global(config)
-        do_train_or_val(net,config.args, train_loader, val_loader)
+        do_train_or_val(net, config.args, train_loader, val_loader)
     elif test == 'backbone':
-        for backbone in ['vgg16','vgg19','vgg16_bn','vgg19_bn']:
+        for backbone in ['vgg16', 'vgg19', 'vgg16_bn', 'vgg19_bn']:
             config.model.backbone_name = backbone
             config.args.note = '_'.join([args.note,
-                                 'bn'+str(batch_size),
-                                 'aug',str(args.augmentation)[0],
-                                 backbone
-                                 ])
+                                         'bn'+str(batch_size),
+                                         'aug', str(args.augmentation)[0],
+                                         backbone
+                                         ])
             net = pspnet(config)
-            do_train_or_val(net,config.args, train_loader, val_loader)
+            do_train_or_val(net, config.args, train_loader, val_loader)
     elif test == 'dict':
         config.args.note = 'dict'
         dict_number = config.model.class_number*5+1
@@ -246,7 +252,7 @@ if __name__ == '__main__':
         config.args.note = '_'.join([config.args.note, location_str, 'depth', str(
             fractal_depth), 'fusion', fractal_fusion_type])
         net = psp_fractal(config)
-        do_train_or_val(net,config.args, train_loader, val_loader)
+        do_train_or_val(net, config.args, train_loader, val_loader)
     elif test == 'upsample_type':
         backbone = 'resnet52'
         config.model.backbone_name = backbone
@@ -255,55 +261,57 @@ if __name__ == '__main__':
             config.args.note = '_'.join([backbone, upsample_type, 'keras_psp'])
             net = pspnet(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
-    elif test=='momentum':
+    elif test == 'momentum':
         backbone = 'vgg19_bn'
         config.model.backbone_name = backbone
         config.model.use_momentum = True
-        for momentum in [0.1,0.3,0.5,0.7,0.9]:
-            config.args.note= '_'.join([note,backbone,'mo',str(momentum)])
+        for momentum in [0.1, 0.3, 0.5, 0.7, 0.9]:
+            config.args.note = '_'.join([note, backbone, 'mo', str(momentum)])
             net = pspnet(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
             break
-    elif test=='midnet':
+    elif test == 'midnet':
         # midnet will change input shape
-#        for midnet_name in ['psp','aspp']:
-#        config.model.midnet_name=midnet_name
-        for backbone in ['vgg19_bn','resnet50']:
+        #        for midnet_name in ['psp','aspp']:
+        #        config.model.midnet_name=midnet_name
+        for backbone in ['vgg19_bn', 'resnet50']:
             config.model.backbone_name = backbone
-            config.args.note= '_'.join([note,backbone,args.midnet_name])
+            config.args.note = '_'.join([note, backbone, args.midnet_name])
             net = pspnet(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
-    elif test=='pretrained':
-        midnet_name='aspp'
-        backbone=config.model.backbone_name
-        config.model.midnet_name=midnet_name
-        for pretrained in [True,False]:
+    elif test == 'pretrained':
+        midnet_name = 'aspp'
+        backbone = config.model.backbone_name
+        config.model.midnet_name = midnet_name
+        for pretrained in [True, False]:
             config.model.backbone_pretrained = pretrained
-            config.args.note= '_'.join([note,'pretrain',str(pretrained)[0],backbone,midnet_name])
+            config.args.note = '_'.join(
+                [note, 'pretrain', str(pretrained)[0], backbone, midnet_name])
             net = pspnet(config)
             do_train_or_val(net, config.args, train_loader, val_loader)
-    elif test=='coarse':
-        net=globals()[args.net_name](config)
-        for dataset_name in ['Cityscapes','Cityscapes_Fine']:
-            config.dataset=get_dataset_generalize_config(config.dataset,dataset_name)
-            config.dataset.name=dataset_name.lower()
-            
+    elif test == 'coarse':
+        net = globals()[args.net_name](config)
+        for dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
+            config.dataset = get_dataset_generalize_config(
+                config.dataset, dataset_name)
+            config.dataset.name = dataset_name.lower()
+
             coarse_train_dataset = dataset_generalize(
-            config.dataset, split='train', augmentations=augmentations)
+                config.dataset, split='train', augmentations=augmentations)
             coarse_train_loader = TD.DataLoader(
-            dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
-    
+                dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
+
             coarse_val_dataset = dataset_generalize(config.dataset, split='val',
-                                 augmentations=augmentations)
+                                                    augmentations=augmentations)
             coarse_val_loader = TD.DataLoader(
-            dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
-            do_train_or_val(net,config.args, coarse_train_loader, coarse_val_loader)
-        
-    elif test=='summary':
-        net=pspnet(config)
-        height,width=input_shape
-        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        torchsummary.summary(net.to(device),(3,height,width))
+                dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
+            do_train_or_val(net, config.args,
+                            coarse_train_loader, coarse_val_loader)
+
+    elif test == 'summary':
+        net = pspnet(config)
+        height, width = input_shape
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        torchsummary.summary(net.to(device), (3, height, width))
     else:
         raise NotImplementedError
-        

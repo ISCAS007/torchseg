@@ -7,12 +7,14 @@ import os
 from tensorboardX import SummaryWriter
 from utils.metrics import runningScore
 
+
 def freeze_layer(layer):
     """
     freeze layer weights
     """
     for param in layer.parameters():
         param.requires_grad = False
+
 
 def poly_lr_scheduler(optimizer, init_lr, iter,
                       max_iter=100, power=0.9):
@@ -24,62 +26,71 @@ def poly_lr_scheduler(optimizer, init_lr, iter,
         :param power is a polymomial power
 
     """
-    if type(optimizer)!=torch.optim.SGD:
+    if type(optimizer) != torch.optim.SGD:
         return init_lr
-    
+
     if iter > max_iter:
         return optimizer
 
     lr = init_lr*(1 - iter/max_iter)**power
     for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+        lr_mult = param_group['lr_mult'] if hasattr(
+            param_group, 'lr_mult') else 1
+        param_group['lr'] = lr*lr_mult
 
     return lr
 
+
 def get_optimizer(model):
-    config=model.config
-    init_lr=config.model.learning_rate if hasattr(config.model,'learning_rate') else 0.0001
-    optimizer_str=config.model.optimizer if hasattr(config.model,'optimizer') else 'adam'
-    if optimizer_str=='adam':
-        optimizer = torch.optim.Adam(
-            [p for p in model.parameters() if p.requires_grad], lr=init_lr)
-    elif optimizer_str=='sgd':
-        optimizer = torch.optim.SGD([p for p in model.parameters() if p.requires_grad],lr=init_lr,momentum=0.9,weight_decay=0.0001)
+    config = model.config
+    init_lr = config.model.learning_rate if hasattr(
+        config.model, 'learning_rate') else 0.0001
+    optimizer_str = config.model.optimizer if hasattr(
+        config.model, 'optimizer') else 'adam'
+    optimizer_params = model.params if hasattr(model, 'params') else [
+        p for p in model.parameters() if p.requires_grad]
+    if optimizer_str == 'adam':
+        optimizer = torch.optim.Adam(optimizer_params, lr=init_lr)
+    elif optimizer_str == 'sgd':
+        optimizer = torch.optim.SGD(
+            optimizer_params, lr=init_lr, momentum=0.9, weight_decay=0.0001)
     else:
-        assert False,'unknown optimizer %s'%optimizer_str
-    
+        assert False, 'unknown optimizer %s' % optimizer_str
+
     return optimizer
 
+
 def do_train_or_val(model, args, train_loader=None, val_loader=None):
-    if hasattr(model,'do_train_or_val'):
+    if hasattr(model, 'do_train_or_val'):
         print('warning: use do_train_or_val in model'+'*'*30)
-        model.do_train_or_val(args,train_loader,val_loader)
+        model.do_train_or_val(args, train_loader, val_loader)
         return 0
-    
+
     # use gpu memory
-    device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
-    if hasattr(model,'backbone'):
-        if hasattr(model.backbone,'model'):
+    if hasattr(model, 'backbone'):
+        if hasattr(model.backbone, 'model'):
             model.backbone.model.to(device)
 
-    if hasattr(model,'optimizer'):
+    if hasattr(model, 'optimizer'):
         print('use optimizer in model'+'*'*30)
-        optimizer=model.optimizer
+        optimizer = model.optimizer
     else:
         print('use default optimizer'+'*'*30)
         optimizer = get_optimizer(model)
-    
+
     print('use l1 and l2 reg loss'+'*'*30)
-    
-    if hasattr(model,'loss_fn'):
+
+    if hasattr(model, 'loss_fn'):
         print('use loss function in model'+'*'*30)
-        loss_fn=model.loss_fn
+        loss_fn = model.loss_fn
     else:
-        print('use default loss funtion with ignore_index=%d'%model.ignore_index,'*'*30)
+        print('use default loss funtion with ignore_index=%d' %
+              model.ignore_index, '*'*30)
         loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.ignore_index)
 
-    #TODO metrics supprot ignore_index
+    # TODO metrics supprot ignore_index
     running_metrics = runningScore(model.class_number)
 
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
@@ -87,12 +98,13 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                            model.dataset_name, args.note, time_str)
     checkpoint_path = os.path.join(
         log_dir, "{}_{}_best_model.pkl".format(model.name, model.dataset_name))
-    writer=None
+    writer = None
     best_iou = 0.6
-    
-    power=0.9
-    config=model.config
-    init_lr=config.model.learning_rate if hasattr(config.model,'learning_rate') else 0.0001
+
+    power = 0.9
+    config = model.config
+    init_lr = config.model.learning_rate if hasattr(
+        config.model, 'learning_rate') else 0.0001
     loaders = [train_loader, val_loader]
     loader_names = ['train', 'val']
     for epoch in range(args.n_epoch):
@@ -130,7 +142,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                                   iter=epoch*len(loader)+i,
                                   max_iter=args.n_epoch*len(loader),
                                   power=power)
-                
+
                 images = torch.autograd.Variable(images.to(device).float())
                 labels = torch.autograd.Variable(labels.to(device).long())
 
@@ -140,12 +152,14 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                 loss = loss_fn(input=seg_output, target=labels)
 
                 if loader_name == 'train':
-                    l2_loss = torch.autograd.Variable(torch.FloatTensor(1),requires_grad=True).to(device)
-                    l1_loss = torch.autograd.Variable(torch.FloatTensor(1),requires_grad=True).to(device)
+                    l2_loss = torch.autograd.Variable(
+                        torch.FloatTensor(1), requires_grad=True).to(device)
+                    l1_loss = torch.autograd.Variable(
+                        torch.FloatTensor(1), requires_grad=True).to(device)
                     for name, param in model.named_parameters():
                         if 'bias' not in name:
-                            l2_loss = l2_loss + torch.norm(param,2)
-                            l1_loss = l1_loss + torch.norm(param,1)
+                            l2_loss = l2_loss + torch.norm(param, 2)
+                            l1_loss = l1_loss + torch.norm(param, 1)
                     loss = loss + reg*l2_loss+reg*l1_loss
                     loss.backward()
                     optimizer.step()
@@ -161,18 +175,19 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                           (loader_name, epoch+1, args.n_epoch, i, n_step, loss.data))
                     for k, v in score.items():
                         print(k, v)
-            
+
             if writer is None:
                 os.makedirs(log_dir, exist_ok=True)
                 writer = SummaryWriter(log_dir=log_dir)
-                config_str=json.dumps(model.config,indent=2,sort_keys=True).replace('\n','\n\n').replace('  ','\t')
-                writer.add_text(tag='config',text_string=config_str)
-                
+                config_str = json.dumps(model.config, indent=2, sort_keys=True).replace(
+                    '\n', '\n\n').replace('  ', '\t')
+                writer.add_text(tag='config', text_string=config_str)
+
                 # write config to config.txt
-                config_path=os.path.join(log_dir,'config.txt')
-                config_file=open(config_path,'w')
-                json.dump(model.config,config_file,sort_keys=True)
-        
+                config_path = os.path.join(log_dir, 'config.txt')
+                config_file = open(config_path, 'w')
+                json.dump(model.config, config_file, sort_keys=True)
+
             writer.add_scalar('%s/loss' % loader_name,
                               np.mean(losses), epoch)
             writer.add_scalar('%s/l1_loss' % loader_name,
@@ -183,8 +198,8 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                               score['Overall Acc: \t'], epoch)
             writer.add_scalar('%s/iou' % loader_name,
                               score['Mean IoU : \t'], epoch)
-            writer.add_scalar('%s/lr'%loader_name,
-                              optimizer.param_groups[0]['lr'],epoch)
+            writer.add_scalar('%s/lr' % loader_name,
+                              optimizer.param_groups[0]['lr'], epoch)
 
             if loader_name == 'val':
                 if score['Mean IoU : \t'] >= best_iou:
