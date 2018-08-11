@@ -156,11 +156,13 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                         torch.FloatTensor(1), requires_grad=True).to(device)
                     l1_loss = torch.autograd.Variable(
                         torch.FloatTensor(1), requires_grad=True).to(device)
+                    l2_loss = 0
+                    l1_loss = 0
                     for name, param in model.named_parameters():
                         if 'bias' not in name:
                             l2_loss = l2_loss + torch.norm(param, 2)
                             l1_loss = l1_loss + torch.norm(param, 1)
-                    loss = loss + reg*l2_loss+reg*l1_loss
+                    loss = loss + reg * l2_loss + reg * l1_loss
                     loss.backward()
                     optimizer.step()
 

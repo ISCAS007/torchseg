@@ -36,6 +36,11 @@ class pspnet(TN.Module):
         self.decoder = get_suffix_net(config,
                                       self.midnet_out_channels,
                                       self.class_number)
+        
+        self.optimizer_params = [{'params': self.backbone.parameters(), 'lr_mult': 1},
+                                 {'params': self.midnet.parameters(),
+                                  'lr_mult': 10},
+                                 {'params': self.decoder.parameters(), 'lr_mult': 20}]
 
     def forward(self, x):
         feature_map = self.backbone.forward(x, self.upsample_layer)
