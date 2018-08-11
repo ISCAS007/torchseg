@@ -31,6 +31,11 @@ if __name__ == '__main__':
                         type=int,
                         default=2)
     
+    parser.add_argument("--learning_rate",
+                        help="learning rate",
+                        type=float,
+                        default=0.0001)
+    
     parser.add_argument('--dataset_name',
                         help='dataset name',
                         choices=['ADEChallengeData2016','VOC2012','Kitti2015','Cityscapes','Cityscapes_Fine','Cityscapes_Coarse'],
@@ -126,6 +131,7 @@ if __name__ == '__main__':
     config.model.backbone_pretrained=args.backbone_pretrained
     config.model.eps=1e-5
     config.model.momentum=0.9
+    config.model.learning_rate=args.learning_rate
     config.model.backbone_name = args.backbone_name
     config.model.layer_preference = 'first'
 

@@ -26,15 +26,19 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
     if hasattr(model,'backbone'):
         if hasattr(model.backbone,'model'):
             model.backbone.model.to(device)
-
+    
+    lr=model.config.model.learning_rate if hasattr(model.config.model,'learning_rate') else 0.0001
     if hasattr(model,'optimizer'):
         print('use optimizer in model'+'*'*30)
         optimizer=model.optimizer
     else:
         print('use default optimizer'+'*'*30)
         optimizer = torch.optim.Adam(
-            [p for p in model.parameters() if p.requires_grad], lr=0.0001)
+            [p for p in model.parameters() if p.requires_grad], lr=lr)
     
+    print('use l1 and l2 reg loss'+'*'*30)
+    l1_reg,l2_reg=torch.tensor(data=0,dtype=torch.float,device=device,requires_grad=False),torch.tensor(data=0,dtype=torch.float,device=device,requires_grad=False)
+        
     if hasattr(model,'loss_fn'):
         print('use loss function in model'+'*'*30)
         loss_fn=model.loss_fn
@@ -92,6 +96,14 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                 loss = loss_fn(input=seg_output, target=labels)
 
                 if loader_name == 'train':
+                    reg = 1e-6
+                    l2_loss = torch.autograd.Variable(torch.FloatTensor(1), requires_grad=True)
+                    l1_loss = torch.autograd.Variable(torch.FloatTensor(1), requires_grad=True)
+                    for name, param in model.named_parameters():
+                        if 'bias' not in name:
+                            l2_loss = l2_loss + torch.norm(param,2)
+                            l1_loss = l1_loss + torch.norm(param,1)
+                    loss = loss + reg*l2_loss+reg*l1_loss
                     loss.backward()
                     optimizer.step()
 
