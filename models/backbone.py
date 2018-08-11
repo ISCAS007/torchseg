@@ -53,6 +53,33 @@ class backbone(TN.Module):
                 raise NotImplementedError
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
+    
+    def forward_aux(self,x,main_level,aux_level):
+        assert main_level in [1,2,3,4,5],'main feature level %d not in range(0,5)'%main_level
+        assert aux_level in [1,2,3,4,5],'aux feature level %d not in range(0,5)'%aux_level
+        
+        features=[]
+        if self.format=='vgg':
+            assert hasattr(self.layer_depths,str(main_level))
+            for idx,layer in enumerate(self.model.features):
+                x=layer(x)
+                features.append(x)
+        elif self.format=='resnet':
+            features.append(x)
+            x=self.prefix_net(x)
+            features.append(x)
+            x = self.layer1(x)
+            features.append(x)
+            x = self.layer2(x)
+            features.append(x)
+            x = self.layer3(x)
+            features.append(x)
+            x = self.layer4(x)
+            features.append(x)
+        else:
+            assert False,'unexpected format %s'%(self.format)
+        
+        return features[main_level],features[aux_level]
         
     def forward(self,x,level):
         assert level in [1,2,3,4,5],'feature level %d not in range(0,5)'%level

@@ -463,9 +463,14 @@ def get_midnet(config,midnet_input_shape,midnet_out_channels):
     
     return midnet
 
-def get_suffix_net(config,midnet_out_channels,class_number):
-    upsample_type = config.model.upsample_type
-    upsample_layer = config.model.upsample_layer
+def get_suffix_net(config,midnet_out_channels,class_number,aux=False):
+    if aux:
+        upsample_type = config.model.auxnet_type
+        upsample_layer = config.model.auxnet_layer
+    else:
+        upsample_type = config.model.upsample_type
+        upsample_layer = config.model.upsample_layer
+    
     input_shape = config.model.input_shape
     if hasattr(config.model,'eps'):
         eps=config.model.eps

@@ -12,6 +12,7 @@ from models.psp_global import psp_global
 from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
 from models.fcn import fcn
+from models.psp_aux import psp_aux
 from utils.augmentor import Augmentations
 from utils.torch_tools import do_train_or_val
 
@@ -42,7 +43,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--net_name',
                         help='net name for semantic segmentaion',
-                        choices=['pspnet','psp_edge','psp_global','psp_fractal','psp_dict','fcn'],
+                        choices=['pspnet','psp_edge','psp_global','psp_fractal','psp_dict','fcn','psp_aux'],
                         default='pspnet')
     
     parser.add_argument('--midnet_scale',
@@ -70,10 +71,20 @@ if __name__ == '__main__':
                         choices=['duc','bilinear'],
                         default='duc')
     
+    parser.add_argument('--auxnet_type',
+                        help='bilinear or duc upsample',
+                        choices=['duc','bilinear'],
+                        default='duc')
+    
     parser.add_argument('--upsample_layer',
                         help='layer number for upsample',
                         type=int,
                         default=3)
+    
+    parser.add_argument('--auxnet_layer',
+                        help='layer number for auxnet',
+                        type=int,
+                        default=4)
     
     parser.add_argument('--use_momentum',
                         help='use mometnum or not?',
@@ -108,7 +119,9 @@ if __name__ == '__main__':
     config = edict()
     config.model = edict()
     config.model.upsample_type = args.upsample_type
+    config.model.auxnet_type=args.auxnet_type
     config.model.upsample_layer = args.upsample_layer
+    config.model.auxnet_layer=args.auxnet_layer
     config.model.use_momentum = args.use_momentum
     config.model.backbone_pretrained=args.backbone_pretrained
     config.model.eps=1e-5
@@ -273,6 +286,7 @@ if __name__ == '__main__':
             coarse_val_loader = TD.DataLoader(
             dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
             do_train_or_val(net,config.args, coarse_train_loader, coarse_val_loader)
+        
     elif test=='summary':
         net=pspnet(config)
         height,width=input_shape
