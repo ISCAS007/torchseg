@@ -85,6 +85,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
             print(loader_name+'.'*50)
             n_step = len(loader)
             losses = []
+            reg = 1e-6
             running_metrics.reset()
             for i, (images, labels) in enumerate(loader):
                 images = torch.autograd.Variable(images.to(device).float())
@@ -96,7 +97,6 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                 loss = loss_fn(input=seg_output, target=labels)
 
                 if loader_name == 'train':
-                    reg = 1e-6
                     l2_loss = torch.autograd.Variable(torch.FloatTensor(1), requires_grad=True)
                     l1_loss = torch.autograd.Variable(torch.FloatTensor(1), requires_grad=True)
                     for name, param in model.named_parameters():
@@ -132,10 +132,16 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
         
             writer.add_scalar('%s/loss' % loader_name,
                               np.mean(losses), epoch)
+            writer.add_scalar('%s/l1_loss' % loader_name,
+                              reg*l1_loss, epoch)
+            writer.add_scalar('%s/l2_loss' % loader_name,
+                              reg*l2_loss, epoch)
             writer.add_scalar('%s/acc' % loader_name,
                               score['Overall Acc: \t'], epoch)
             writer.add_scalar('%s/iou' % loader_name,
                               score['Mean IoU : \t'], epoch)
+            writer.add_scalar('%s/lr'%loader_name,
+                              optimizer.param_groups[0]['lr'],epoch)
 
             if loader_name == 'val':
                 if score['Mean IoU : \t'] >= best_iou:
