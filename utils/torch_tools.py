@@ -97,8 +97,8 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                 loss = loss_fn(input=seg_output, target=labels)
 
                 if loader_name == 'train':
-                    l2_loss = torch.autograd.Variable(torch.FloatTensor(1), requires_grad=True)
-                    l1_loss = torch.autograd.Variable(torch.FloatTensor(1), requires_grad=True)
+                    l2_loss = torch.autograd.Variable(torch.FloatTensor(1), device=device,requires_grad=True)
+                    l1_loss = torch.autograd.Variable(torch.FloatTensor(1), device=device,requires_grad=True)
                     for name, param in model.named_parameters():
                         if 'bias' not in name:
                             l2_loss = l2_loss + torch.norm(param,2)
