@@ -36,6 +36,11 @@ if __name__ == '__main__':
                         type=float,
                         default=0.0001)
     
+    parser.add_argument("--optimizer",
+                        help="optimizer name",
+                        choices=['adam','sgd'],
+                        default='adam')
+    
     parser.add_argument('--dataset_name',
                         help='dataset name',
                         choices=['ADEChallengeData2016','VOC2012','Kitti2015','Cityscapes','Cityscapes_Fine','Cityscapes_Coarse'],
@@ -132,6 +137,7 @@ if __name__ == '__main__':
     config.model.eps=1e-5
     config.model.momentum=0.9
     config.model.learning_rate=args.learning_rate
+    config.model.optimizer=args.optimzer
     config.model.backbone_name = args.backbone_name
     config.model.layer_preference = 'first'
 

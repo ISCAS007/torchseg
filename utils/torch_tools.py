@@ -14,6 +14,42 @@ def freeze_layer(layer):
     for param in layer.parameters():
         param.requires_grad = False
 
+def poly_lr_scheduler(optimizer, init_lr, iter,
+                      max_iter=100, power=0.9):
+    """Polynomial decay of learning rate
+        :param init_lr is base learning rate
+        :param iter is a current iteration
+        :param lr_decay_iter how frequently decay occurs, default is 1
+        :param max_iter is number of maximum iterations
+        :param power is a polymomial power
+
+    """
+    if type(optimizer)!=torch.optim.SGD:
+        return init_lr
+    
+    if iter > max_iter:
+        return optimizer
+
+    lr = init_lr*(1 - iter/max_iter)**power
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
+    return lr
+
+def get_optimizer(model):
+    config=model.config
+    init_lr=config.model.learning_rate if hasattr(config.model,'learning_rate') else 0.0001
+    optimizer_str=config.model.optimizer if hasattr(config.model,'optimizer') else 'adam'
+    if optimizer_str=='adam':
+        optimizer = torch.optim.Adam(
+            [p for p in model.parameters() if p.requires_grad], lr=init_lr)
+    elif optimizer_str=='sgd':
+        optimizer = torch.optim.SGD([p for p in model.parameters() if p.requires_grad],lr=init_lr,momentum=0.9,weight_decay=0.0001)
+    else:
+        assert False,'unknown optimizer %s'%optimizer_str
+    
+    return optimizer
+
 def do_train_or_val(model, args, train_loader=None, val_loader=None):
     if hasattr(model,'do_train_or_val'):
         print('warning: use do_train_or_val in model'+'*'*30)
@@ -26,19 +62,16 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
     if hasattr(model,'backbone'):
         if hasattr(model.backbone,'model'):
             model.backbone.model.to(device)
-    
-    lr=model.config.model.learning_rate if hasattr(model.config.model,'learning_rate') else 0.0001
+
     if hasattr(model,'optimizer'):
         print('use optimizer in model'+'*'*30)
         optimizer=model.optimizer
     else:
         print('use default optimizer'+'*'*30)
-        optimizer = torch.optim.Adam(
-            [p for p in model.parameters() if p.requires_grad], lr=lr)
+        optimizer = get_optimizer(model)
     
     print('use l1 and l2 reg loss'+'*'*30)
-    l1_reg,l2_reg=torch.tensor(data=0,dtype=torch.float,device=device,requires_grad=False),torch.tensor(data=0,dtype=torch.float,device=device,requires_grad=False)
-        
+    
     if hasattr(model,'loss_fn'):
         print('use loss function in model'+'*'*30)
         loss_fn=model.loss_fn
@@ -56,7 +89,10 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
         log_dir, "{}_{}_best_model.pkl".format(model.name, model.dataset_name))
     writer=None
     best_iou = 0.6
-
+    
+    power=0.9
+    config=model.config
+    init_lr=config.model.learning_rate if hasattr(config.model,'learning_rate') else 0.0001
     loaders = [train_loader, val_loader]
     loader_names = ['train', 'val']
     for epoch in range(args.n_epoch):
@@ -88,6 +124,13 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
             reg = 1e-6
             running_metrics.reset()
             for i, (images, labels) in enumerate(loader):
+                # work only for sgd
+                poly_lr_scheduler(optimizer,
+                                  init_lr=init_lr,
+                                  iter=epoch*len(loader)+i,
+                                  max_iter=args.n_epoch*len(loader),
+                                  power=power)
+                
                 images = torch.autograd.Variable(images.to(device).float())
                 labels = torch.autograd.Variable(labels.to(device).long())
 

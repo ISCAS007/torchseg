@@ -38,9 +38,9 @@ class simple_net(Module):
         # use gpu memory
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
-        optimizer = torch.optim.Adam(self.parameters(), lr = 0.0001)
+        optimizer = torch.optim.Adam(self.parameters(), lr = 0.0001,weight_decay=0.1)
 #        loss_fn=random.choice([torch.nn.NLLLoss(),torch.nn.CrossEntropyLoss()])
-        loss_fn=torch.nn.CrossEntropyLoss()
+        loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
         for epoch in range(args.n_epoch):
             for i, (images, labels) in enumerate(trainloader):
                 images = Variable(images.to(device).float())
@@ -57,15 +57,16 @@ class simple_net(Module):
                 optimizer.step()
                 
                 if (i+1) % 20 == 0:
-                    print("Epoch [%d/%d] Loss: %.4f" % (epoch+1, args.n_epoch, loss.data))
+                    print("Epoch [%d/%d] Loss: %.4f lr: %.4f" % (epoch+1, args.n_epoch, loss.data, optimizer.param_groups[-1]['lr']))
+                    print('param_groups',len(optimizer.param_groups))
                     
 if __name__ == '__main__':
     config=edict()
     config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
-    config.cityscapes_split=random.choice(['test','val','train'])
+    config.split=random.choice(['test','val','train'])
     config.resize_shape=(224,224)
     config=get_dataset_generalize_config(config,'Cityscapes')
-    dataset=dataset_generalize(config)
+    dataset=dataset_generalize(config,split=config.split)
     loader=TD.DataLoader(dataset=dataset,batch_size=2, shuffle=True,drop_last=False)
     args=edict()
     args.n_epoch=3
