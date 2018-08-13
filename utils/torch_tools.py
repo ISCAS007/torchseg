@@ -80,7 +80,9 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
         print('use default optimizer'+'*'*30)
         optimizer = get_optimizer(model)
 
-    print('use l1 and l2 reg loss'+'*'*30)
+    use_reg=model.config.model.use_reg if hasattr(model.config.model,'use_reg') else False
+    if use_reg:
+        print('use l1 and l2 reg loss'+'*'*30)
 
     if hasattr(model, 'loss_fn'):
         print('use loss function in model'+'*'*30)
@@ -133,7 +135,8 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
             print(loader_name+'.'*50)
             n_step = len(loader)
             losses = []
-            reg = 1e-6
+            l1_reg = 1e-7
+            l2_reg = 1e-5
             running_metrics.reset()
             for i, (images, labels) in enumerate(loader):
                 # work only for sgd
@@ -152,17 +155,18 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                 loss = loss_fn(input=seg_output, target=labels)
 
                 if loader_name == 'train':
-                    l2_loss = torch.autograd.Variable(
-                        torch.FloatTensor(1), requires_grad=True).to(device)
-                    l1_loss = torch.autograd.Variable(
-                        torch.FloatTensor(1), requires_grad=True).to(device)
-                    l2_loss = 0
-                    l1_loss = 0
-                    for name, param in model.named_parameters():
-                        if 'bias' not in name:
-                            l2_loss = l2_loss + torch.norm(param, 2)
-                            l1_loss = l1_loss + torch.norm(param, 1)
-                    loss = loss + reg * l2_loss + reg * l1_loss
+                    if use_reg:
+                        l2_loss = torch.autograd.Variable(
+                            torch.FloatTensor(1), requires_grad=True).to(device)
+                        l1_loss = torch.autograd.Variable(
+                            torch.FloatTensor(1), requires_grad=True).to(device)
+                        l2_loss = 0
+                        l1_loss = 0
+                        for name, param in model.named_parameters():
+                            if 'bias' not in name:
+                                l2_loss = l2_loss + torch.norm(param, 2)
+                                l1_loss = l1_loss + torch.norm(param, 1)
+                        loss = loss + l2_reg * l2_loss + l1_reg * l1_loss
                     loss.backward()
                     optimizer.step()
 
@@ -192,10 +196,11 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
 
             writer.add_scalar('%s/loss' % loader_name,
                               np.mean(losses), epoch)
-            writer.add_scalar('%s/l1_loss' % loader_name,
-                              reg*l1_loss, epoch)
-            writer.add_scalar('%s/l2_loss' % loader_name,
-                              reg*l2_loss, epoch)
+            if use_reg:
+                writer.add_scalar('%s/l1_loss' % loader_name,
+                                  l1_reg*l1_loss, epoch)
+                writer.add_scalar('%s/l2_loss' % loader_name,
+                                  l2_reg*l2_loss, epoch)
             writer.add_scalar('%s/acc' % loader_name,
                               score['Overall Acc: \t'], epoch)
             writer.add_scalar('%s/iou' % loader_name,

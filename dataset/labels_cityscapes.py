@@ -179,3 +179,10 @@ if __name__ == "__main__":
     trainId = 0
     name = trainId2label[trainId].name
     print("Name of label with trainID '{id}': {name}".format( id=trainId, name=name ))
+    
+    classes_name=[]
+    for label in labels:
+        if not label.ignoreInEval:
+            classes_name.append(label.name)
+    
+    print(classes_name)

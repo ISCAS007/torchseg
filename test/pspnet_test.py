@@ -40,6 +40,11 @@ if __name__ == '__main__':
                         help="optimizer name",
                         choices=['adam', 'sgd'],
                         default='adam')
+    
+    parser.add_argument("--use_reg",
+                        help='use l1 and l2 regularizer or not (default False)',
+                        default=False,
+                        type=bool)
 
     parser.add_argument('--dataset_name',
                         help='dataset name',
@@ -141,6 +146,7 @@ if __name__ == '__main__':
     config.model.momentum = 0.9
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
+    config.model.use_reg=args.use_reg
     config.model.backbone_name = args.backbone_name
     config.model.layer_preference = 'first'
 
