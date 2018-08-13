@@ -50,7 +50,7 @@ def get_optimizer(model):
     optimizer_params = model.params if hasattr(model, 'params') else [
         p for p in model.parameters() if p.requires_grad]
     if optimizer_str == 'adam':
-        optimizer = torch.optim.Adam(optimizer_params, lr=init_lr)
+        optimizer = torch.optim.Adam(optimizer_params, lr=init_lr, weight_decay=0.0001)
     elif optimizer_str == 'sgd':
         optimizer = torch.optim.SGD(
             optimizer_params, lr=init_lr, momentum=0.9, weight_decay=0.0001)

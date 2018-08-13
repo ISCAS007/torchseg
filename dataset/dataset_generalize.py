@@ -16,6 +16,15 @@ get image path from txt file, then do it!
 ├── objectInfo150.txt
 └── sceneCategories.txt
 
+cityscapes:
+    num_classes=19
+    ignore_index=255
+pascal
+    num_classes=21
+    ignore_index=255
+ade20k
+    num_classes=151
+    ignore_index=0
 """
 import torch.utils.data as TD
 import os
