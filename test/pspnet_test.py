@@ -11,7 +11,7 @@ from models.psp_edge import psp_edge
 from models.psp_global import psp_global
 from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
-from models.fcn import fcn
+from models.fcn import fcn,fcn8s,fcn16s,fcn32s
 from models.psp_aux import psp_aux
 from utils.augmentor import Augmentations
 from utils.torch_tools import do_train_or_val
@@ -61,7 +61,8 @@ if __name__ == '__main__':
     parser.add_argument('--net_name',
                         help='net name for semantic segmentaion',
                         choices=['pspnet', 'psp_edge', 'psp_global',
-                                 'psp_fractal', 'psp_dict', 'fcn', 'psp_aux'],
+                                 'psp_fractal', 'psp_dict', 'psp_aux',
+                                 'fcn','fcn8s','fcn16s','fcn32s'],
                         default='pspnet')
 
     parser.add_argument('--midnet_scale',

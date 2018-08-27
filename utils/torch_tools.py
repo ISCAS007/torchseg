@@ -220,13 +220,25 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
 
                 if val_image:
                     print('write image to tensorboard'+'.'*50)
+                    pixel_scale=255//model.class_number
                     idx = np.random.choice(predicts.shape[0])
+                    if config.dataset.norm:
+                        # to basic image net
+                        mean = [0.485, 0.456, 0.406]
+                        std = [0.229, 0.224, 0.225]
+                        origin_img = images.numpy()
+                        for i in range(3):
+                            origin_img[:, i , :, :] = images[:, i, :, :]*std[i]+mean[i]
+                        origin_img = origin_img*255.0
+                        # b,c,h,w -> b,h,w,c
+                        origin_img = origin_img.transpose((0, 2, 3, 1))
+                    
                     writer.add_image(
-                        'val/images', images[idx, :, :, :], epoch)
+                        'val/images', origin_img[idx, :, :, :], epoch)
                     writer.add_image(
-                        'val/predicts', torch.from_numpy(predicts[idx, :, :]), epoch)
+                        'val/predicts', torch.from_numpy(predicts[idx, :, :]*pixel_scale), epoch)
                     writer.add_image(
-                        'val/trues', torch.from_numpy(trues[idx, :, :]), epoch)
+                        'val/trues', torch.from_numpy(trues[idx, :, :]*pixel_scale), epoch)
                     diff_img = (predicts[idx, :, :] ==
                                 trues[idx, :, :]).astype(np.uint8)
                     writer.add_image('val/difference',
