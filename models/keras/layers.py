@@ -158,7 +158,7 @@ def unet(base_layers,upsample_layer,class_num,merge_mode):
 def Interp(x, shape):
     from keras.backend import tf as ktf
     new_height, new_width = shape
-    resized = ktf.image.resize_images(x, [int(new_height), int(new_width)], align_corners=False)
+    resized = ktf.image.resize_images(x, [int(new_height), int(new_width)], align_corners=True)
     return resized
 
 # interpolation block

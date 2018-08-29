@@ -5,6 +5,7 @@ from easydict import EasyDict as edict
 import argparse
 import torchsummary
 import torch
+import json
 
 from models.pspnet import pspnet
 from models.psp_edge import psp_edge
@@ -15,6 +16,7 @@ from models.fcn import fcn,fcn8s,fcn16s,fcn32s
 from models.psp_aux import psp_aux
 from utils.augmentor import Augmentations
 from utils.torch_tools import do_train_or_val
+from utils.disc_tools import str2bool
 
 if __name__ == '__main__':
     choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
@@ -44,7 +46,7 @@ if __name__ == '__main__':
     parser.add_argument("--use_reg",
                         help='use l1 and l2 regularizer or not (default False)',
                         default=False,
-                        type=bool)
+                        type=str2bool)
 
     parser.add_argument('--dataset_name',
                         help='dataset name',
@@ -82,7 +84,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--augmentation',
                         help='true or false to do augmentation',
-                        type=bool,
+                        type=str2bool,
                         default=True)
 
     parser.add_argument('--upsample_type',
@@ -107,12 +109,12 @@ if __name__ == '__main__':
 
     parser.add_argument('--use_momentum',
                         help='use mometnum or not?',
-                        type=bool,
+                        type=str2bool,
                         default=False)
 
     parser.add_argument('--backbone_pretrained',
                         help='when not use momentum, we can use weights pretrained on imagenet',
-                        type=bool,
+                        type=str2bool,
                         default=False)
 
     parser.add_argument('--input_shape',
@@ -122,12 +124,12 @@ if __name__ == '__main__':
 
     parser.add_argument('--augmentations_blur',
                         help='augmentations blur',
-                        type=bool,
+                        type=str2bool,
                         default=True)
 
     parser.add_argument('--augmentations_rotate',
                         help='augmentations rotate',
-                        type=bool,
+                        type=str2bool,
                         default=True)
 
     parser.add_argument('--note',
@@ -317,6 +319,10 @@ if __name__ == '__main__':
 
     elif test == 'summary':
         net = pspnet(config)
+        config_str = json.dumps(config, indent=2, sort_keys=True)
+        print(config_str)
+        print('args is '+'*'*30)
+        print(args)
         height, width = input_shape
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         torchsummary.summary(net.to(device), (3, height, width))

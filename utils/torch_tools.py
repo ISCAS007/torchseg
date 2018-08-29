@@ -61,6 +61,7 @@ def get_optimizer(model):
 
 
 def do_train_or_val(model, args, train_loader=None, val_loader=None):
+    config = model.config
     if hasattr(model, 'do_train_or_val'):
         print('warning: use do_train_or_val in model'+'*'*30)
         model.do_train_or_val(args, train_loader, val_loader)
@@ -69,6 +70,14 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
     # use gpu memory
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
+    
+    if device=='cuda':
+        gpu_num=torch.cuda.device_count()
+        if gpu_num > 1:
+            device_ids=[i for i in range(gpu_num)]
+            model=torch.nn.DataParallel(model,device_ids=device_ids)
+            print('use multi gpu',device_ids,'*'*30)
+    
     if hasattr(model, 'backbone'):
         if hasattr(model.backbone, 'model'):
             model.backbone.model.to(device)
@@ -104,7 +113,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
     best_iou = 0.6
 
     power = 0.9
-    config = model.config
+    
     init_lr = config.model.learning_rate if hasattr(
         config.model, 'learning_rate') else 0.0001
     loaders = [train_loader, val_loader]
@@ -193,6 +202,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                 config_path = os.path.join(log_dir, 'config.txt')
                 config_file = open(config_path, 'w')
                 json.dump(model.config, config_file, sort_keys=True)
+                config_file.close()
 
             writer.add_scalar('%s/loss' % loader_name,
                               np.mean(losses), epoch)
@@ -226,7 +236,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
                         # to basic image net
                         mean = [0.485, 0.456, 0.406]
                         std = [0.229, 0.224, 0.225]
-                        origin_img = images.numpy()
+                        origin_img = images.data.cpu().numpy()
                         for i in range(3):
                             origin_img[:, i , :, :] = images[:, i, :, :]*std[i]+mean[i]
                         origin_img = origin_img*255.0

@@ -81,7 +81,7 @@ class upsample_bilinear(TN.Module):
     def forward(self, x):
         x = self.conv_bn_relu(x)
         x = self.conv(x)
-        x = F.upsample(x, size=self.output_shape, mode='bilinear',align_corners=False)
+        x = F.upsample(x, size=self.output_shape, mode='bilinear',align_corners=True)
         return x
 
 class transform_psp(TN.Module):
@@ -126,7 +126,7 @@ class transform_psp(TN.Module):
                                                      eps=eps, 
                                                      momentum=momentum),
                                       TN.ReLU(),
-                                      TN.Upsample(size=(height,width), mode='bilinear', align_corners=False))
+                                      TN.Upsample(size=(height,width), mode='bilinear', align_corners=True))
             pool_paths.append(pool_path)
 
         self.pool_paths = TN.ModuleList(pool_paths)
@@ -378,7 +378,7 @@ class transform_aspp(TN.Module):
                                        TN.ReLU(),
                                        TN.Upsample(size=(h,w),
                                                    mode='bilinear',
-                                                   align_corners=False))
+                                                   align_corners=True))
                             
         self.final_conv=TN.Sequential(TN.Conv2d(in_channels=out_c*5,
                                                  out_channels=out_c,

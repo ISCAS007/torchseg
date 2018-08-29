@@ -68,7 +68,8 @@ class transform_psp(TN.Module):
         if in_size[-1] != min_input_size:
             psp_x = F.upsample(input=x,
                                size=min_input_size,
-                               mode='bilinear')
+                               mode='bilinear',
+                               align_corners=True)
         else:
             psp_x = x
 

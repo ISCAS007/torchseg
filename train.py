@@ -19,6 +19,7 @@ from models.psp_fractal import psp_fractal
 from models.psp_caffe import psp_caffe
 from utils.augmentor import Augmentations
 from utils.torch_tools import do_train_or_val
+from utils.disc_tools import str2bool
 
 if __name__ == '__main__':
     parser=argparse.ArgumentParser()
@@ -71,7 +72,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--augmentation',
                         help='true or false to do augmentation',
-                        type=bool,
+                        type=str2bool,
                         default=True)
     
     parser.add_argument('--upsample_type',
@@ -106,7 +107,7 @@ if __name__ == '__main__':
     config.model.midnet_name=args.midnet_name
     config.model.momentum=0.95
     config.model.inplace=False
-    config.model.align_corners=False
+    config.model.align_corners=True
         
     if args.input_shape==0:
         if args.midnet_name=='psp':

@@ -27,3 +27,11 @@ def show_images(images,titles=None):
             ax[i].set_title(titles[i])
 
     plt.show()
+    
+def str2bool(s):
+    if s.lower() in ['t','true','y','yes','1']:
+        return True
+    elif s.lower() in ['f','false','n','no','0']:
+        return False
+    else:
+        assert False,'unexpected value for bool type'

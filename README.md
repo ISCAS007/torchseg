@@ -3,16 +3,21 @@ use pytorch to do image semantic segmentation
 - train+val pspnet ```python test/pspnet_test.py --batch_size=8 --net_name=pspnet --augmentation=False --learning_rate=0.01 --optimizer=sgd --backbone_name=resnet101 --midnet_scale=10 --upsample_type=bilinear --backbone_pretrained=True```
 
 # experiments
-| net_name | backbone | midnet | suffix | dataset | note | miou(t/v) |
-| -------- | -------- | ------ | ------ | ------- | ---- | ---- |
-| pspnet | resnet50 | psp | bilinear | cityscapes | ---- | 0.6/0.5 |
-| pspent | resnet101 | psp | bilinear | cityscapes | --- | 0.5/? |
-| pspnet | - | - | - | - |
+| net_name | backbone  | midnet | suffix   | dataset    | note | miou(t/v) |
+| -------- | --------- | ------ | -------- | ---------- | ---- | --------- |
+| pspnet   | resnet50  | psp    | bilinear | cityscapes | ---- | 0.6/0.5   |
+| pspent   | resnet101 | psp    | bilinear | cityscapes | ---- | 0.5/?     |
 
-作者：cxuan
-链接：https://www.jianshu.com/p/7a655e5345b2
-來源：简书
-简书著作权归作者所有，任何形式的转载都请联系作者获得授权并注明出处。
+# [offical result](https://hszhao.github.io/projects/pspnet/)
+| net_name | backbone | dataset | note | miou |
+| -------- | -------- | ------- | ---- | ---- |
+| pspnet   |resnet101 | voc     | -    | 82.6 |
+| pspnet   |resnet101 | voc     | coco | 85.4 |
+| pspnet   |resnet101 |cityscape| -    | 78.4 |
+| pspnet   |resnet101 |cityscape|coarse| 80.2 |
+| pspnet   |resnet50  |ade20k   | ms   | 42.78|
+|deeplabv3+|xception  | voc     | -    | 87.8 |
+|deeplabv3+|xception  | voc     | JFT  | 89.0 |
 
 # requriments
 - for detail version see [requirements.txt](requirements.txt)
