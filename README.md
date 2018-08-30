@@ -3,10 +3,17 @@ use pytorch to do image semantic segmentation
 - train+val pspnet ```python test/pspnet_test.py --batch_size=8 --net_name=pspnet --augmentation=False --learning_rate=0.01 --optimizer=sgd --backbone_name=resnet101 --midnet_scale=10 --upsample_type=bilinear --backbone_pretrained=True```
 
 # experiments
-| net_name | backbone  | midnet | suffix   | dataset    | note | miou(t/v) |
-| -------- | --------- | ------ | -------- | ---------- | ---- | --------- |
-| pspnet   | resnet50  | psp    | bilinear | cityscapes | ---- | 0.6/0.5   |
-| pspent   | resnet101 | psp    | bilinear | cityscapes | ---- | 0.5/?     |
+| net_name    | backbone  | midnet | suffix   | dataset    | note | miou(t/v) |
+| --------    | --------- | ------ | -------- | ---------- | ---- | --------- |
+| pspnet      | resnet50  | psp    | bilinear | cityscapes |  1   | 0.6/0.5   |
+| pspent      | resnet101 | psp    | bilinear | cityscapes |  2   | 0.75/0.47 |
+| pspent      | resnet101 | psp    | bilinear | cityscapes |  3   | 0.80/0.50 |
+| psp_convert | resnet101 | psp    | bilinear | cityscapes |  4   | 0.80/0.50 |
+
+1. 100 epoch
+2. 100 epoch
+3. 200 epoch
+4. require GPU number >=2, input_shape=(713,713)
 
 # [offical result](https://hszhao.github.io/projects/pspnet/)
 | net_name | backbone | dataset | note | miou |

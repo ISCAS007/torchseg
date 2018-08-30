@@ -14,6 +14,8 @@ from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
 from models.fcn import fcn,fcn8s,fcn16s,fcn32s
 from models.psp_aux import psp_aux
+from models.psp_convert import psp_convert
+from models.psp_convert import CONFIG as psp_convert_config
 from utils.augmentor import Augmentations
 from utils.torch_tools import do_train_or_val
 from utils.disc_tools import str2bool
@@ -21,7 +23,8 @@ from utils.disc_tools import str2bool
 if __name__ == '__main__':
     choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
                'backbone', 'dict', 'fractal', 'upsample_type',
-               'pretrained', 'summary', 'naive', 'coarse']
+               'pretrained', 'summary', 'naive', 'coarse',
+               'convert']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -156,8 +159,10 @@ if __name__ == '__main__':
     config.model.midnet_pool_sizes = [6, 3, 2, 1]
     config.model.midnet_scale = args.midnet_scale
     config.model.midnet_name = args.midnet_name
-
-    if args.input_shape == 0:
+    
+    if args.test=='convert':
+        input_shape=tuple(psp_convert_config[args.dataset_name]['input_size'])
+    elif args.input_shape == 0:
         if args.midnet_name == 'psp':
             count_size = max(config.model.midnet_pool_sizes) * \
                 config.model.midnet_scale*2**args.upsample_layer
@@ -316,7 +321,15 @@ if __name__ == '__main__':
                 dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
             do_train_or_val(net, config.args,
                             coarse_train_loader, coarse_val_loader)
-
+    elif test == 'convert':
+        load_caffe_weight=False
+        net = psp_convert(dataset_name=args.dataset_name,load_caffe_weight=load_caffe_weight)
+        if load_caffe_weight:
+            net.load_state_dict(torch.load(psp_convert_config[args.dataset_name]['params']))
+            do_train_or_val(model=net, args=config.args, train_loader=train_loader, val_loader=val_loader, config=config)
+        else:
+            do_train_or_val(model=net, args=config.args, train_loader=train_loader, val_loader=val_loader, config=config)
+            
     elif test == 'summary':
         net = pspnet(config)
         config_str = json.dumps(config, indent=2, sort_keys=True)

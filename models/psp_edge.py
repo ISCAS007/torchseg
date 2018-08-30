@@ -24,7 +24,7 @@ class psp_edge(TN.Module):
         self.ignore_index=self.config.dataset.ignore_index
         
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
-        self.midnet_out_channels=self.config.model.midnet_out_channels
+        self.midnet_out_channels=2*self.midnet_input_shape[1]
         
         self.midnet=get_midnet(self.config,
                                self.midnet_input_shape,
@@ -66,6 +66,19 @@ class psp_edge(TN.Module):
         
         loaders=[train_loader,val_loader]
         loader_names=['train','val']
+        
+        if device.type=='cuda':
+            gpu_num=torch.cuda.device_count()
+            if gpu_num > 1:
+                device_ids=[i for i in range(gpu_num)]
+                self=torch.nn.DataParallel(self,device_ids=device_ids)
+                print('use multi gpu',device_ids,'*'*30)
+                time.sleep(3)
+            else:
+                print('use single gpu','*'*30)
+        else:
+            print('use cpu only','*'*30)
+        
         for epoch in range(args.n_epoch):
             for loader,loader_name in zip(loaders,loader_names):
                 if loader is None:

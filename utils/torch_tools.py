@@ -32,7 +32,7 @@ def poly_lr_scheduler(optimizer, init_lr, iter,
     if iter > max_iter:
         return optimizer
 
-    lr = init_lr*(1 - iter/max_iter)**power
+    lr = init_lr*(1 - iter/(1.0+max_iter))**power
     for param_group in optimizer.param_groups:
         lr_mult = param_group['lr_mult'] if hasattr(
             param_group, 'lr_mult') else 1
@@ -41,8 +41,7 @@ def poly_lr_scheduler(optimizer, init_lr, iter,
     return lr
 
 
-def get_optimizer(model):
-    config = model.config
+def get_optimizer(model,config):
     init_lr = config.model.learning_rate if hasattr(
         config.model, 'learning_rate') else 0.0001
     optimizer_str = config.model.optimizer if hasattr(
@@ -60,8 +59,14 @@ def get_optimizer(model):
     return optimizer
 
 
-def do_train_or_val(model, args, train_loader=None, val_loader=None):
-    config = model.config
+def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None):
+    if config is None:
+        config = model.config
+    
+    ignore_index=config.dataset.ignore_index
+    class_number=config.model.class_number
+    dataset_name=config.dataset.name
+        
     if hasattr(model, 'do_train_or_val'):
         print('warning: use do_train_or_val in model'+'*'*30)
         model.do_train_or_val(args, train_loader, val_loader)
@@ -70,13 +75,6 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
     # use gpu memory
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
-    
-    if device=='cuda':
-        gpu_num=torch.cuda.device_count()
-        if gpu_num > 1:
-            device_ids=[i for i in range(gpu_num)]
-            model=torch.nn.DataParallel(model,device_ids=device_ids)
-            print('use multi gpu',device_ids,'*'*30)
     
     if hasattr(model, 'backbone'):
         if hasattr(model.backbone, 'model'):
@@ -87,28 +85,29 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
         optimizer = model.optimizer
     else:
         print('use default optimizer'+'*'*30)
-        optimizer = get_optimizer(model)
+        optimizer = get_optimizer(model,config)
 
-    use_reg=model.config.model.use_reg if hasattr(model.config.model,'use_reg') else False
+    use_reg=config.model.use_reg if hasattr(config.model,'use_reg') else False
     if use_reg:
         print('use l1 and l2 reg loss'+'*'*30)
-
+    
+    
     if hasattr(model, 'loss_fn'):
         print('use loss function in model'+'*'*30)
         loss_fn = model.loss_fn
     else:
         print('use default loss funtion with ignore_index=%d' %
-              model.ignore_index, '*'*30)
-        loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.ignore_index)
+              ignore_index, '*'*30)
+        loss_fn = torch.nn.CrossEntropyLoss(ignore_index=ignore_index)
 
     # TODO metrics supprot ignore_index
-    running_metrics = runningScore(model.class_number)
+    running_metrics = runningScore(class_number)
 
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
     log_dir = os.path.join(args.log_dir, model.name,
-                           model.dataset_name, args.note, time_str)
+                           dataset_name, args.note, time_str)
     checkpoint_path = os.path.join(
-        log_dir, "{}_{}_best_model.pkl".format(model.name, model.dataset_name))
+        log_dir, "{}_{}_best_model.pkl".format(model.name, dataset_name))
     writer = None
     best_iou = 0.6
 
@@ -118,6 +117,22 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
         config.model, 'learning_rate') else 0.0001
     loaders = [train_loader, val_loader]
     loader_names = ['train', 'val']
+    
+    if device.type=='cuda':
+        gpu_num=torch.cuda.device_count()
+        if gpu_num > 1:
+            device_ids=[i for i in range(gpu_num)]
+            model=torch.nn.DataParallel(model,device_ids=device_ids)
+            print('use multi gpu',device_ids,'*'*30)
+            time.sleep(3)
+        else:
+            print('use single gpu','*'*30)
+    else:
+        print('use cpu only','*'*30)
+    
+    if train_loader is None:
+        args.n_epoch=1
+    
     for epoch in range(args.n_epoch):
         for loader, loader_name in zip(loaders, loader_names):
             if loader is None:
@@ -194,14 +209,14 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
             if writer is None:
                 os.makedirs(log_dir, exist_ok=True)
                 writer = SummaryWriter(log_dir=log_dir)
-                config_str = json.dumps(model.config, indent=2, sort_keys=True).replace(
+                config_str = json.dumps(config, indent=2, sort_keys=True).replace(
                     '\n', '\n\n').replace('  ', '\t')
                 writer.add_text(tag='config', text_string=config_str)
 
                 # write config to config.txt
                 config_path = os.path.join(log_dir, 'config.txt')
                 config_file = open(config_path, 'w')
-                json.dump(model.config, config_file, sort_keys=True)
+                json.dump(config, config_file, sort_keys=True)
                 config_file.close()
 
             writer.add_scalar('%s/loss' % loader_name,
@@ -230,7 +245,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None):
 
                 if val_image:
                     print('write image to tensorboard'+'.'*50)
-                    pixel_scale=255//model.class_number
+                    pixel_scale=255//config.model.class_number
                     idx = np.random.choice(predicts.shape[0])
                     if config.dataset.norm:
                         # to basic image net

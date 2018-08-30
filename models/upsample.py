@@ -84,7 +84,75 @@ class upsample_bilinear(TN.Module):
         x = F.upsample(x, size=self.output_shape, mode='bilinear',align_corners=True)
         return x
 
+class transform_psp_caffe(TN.Module):
+    """x->4x[pool->conv->bn->relu->upsample]->concat
+    when input_shape is choose according to scale and pool_sizes
+    transform_psp_caffe=transfrom_psp
+    
+    for feature layer with output size (batch_size,channel,height=x,width=x)
+    digraph G {
+      "feature[x,x]" -> "pool6[6,6]" -> "conv_bn_relu6[6,6]" -> "interp6[x,x]" -> "concat[x,x]"
+      "feature[x,x]" -> "pool3[3,3]" -> "conv_bn_relu3[3,3]" -> "interp3[x,x]" -> "concat[x,x]"
+      "feature[x,x]" -> "pool2[2,2]" -> "conv_bn_relu2[2,2]" -> "interp2[x,x]" -> "concat[x,x]"
+      "feature[x,x]" -> "pool1[1,1]" -> "conv_bn_relu1[1,1]" -> "interp1[x,x]" -> "concat[x,x]"
+    }
+    """
+    def __init__(self,pool_sizes,input_shape,eps=1e-5, momentum=0.1):
+        super().__init__()
+        b,in_channels,height,width=input_shape
+        out_c=in_channels//len(pool_sizes)
+        
+        pool_paths = []
+        for pool_size in pool_sizes:
+            pool_path = TN.Sequential(TN.AvgPool2d(kernel_size=(height//pool_size,width//pool_size),
+                                                   stride=(height//pool_size,width//pool_size),
+                                                   padding=0),
+                                      TN.Conv2d(in_channels=in_channels,
+                                                out_channels=out_c,
+                                                kernel_size=1,
+                                                stride=1,
+                                                padding=0,
+                                                bias=False),
+                                      TN.BatchNorm2d(num_features=out_c,
+                                                     eps=eps, 
+                                                     momentum=momentum),
+                                      TN.ReLU(),
+                                      TN.Upsample(size=(height,width), mode='bilinear', align_corners=True))
+            pool_paths.append(pool_path)
+
+        self.pool_paths = TN.ModuleList(pool_paths)
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+            
+    def forward(self, x):
+        output_slices = [x]
+        for module in self.pool_paths:
+            y = module(x)
+            output_slices.append(y)
+
+        x = torch.cat(output_slices, dim=1)
+        return x
+    
 class transform_psp(TN.Module):
+    """x->4x[pool->conv->bn->relu->upsample]->concat
+    input_shape[batch_size,channel,height,width]
+    height:lcm(pool_sizes)*scale*(2**upsample_ratio)
+    width:lcm(pool_sizes)*scale*(2**upsample_ratio)
+    lcm: least common multiple, lcm([4,5])=20, lcm([2,3,6])=6
+    
+    for feature layer with output size (batch_size,channel,height=x,width=x)
+    digraph G {
+      "feature[x,x]" -> "pool6[x/6*scale,x/6*scale]" -> "conv_bn_relu6[x/6*scale,x/6*scale]" -> "interp6[x,x]" -> "concat[x,x]"
+      "feature[x,x]" -> "pool3[x/3*scale,x/3*scale]" -> "conv_bn_relu3[x/3*scale,x/3*scale]" -> "interp3[x,x]" -> "concat[x,x]"
+      "feature[x,x]" -> "pool2[x/2*scale,x/2*scale]" -> "conv_bn_relu2[x/2*scale,x/2*scale]" -> "interp2[x,x]" -> "concat[x,x]"
+      "feature[x,x]" -> "pool1[x/1*scale,x/1*scale]" -> "conv_bn_relu1[x/1*scale,x/1*scale]" -> "interp1[x,x]" -> "concat[x,x]"
+    }
+    """
     def __init__(self, pool_sizes, scale, input_shape, out_channels, eps=1e-5, momentum=0.1):
         """
         pool_sizes = [1,2,3,6]
