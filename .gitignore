@@ -105,3 +105,10 @@ venv.bak/
 notebooks
 .idea
 models/mxnet/runs
+
+# voc
+*.zip
+test/comp6_test_cls
+test/comp6_test_cls_voc
+test/results
+
