@@ -112,3 +112,4 @@ test/comp6_test_cls
 test/comp6_test_cls_voc
 test/results
 
+*.tar.gz
