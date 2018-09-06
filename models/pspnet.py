@@ -3,7 +3,7 @@
 import torch.nn as TN
 from models.backbone import backbone
 from models.upsample import get_midnet, get_suffix_net
-
+from utils.torch_tools import freeze_layer
 
 class pspnet(TN.Module):
     def __init__(self, config):
@@ -17,6 +17,11 @@ class pspnet(TN.Module):
             use_momentum = False
 
         self.backbone = backbone(config.model, use_momentum=use_momentum)
+        
+        if hasattr(self.config.model,'backbone_freeze'):
+            if self.config.model.backbone_freeze:
+                print('freeze backbone weights'+'*'*30)
+                freeze_layer(self.backbone)
 
         self.upsample_layer = self.config.model.upsample_layer
         self.class_number = self.config.model.class_number
@@ -38,8 +43,7 @@ class pspnet(TN.Module):
                                       self.class_number)
         
         self.optimizer_params = [{'params': self.backbone.parameters(), 'lr_mult': 1},
-                                 {'params': self.midnet.parameters(),
-                                  'lr_mult': 10},
+                                 {'params': self.midnet.parameters(),'lr_mult': 10},
                                  {'params': self.decoder.parameters(), 'lr_mult': 20}]
 
     def forward(self, x):

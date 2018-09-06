@@ -4,9 +4,12 @@ import torch
 import numpy as np
 from tensorboardX import SummaryWriter
 from easydict import EasyDict as edict
+from dataset.dataset_generalize import image_normalizations
 import os
 import random
 import json
+import cv2
+from tqdm import trange
 
 def get_text():
     config = edict()
@@ -36,13 +39,19 @@ def get_text():
     
     return json.dumps(config,indent=2,sort_keys=True).replace('\n','\n\n').replace('  ','\t')
 
-log_dir='/home/yzbx/tmp/logs/pytorch/test'
+log_dir='/home/yzbx/tmp/logs/pytorch/test/norm_uint8'
 os.makedirs(name=log_dir,exist_ok=True)
 writer = SummaryWriter(log_dir)
 
 writer.add_text(tag='config',text_string=get_text())
-
-for n_iter in range(100):
+normalizations=image_normalizations('caffe')
+image_bgr=cv2.imread('test/image.png')
+image_rgb=cv2.cvtColor(image_bgr,cv2.COLOR_BGR2RGB)
+image_rgb_forward=normalizations.forward(image_rgb)
+image_diff_forward=cv2.absdiff(image_rgb_forward.astype(np.uint8),image_rgb)
+image_rgb_backward=normalizations.backward(image_rgb_forward)
+image_diff_backward=cv2.absdiff(image_rgb_forward.astype(np.uint8),image_norm)
+for n_iter in trange(30):
 
     dummy_s1 = torch.rand(1)
     dummy_s2 = torch.rand(1)
@@ -80,5 +89,10 @@ for n_iter in range(100):
         writer.add_image('test/image_j',image_j,global_step=n_iter)
         writer.add_image('test/image_k',image_k,global_step=n_iter)
         
-    
+        # rgb is the right way for tensorboard
+        writer.add_image('test/image_rgb',image_rgb,global_step=n_iter)
+        writer.add_image('test/image_bgr',image_bgr,global_step=n_iter)
+        writer.add_image('test/image_rgb_forward',image_rgb_forward.astype(np.uint8),global_step=n_iter)
+        writer.add_image('test/image_rgb_backward',image_rgb_backward.astype(np.uint8),global_step=n_iter)
+        
 writer.close()

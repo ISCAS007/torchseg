@@ -6,12 +6,12 @@ use pytorch to do image semantic segmentation
 | net_name    | backbone  | midnet | suffix   | dataset    | note | miou(t/v) |
 | --------    | --------- | ------ | -------- | ---------- | ---- | --------- |
 | pspnet      | resnet50  | psp    | bilinear | cityscapes |  1   | 0.6/0.5   |
-| pspent      | resnet101 | psp    | bilinear | cityscapes |  2   | 0.75/0.47 |
+| pspent      | resnet101 | psp    | bilinear | cityscapes |  1   | 0.75/0.47 |
 | pspent      | resnet101 | psp    | bilinear | cityscapes |  3   | 0.80/0.50 |
-| psp_convert | resnet101 | psp    | bilinear | cityscapes |  4   | 0.80/0.50 |
+| psp_convert | resnet101 | psp    | bilinear | cityscapes |  4   | -/- |
+| psp_edge    | resnet101 | psp    | bilinear | cityscapes |  3   | -/- |
 
 1. 100 epoch
-2. 100 epoch
 3. 200 epoch
 4. require GPU number >=2, input_shape=(713,713)
 
@@ -64,17 +64,6 @@ the miou is 0.8+
         - [resnet-101](https://dgschwend.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85) [ethereon](https://ethereon.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85)
         - [resnet-101-deploy](https://dgschwend.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150) [ethereon](https://ethereon.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150)
         - [pspnet101 cityscapes 713](https://dgschwend.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79) [ethereon](https://ethereon.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79)
-- [x] color for label image and predict image
-- [x] [keras empty net: use pytorch loader and tensorboard-pytorch in keras](models/keras/empty_net.py)
-- [x] ~[notebook for keras and empty net](notebooks)~
-- [x] [simple_model_test](test/simple_model_test.py)
-- [x] [motionnet](models/motionnet.py)
-- [x] tensorboard-pytorch, [10.0.0.39:6789](10.0.0.39:6789)
-- [x] [miou](utils/metrics.py)
-- [x] input image preprocess and augmentation
-    - [ ] ~~imagenet~~
-    - [x] [-1,1]
-    - [ ] ~~[0,1]~~
 - [x] pspnet + edge
     - [ ] multi input, output, loss, log
     - [ ] edge before pspnet or after pspnet ?
@@ -88,8 +77,6 @@ the miou is 0.8+
     - [x] max/mean feature
     - [ ] int parameter a learning for route (choice=int(a), a is the index for right class, for different class, we have different index)
     - [x] before upsample, otherwise will out of memory.
-- [x] the ignore_index for CrossEntropyLoss
-    - [x] foreground ids[0-18], background ids=ignore_index=255
 - [ ] multi outputs metrics support like keras
 - [x] [benchmark](test/benchmark_test.py)
     - [x] dataset loader with path

@@ -62,10 +62,12 @@ class conv_bn_relu(nn.Module):
                                  nn.BatchNorm2d(num_features=out_channels,
                                                 eps=1e-05,
                                                 momentum=0.1,
-                                                affine=True),
-                                 nn.ReLU(inplace=False))
+                                                affine=True)
+                                 )
+        self.relu=nn.ReLU(inplace=False)
     def forward(self,x):
         x = self.seq(x)
+        x = self.relu(x)
         return x
     
 class psp_convert(torch.nn.Module):

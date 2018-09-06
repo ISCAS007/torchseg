@@ -85,11 +85,13 @@ def get_dataset_generalize_config(config, dataset_name):
 
 
 class dataset_generalize(TD.Dataset):
-    def __init__(self, config, augmentations=None, split=None, bchw=True):
+    def __init__(self, config, augmentations=None, split=None, bchw=True, normalizations=None):
         self.config = config
         self.augmentations = augmentations
         self.bchw = bchw
         self.split = split
+        self.normalizations = normalizations
+        self.step = 0
 
         splits = ['train', 'val', 'test', 'train_extra']
         assert self.split in splits, 'unexcepted split %s for dataset, must be one of %s' % (
@@ -131,11 +133,6 @@ class dataset_generalize(TD.Dataset):
         else:
             self.ignore_index = 0
 
-        if hasattr(self.config, 'norm'):
-            self.norm = True
-        else:
-            self.norm = False
-
         print("Found %d image files, %d annotation files" %
               (len(self.image_files), len(self.annotation_files)))
         assert len(self.image_files) == len(self.annotation_files)
@@ -166,6 +163,7 @@ class dataset_generalize(TD.Dataset):
 
         :param index:
         """
+        self.step = self.step+1
         # eg root_path/leftImg8bit_trainvaltest/leftImg8bit/test/berlin/berlin_000000_000019_leftImg8bit.png
         img_path = self.image_files[index]
         # eg root_path/gtFine_trainvaltest/gtFine/test/berlin/berlin_000000_000019_gtFine_labelIds.png
@@ -217,18 +215,8 @@ class dataset_generalize(TD.Dataset):
 #        print('bgr',np.min(img),np.max(img),np.mean(img),np.std(img))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 #        print('rgb',np.min(img),np.max(img),np.mean(img),np.std(img))
-        if self.norm:
-            # to [-1,1]
-            #            img=2*img/255.0-1.0
-            # to [0,1]
-            img = img/255.0
-#            print('norm',np.min(img),np.max(img),np.mean(img),np.std(img))
-            # to basic image net
-            mean = [0.485, 0.456, 0.406]
-            std = [0.229, 0.224, 0.225]
-            new_img = img.copy()
-            for i in range(3):
-                img[:, :, i] = (new_img[:, :, i]-mean[i])/std[i]
+        if self.normalizations is not None:
+            img = self.normalizations.forward(img)
 
         if self.bchw:
             # convert image from (height,width,channel) to (channel,height,width)
@@ -244,13 +232,83 @@ class dataset_generalize(TD.Dataset):
 
         return img, ann
 
-    @staticmethod
-    def get_edge(ann_img, edge_width=5):
-        kernel = np.ones((edge_width, edge_width), np.uint8)
-        ann_edge = cv2.Canny(ann_img, 0, 1)
-        ann_dilation = cv2.dilate(ann_edge, kernel, iterations=1)
-        ann_dilation = (ann_dilation > 0).astype(np.uint8)
-        return ann_dilation
+    def get_edge(self, ann_img, edge_width=5):
+        if hasattr(self.config, 'edge_class_num'):
+            edge_class_num = self.config.edge_class_num
+        else:
+            edge_class_num = 2
+        
+        assert edge_class_num>=2,'edge class number %d must > 2'%edge_class_num
+        if edge_class_num == 2:
+            # bg=0, fg=1
+            kernel = np.ones((edge_width, edge_width), np.uint8)
+            ann_edge = cv2.Canny(ann_img, 0, 1)
+            ann_dilation = cv2.dilate(ann_edge, kernel, iterations=1)
+            edge_label = (ann_dilation > 0).astype(np.uint8)
+        else:
+            # fg=0, bg=1,2,...edge_class_num-1
+            edge_label = np.zeros_like(ann_img)+edge_class_num-1
+            ann_edge = cv2.Canny(ann_img, 0, 1)
+            kernel = np.ones((edge_width, edge_width), np.uint8)
+            for class_num in range(edge_class_num):
+                if class_num==0:
+                    edge_label[ann_edge>0]=class_num
+                    ann_dilation = cv2.dilate(ann_edge, kernel, iterations=1)
+                else:
+                    edge_label[np.logical_and(ann_dilation>0,edge_label==(edge_class_num-1))]=class_num
+                    ann_dilation = cv2.dilate(ann_dilation, kernel, iterations=1)
+        return edge_label
+
+
+class image_normalizations():
+    def __init__(self, ways='caffe'):
+        if ways == 'caffe(255-mean)' or ways == 'caffe' or ways.lower() in ['voc', 'voc2012']:
+            scale = 1.0
+            mean_rgb = [123.68, 116.779, 103.939]
+            std_rgb = [1.0, 1.0, 1.0]
+        elif ways.lower() in ['cityscapes', 'cityscape']:
+            scale = 1.0
+            mean_rgb = [72.39239876, 82.90891754, 73.15835921]
+            std_rgb = [1.0, 1.0, 1.0]
+        elif ways == 'pytorch(1.0-mean)/std' or ways == 'pytorch':
+            scale = 255.0
+            mean_rgb = [0.485, 0.456, 0.406]
+            std_rgb = [0.229, 0.224, 0.225]
+        elif ways == 'common(-1,1)' or ways == 'common':
+            scale = 255.0
+            mean_rgb = [0.5, 0.5, 0.5]
+            std_rgb = [0.5, 0.5, 0.5]
+        else:
+            assert False, 'unknown ways %s' % ways
+
+        self.mean_rgb = mean_rgb
+        self.std_rgb = std_rgb
+        self.scale = scale
+
+    def forward(self, img_rgb):
+        x = img_rgb/self.scale
+        for i in range(3):
+            x[:, :, i] = (x[:, :, i]-self.mean_rgb[i])/self.std_rgb[i]
+
+        return x
+
+    def backward(self, x_rgb):
+        x = np.zeros_like(x_rgb)
+        if x.ndim == 3:
+            for i in range(3):
+                x[:, :, i] = x_rgb[:, :, i]*self.std_rgb[i]+self.mean_rgb[i]
+
+            x = x*self.scale
+            return x
+        elif x.ndim == 4:
+            for i in range(3):
+                x[:, :, :, i] = x_rgb[:, :, :, i] * \
+                    self.std_rgb[i]+self.mean_rgb[i]
+
+            x = x*self.scale
+            return x
+        else:
+            assert False, 'unexpected input dim %d' % x.ndim
 
 
 if __name__ == '__main__':

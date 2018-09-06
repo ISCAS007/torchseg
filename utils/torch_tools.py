@@ -6,7 +6,62 @@ import json
 import os
 from tensorboardX import SummaryWriter
 from utils.metrics import runningScore
+from dataset.dataset_generalize import image_normalizations
 
+
+def add_image(summary_writer, name, image, step):
+  """
+  add numpy/tensor image with shape [2d,3d,4d] to summary
+  support [h,w] [h,w,1], [1,h,w], [h,w,3], [3,h,w], [b,h,w,c], [b,c,h,w] shape
+  combie with numpy,tensor
+  
+  note: data should in right range such as [0,1], [0,255] and right dtype
+  dtype: np.uint8 for [0,255]
+  """
+  if isinstance(image,np.ndarray):
+    if image.ndim==2:
+      summary_writer.add_image(name,torch.from_numpy(image),step)
+    elif image.ndim==3:
+      a,b,c=image.shape
+      if min(a,c)==1:
+        if a==1:
+          summary_writer.add_image(name,torch.from_numpy(image[0,:,:]),step)
+        else:
+          summary_writer.add_image(name,torch.from_numpy(image[:,:,0]),step)
+      else:
+        if a==3:
+          summary_writer.add_image(name,torch.from_numpy(image),step)
+        elif c==3:
+          summary_writer.add_image(name,image,step)
+        else:
+          assert False,'unexcepted image shape %s'%str(image.shape)
+    elif image.ndim==4:
+      add_image(summary_writer, name, image[0,:,:,:], step)
+    else:
+      assert False,'unexcepted image shape %s'%str(image.shape)
+  elif isinstance(image,torch.Tensor):
+    if image.dim()==2:
+      summary_writer.add_imge(name,image,step)
+    elif image.dim()==3:
+      a,b,c=image.shape
+      if min(a,c)==1:
+        if a==1:
+          summary_writer.add_image(name,image[0,:,:],step)
+        else:
+          summary_writer.add_image(name,image[:,:,0],step)
+      else:
+        if a==3:
+          summary_writer.add_image(name,image,step)
+        elif c==3:
+          summary_writer.add_image(name,image.data.cpu().numpy(),step)
+        else:
+          assert False,'unexcepted image shape %s'%str(image.shape)
+    elif image.dim()==4:
+      add_image(summary_writer, name, image[0,:,:,:], step)
+    else:
+      assert False,'unexcepted image shape %s'%str(image.shape)
+  else:
+    assert False,'unknown type %s'%type(image)
 
 def freeze_layer(layer):
     """
@@ -41,7 +96,7 @@ def poly_lr_scheduler(optimizer, init_lr, iter,
     return lr
 
 
-def get_optimizer(model,config):
+def get_optimizer(model, config):
     init_lr = config.model.learning_rate if hasattr(
         config.model, 'learning_rate') else 0.0001
     optimizer_str = config.model.optimizer if hasattr(
@@ -49,7 +104,8 @@ def get_optimizer(model,config):
     optimizer_params = model.params if hasattr(model, 'params') else [
         p for p in model.parameters() if p.requires_grad]
     if optimizer_str == 'adam':
-        optimizer = torch.optim.Adam(optimizer_params, lr=init_lr, weight_decay=0.0001)
+        optimizer = torch.optim.Adam(
+            optimizer_params, lr=init_lr, weight_decay=0.0001)
     elif optimizer_str == 'sgd':
         optimizer = torch.optim.SGD(
             optimizer_params, lr=init_lr, momentum=0.9, weight_decay=0.0001)
@@ -62,11 +118,11 @@ def get_optimizer(model,config):
 def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None):
     if config is None:
         config = model.config
-    
-    ignore_index=config.dataset.ignore_index
-    class_number=config.model.class_number
-    dataset_name=config.dataset.name
-        
+
+    ignore_index = config.dataset.ignore_index
+    class_number = config.model.class_number
+    dataset_name = config.dataset.name
+
     if hasattr(model, 'do_train_or_val'):
         print('warning: use do_train_or_val in model'+'*'*30)
         model.do_train_or_val(args, train_loader, val_loader)
@@ -75,7 +131,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
     # use gpu memory
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
-    
+
     if hasattr(model, 'backbone'):
         if hasattr(model.backbone, 'model'):
             model.backbone.model.to(device)
@@ -85,13 +141,13 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
         optimizer = model.optimizer
     else:
         print('use default optimizer'+'*'*30)
-        optimizer = get_optimizer(model,config)
+        optimizer = get_optimizer(model, config)
 
-    use_reg=config.model.use_reg if hasattr(config.model,'use_reg') else False
+    use_reg = config.model.use_reg if hasattr(
+        config.model, 'use_reg') else False
     if use_reg:
         print('use l1 and l2 reg loss'+'*'*30)
-    
-    
+
     if hasattr(model, 'loss_fn'):
         print('use loss function in model'+'*'*30)
         loss_fn = model.loss_fn
@@ -112,27 +168,28 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
     best_iou = 0.6
 
     power = 0.9
-    
+
     init_lr = config.model.learning_rate if hasattr(
         config.model, 'learning_rate') else 0.0001
     loaders = [train_loader, val_loader]
     loader_names = ['train', 'val']
-    
-    if device.type=='cuda':
-        gpu_num=torch.cuda.device_count()
+
+    if device.type == 'cuda':
+        gpu_num = torch.cuda.device_count()
         if gpu_num > 1:
-            device_ids=[i for i in range(gpu_num)]
-            model=torch.nn.DataParallel(model,device_ids=device_ids)
-            print('use multi gpu',device_ids,'*'*30)
+            device_ids = [i for i in range(gpu_num)]
+            model = torch.nn.DataParallel(model, device_ids=device_ids)
+            print('use multi gpu', device_ids, '*'*30)
             time.sleep(3)
         else:
-            print('use single gpu','*'*30)
+            print('use single gpu', '*'*30)
     else:
-        print('use cpu only','*'*30)
-    
+        print('use cpu only', '*'*30)
+
     if train_loader is None:
-        args.n_epoch=1
-    
+        args.n_epoch = 1
+
+    normalizations = image_normalizations(config.dataset.norm_ways)
     for epoch in range(args.n_epoch):
         for loader, loader_name in zip(loaders, loader_names):
             if loader is None:
@@ -245,25 +302,20 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
 
                 if val_image:
                     print('write image to tensorboard'+'.'*50)
-                    pixel_scale=255//config.model.class_number
+                    pixel_scale = 255//config.model.class_number
                     idx = np.random.choice(predicts.shape[0])
-                    if config.dataset.norm:
-                        # to basic image net
-                        mean = [0.485, 0.456, 0.406]
-                        std = [0.229, 0.224, 0.225]
-                        origin_img = images.data.cpu().numpy()
-                        for i in range(3):
-                            origin_img[:, i , :, :] = images[:, i, :, :]*std[i]+mean[i]
-                        origin_img = origin_img*255.0
-                        # b,c,h,w -> b,h,w,c
-                        origin_img = origin_img.transpose((0, 2, 3, 1))
-                    
+
+                    origin_img = images.data.cpu().numpy()
+                    origin_img = origin_img.transpose((0, 2, 3, 1))
+                    if normalizations is not None:
+                        origin_img = normalizations.backward(origin_img)
+
                     writer.add_image(
-                        'val/images', origin_img[idx, :, :, :], epoch)
+                        'val/images', origin_img[idx, :, :, :].astype(np.uint8), epoch)
                     writer.add_image(
-                        'val/predicts', torch.from_numpy(predicts[idx, :, :]*pixel_scale), epoch)
+                        'val/predicts', torch.from_numpy((predicts[idx, :, :]*pixel_scale).astype(np.uint8)), epoch)
                     writer.add_image(
-                        'val/trues', torch.from_numpy(trues[idx, :, :]*pixel_scale), epoch)
+                        'val/trues', torch.from_numpy((trues[idx, :, :]*pixel_scale).astype(np.uint8)), epoch)
                     diff_img = (predicts[idx, :, :] ==
                                 trues[idx, :, :]).astype(np.uint8)
                     writer.add_image('val/difference',

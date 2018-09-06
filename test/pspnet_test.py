@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import torch.utils.data as TD
-from dataset.dataset_generalize import dataset_generalize, get_dataset_generalize_config
+from dataset.dataset_generalize import dataset_generalize, get_dataset_generalize_config, image_normalizations
 from easydict import EasyDict as edict
 import argparse
 import torchsummary
@@ -12,7 +12,7 @@ from models.psp_edge import psp_edge
 from models.psp_global import psp_global
 from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
-from models.fcn import fcn,fcn8s,fcn16s,fcn32s
+from models.fcn import fcn, fcn8s, fcn16s, fcn32s
 from models.psp_aux import psp_aux
 from models.psp_convert import psp_convert
 from models.psp_convert import CONFIG as psp_convert_config
@@ -45,7 +45,7 @@ if __name__ == '__main__':
                         help="optimizer name",
                         choices=['adam', 'sgd'],
                         default='adam')
-    
+
     parser.add_argument("--use_reg",
                         help='use l1 and l2 regularizer or not (default False)',
                         default=False,
@@ -62,12 +62,23 @@ if __name__ == '__main__':
                         choices=['vgg16', 'vgg19', 'vgg16_bn', 'vgg19_bn', 'resnet18',
                                  'resnet34', 'resnet50', 'resnet101', 'resnet152'],
                         default='resnet50')
+    
+    parser.add_argument('--backbone_pretrained',
+                        help='when not use momentum, we can use weights pretrained on imagenet',
+                        type=str2bool,
+                        default=False)
+    
+    # work for pspnet and psp_edge
+    parser.add_argument('--backbone_freeze',
+                        help='finetune/freeze backbone or not',
+                        type=str2bool,
+                        default=False)
 
     parser.add_argument('--net_name',
                         help='net name for semantic segmentaion',
                         choices=['pspnet', 'psp_edge', 'psp_global',
                                  'psp_fractal', 'psp_dict', 'psp_aux',
-                                 'fcn','fcn8s','fcn16s','fcn32s'],
+                                 'fcn', 'fcn8s', 'fcn16s', 'fcn32s'],
                         default='pspnet')
 
     parser.add_argument('--midnet_scale',
@@ -109,14 +120,34 @@ if __name__ == '__main__':
                         help='layer number for auxnet',
                         type=int,
                         default=4)
+    
+    parser.add_argument('--edge_bg_weight',
+                        help='weight for edge bg, the edge fg weight is 1.0',
+                        type=float,
+                        default=0.01)
+    
+    parser.add_argument('--edge_base_weight',
+                        help='base weight for edge loss, weight for segmentation is 1.0',
+                        type=float,
+                        default=1.0)
+    
+    parser.add_argument('--edge_power',
+                        help='weight for edge power',
+                        type=float,
+                        default=0.9)
+    
+    parser.add_argument('--edge_class_num',
+                        help='class number for edge',
+                        type=int,
+                        default=2)
+    
+    parser.add_argument('--edge_width',
+                        help='width for dilate edge',
+                        type=int,
+                        default=10)
 
     parser.add_argument('--use_momentum',
                         help='use mometnum or not?',
-                        type=str2bool,
-                        default=False)
-
-    parser.add_argument('--backbone_pretrained',
-                        help='when not use momentum, we can use weights pretrained on imagenet',
                         type=str2bool,
                         default=False)
 
@@ -137,7 +168,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--note',
                         help='comment for tensorboard log',
-                        default='naive')
+                        default=None)
     args = parser.parse_args()
 
     config = edict()
@@ -152,7 +183,7 @@ if __name__ == '__main__':
     config.model.momentum = 0.9
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
-    config.model.use_reg=args.use_reg
+    config.model.use_reg = args.use_reg
     config.model.backbone_name = args.backbone_name
     config.model.layer_preference = 'first'
 
@@ -160,8 +191,21 @@ if __name__ == '__main__':
     config.model.midnet_scale = args.midnet_scale
     config.model.midnet_name = args.midnet_name
     
-    if args.test=='convert':
-        input_shape=tuple(psp_convert_config[args.dataset_name]['input_size'])
+    config.model.edge_bg_weight=args.edge_bg_weight
+    config.model.edge_base_weight=args.edge_base_weight
+    config.model.edge_power=args.edge_power
+
+    config.dataset = edict()
+    config.dataset.edge_class_num=args.edge_class_num
+    config.dataset.edge_width=args.edge_width
+    if args.dataset_name in ['VOC2012','Cityscapes']:
+        config.dataset.norm_ways = args.dataset_name.lower()
+    else:
+        config.dataset.norm_ways = 'pytorch'
+    
+    if args.test == 'convert':
+        input_shape = tuple(
+            psp_convert_config[args.dataset_name]['input_size'])
     elif args.input_shape == 0:
         if args.midnet_name == 'psp':
             count_size = max(config.model.midnet_pool_sizes) * \
@@ -172,10 +216,13 @@ if __name__ == '__main__':
     else:
         input_shape = (args.input_shape, args.input_shape)
 
+    if config.dataset.norm_ways is None:
+        normalizations = None
+    else:
+        normalizations = image_normalizations(config.dataset.norm_ways)
+
     config.model.input_shape = input_shape
     config.model.midnet_out_channels = 512
-
-    config.dataset = edict()
     config.dataset = get_dataset_generalize_config(
         config.dataset, args.dataset_name)
     if config.dataset.ignore_index == 0:
@@ -184,7 +231,6 @@ if __name__ == '__main__':
         config.model.class_number = len(config.dataset.foreground_class_ids)
     config.dataset.resize_shape = input_shape
     config.dataset.name = args.dataset_name.lower()
-    config.dataset.norm = True
     config.dataset.augmentations_blur = args.augmentations_blur
 
     config.args = edict()
@@ -203,20 +249,35 @@ if __name__ == '__main__':
         augmentations = None
 
     train_dataset = dataset_generalize(
-        config.dataset, split='train', augmentations=augmentations)
+        config.dataset, split='train',
+        augmentations=augmentations,
+        normalizations=normalizations)
     train_loader = TD.DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
+        dataset=train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True,
+        drop_last=True,
+        num_workers=8)
 
-    val_dataset = dataset_generalize(config.dataset, split='val',
-                                     augmentations=augmentations)
+    val_dataset = dataset_generalize(config.dataset, 
+                                     split='val',
+                                     augmentations=augmentations,
+                                     normalizations=normalizations)
     val_loader = TD.DataLoader(
-        dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
-
-    config.args.note = '_'.join([args.test,
-                                 args.note,
-                                 'bn'+str(batch_size),
-                                 'aug', str(args.augmentation)[0],
-                                 ])
+        dataset=val_dataset,
+        batch_size=batch_size, 
+        shuffle=True, 
+        drop_last=False, 
+        num_workers=8)
+    
+    if args.note is None:
+        config.args.note = '_'.join([args.test,
+                                     'bn'+str(batch_size),
+                                     'aug', str(args.augmentation)[0],
+                                     ])
+    else:
+        config.args.note=args.note
+        
     note = config.args.note
     test = args.test
     if test == 'naive':
@@ -224,11 +285,8 @@ if __name__ == '__main__':
         do_train_or_val(net, config.args, train_loader, val_loader)
     elif test == 'edge':
         config.dataset.with_edge = True
-        for edge_width in [10]:
-            config.dataset.edge_width = edge_width
-            config.args.note = '_'.join([note, 'edge_width', str(edge_width)])
-            net = psp_edge(config)
-            do_train_or_val(net, config.args, train_loader, val_loader)
+        net = psp_edge(config)
+        do_train_or_val(net, config.args, train_loader, val_loader)
     elif test == 'global':
         config.model.gnet_dilation_sizes = [16, 8, 4]
         config.args.note = note
@@ -311,25 +369,44 @@ if __name__ == '__main__':
             config.dataset.name = dataset_name.lower()
 
             coarse_train_dataset = dataset_generalize(
-                config.dataset, split='train', augmentations=augmentations)
+                config.dataset, 
+                split='train',
+                augmentations=augmentations,
+                normalizations=normalizations)
             coarse_train_loader = TD.DataLoader(
-                dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=8)
+                dataset=train_dataset, 
+                batch_size=batch_size,
+                shuffle=True,
+                drop_last=True,
+                num_workers=8)
 
-            coarse_val_dataset = dataset_generalize(config.dataset, split='val',
-                                                    augmentations=augmentations)
+            coarse_val_dataset = dataset_generalize(
+                    config.dataset, 
+                    split='val',
+                    augmentations=augmentations,
+                    normalizations=normalizations)
             coarse_val_loader = TD.DataLoader(
-                dataset=val_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=8)
+                dataset=val_dataset,
+                batch_size=batch_size, 
+                shuffle=True, 
+                drop_last=False, 
+                num_workers=8)
             do_train_or_val(net, config.args,
                             coarse_train_loader, coarse_val_loader)
     elif test == 'convert':
-        load_caffe_weight=False
-        net = psp_convert(dataset_name=args.dataset_name,load_caffe_weight=load_caffe_weight)
+        train_loader = None
+        load_caffe_weight = True
+        net = psp_convert(dataset_name=args.dataset_name,
+                          load_caffe_weight=load_caffe_weight)
         if load_caffe_weight:
-            net.load_state_dict(torch.load(psp_convert_config[args.dataset_name]['params']))
-            do_train_or_val(model=net, args=config.args, train_loader=train_loader, val_loader=val_loader, config=config)
+            do_train_or_val(model=net, args=config.args,
+                            train_loader=train_loader, val_loader=val_loader, config=config)
         else:
-            do_train_or_val(model=net, args=config.args, train_loader=train_loader, val_loader=val_loader, config=config)
-            
+            net.load_state_dict(torch.load(
+                psp_convert_config[args.dataset_name]['params']))
+            do_train_or_val(model=net, args=config.args,
+                            train_loader=train_loader, val_loader=val_loader, config=config)
+
     elif test == 'summary':
         net = pspnet(config)
         config_str = json.dumps(config, indent=2, sort_keys=True)
