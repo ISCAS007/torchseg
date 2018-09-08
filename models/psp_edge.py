@@ -4,7 +4,7 @@ import torch
 import torch.nn as TN
 from models.backbone import backbone
 from utils.metrics import runningScore
-from models.upsample import get_midnet, get_suffix_net
+from models.upsample import get_midnet, get_suffix_net, conv_bn_relu
 import numpy as np
 from tensorboardX import SummaryWriter
 from utils.torch_tools import get_optimizer, poly_lr_scheduler, freeze_layer
@@ -59,32 +59,25 @@ class psp_edge(TN.Module):
         else:
             self.edge_decoder = get_suffix_net(
                 self.config, self.class_number, self.edge_class_num)
-            self.edge_conv = TN.Sequential(TN.Conv2d(in_channels=self.edge_class_num,
-                                                     out_channels=512,
-                                                     kernel_size=1,
-                                                     stride=1,
-                                                     padding=1,
-                                                     bias=False),
-                                           TN.BatchNorm2d(num_features=512),
-                                           TN.ReLU())
-            self.feature_conv = TN.Sequential(TN.Conv2d(in_channels=self.midnet_out_channels,
-                                                        out_channels=512,
-                                                        kernel_size=1,
-                                                        stride=1,
-                                                        padding=1,
-                                                        bias=False),
-                                              TN.BatchNorm2d(num_features=512),
-                                              TN.ReLU())
-            self.seg_conv = TN.Sequential(TN.Conv2d(in_channels=1024,
-                                                    out_channels=512,
-                                                    kernel_size=1,
-                                                    stride=1,
-                                                    padding=1,
-                                                    bias=False),
-                                          TN.BatchNorm2d(num_features=512),
-                                          TN.ReLU())
+            self.edge_conv = conv_bn_relu(n_channels=self.edge_class_num,
+                                          out_channels=512,
+                                          kernel_size=1,
+                                          stride=1,
+                                          padding=0)
+            self.feature_conv = conv_bn_relu(in_channels=self.midnet_out_channels,
+                                             out_channels=512,
+                                             kernel_size=1,
+                                             stride=1,
+                                             padding=0)
+            # the input is torch.cat[512,512]
+            self.seg_conv = conv_bn_relu(in_channels=1024,
+                                         out_channels=512,
+                                         kernel_size=1,
+                                         stride=1,
+                                         padding=0)
             self.seg_decoder = get_suffix_net(
                 self.config, 512, self.class_number)
+            
 
     def forward(self, x):
         feature_map = self.backbone.forward(x, self.upsample_layer)
