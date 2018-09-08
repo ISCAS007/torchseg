@@ -29,16 +29,6 @@ def color_map(N=256, normalized=False):
     cmap = cmap/255 if normalized else cmap
     return cmap
 
-def test():    
-    img=Image.open('test/voc.png')
-    print(img.mode,np.unique(np.array(img)))
-    value=np.array(img)
-    print(value.shape,value.dtype,np.unique(value))
-    new_img=Image.fromarray(value,mode='P')
-    print(new_img.mode,np.unique(np.array(new_img)))
-    new_img.putpalette(img.getpalette())
-    new_img.save('test/pil_voc.png')
-
 def im2index(im,rgb2idx):
     """
     turn a 3 channel RGB image to 1 channel index image
@@ -53,13 +43,14 @@ def im2index(im,rgb2idx):
             m_lable[h, w, :] = rgb2idx[(r, g, b)]
     return np.squeeze(m_lable)
 
-def convert(source_filename,target_filename):
-    cmap=color_map()
-    rgb2idx={tuple(v):idx for idx,v in enumerate(cmap)}
+def convert(source_filename,target_filename,cmap,rgb2idx):
+    """
+    convert a RGB format image to P 
+    """
     palette=list(cmap.reshape(-1))
     cv_img_rgb=cv2.imread(source_filename)
     idx_img=im2index(cv_img_rgb,rgb2idx)
-    print(np.unique(idx_img))
+#    print(np.unique(idx_img))
     pil_img=Image.fromarray(idx_img,mode='P')
     pil_img.putpalette(palette)
     pil_img.save(target_filename)
@@ -72,6 +63,8 @@ if __name__ == '__main__':
     print(src_files[0:3])
     print(des_files[0:3])
     
+    cmap=color_map()
+    rgb2idx={tuple(v):idx for idx,v in enumerate(cmap)}
     for src,des in tqdm(zip(src_files,des_files)):
-        convert(src,des)
+        convert(src,des,cmap,rgb2idx)
     

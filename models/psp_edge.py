@@ -63,8 +63,8 @@ class psp_edge(TN.Module):
         
         edge_bg_weight=config.model.edge_bg_weight
         if edge_class_num==2:
-            # edge bg=0, fg=1
-            edge_weight_list=[edge_bg_weight,1.0]
+            # edge fg=0, bg=1
+            edge_weight_list=[1.0,edge_bg_weight]
         else:
             # edge fg=0, bg=1,2,...,edge_class_num-1
             edge_weight_list=[edge_bg_weight for i in range(edge_class_num)]

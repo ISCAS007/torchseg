@@ -244,6 +244,8 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
                         l2_loss = 0
                         l1_loss = 0
                         for name, param in model.named_parameters():
+                            if param.requires_grad==False:
+                                continue
                             if 'bias' not in name:
                                 l2_loss = l2_loss + torch.norm(param, 2)
                                 l1_loss = l1_loss + torch.norm(param, 1)

@@ -239,24 +239,24 @@ class dataset_generalize(TD.Dataset):
             edge_class_num = 2
         
         assert edge_class_num>=2,'edge class number %d must > 2'%edge_class_num
+        kernel = np.ones((edge_width, edge_width), np.uint8)
+        ann_edge = cv2.Canny(ann_img, 0, 1)
+        # remove ignore area in ann_img
+        ann_edge[ann_img==self.ignore_index]=0
+        
+        ann_dilation = cv2.dilate(ann_edge, kernel, iterations=1)
         if edge_class_num == 2:
-            # bg=0, fg=1
-            kernel = np.ones((edge_width, edge_width), np.uint8)
-            ann_edge = cv2.Canny(ann_img, 0, 1)
-            ann_dilation = cv2.dilate(ann_edge, kernel, iterations=1)
-            edge_label = (ann_dilation > 0).astype(np.uint8)
+            # fg=0, bg=1
+            edge_label = (ann_dilation == 0).astype(np.uint8)
         else:
             # fg=0, bg=1,2,...edge_class_num-1
             edge_label = np.zeros_like(ann_img)+edge_class_num-1
-            ann_edge = cv2.Canny(ann_img, 0, 1)
-            kernel = np.ones((edge_width, edge_width), np.uint8)
-            for class_num in range(edge_class_num):
-                if class_num==0:
-                    edge_label[ann_edge>0]=class_num
-                    ann_dilation = cv2.dilate(ann_edge, kernel, iterations=1)
-                else:
-                    edge_label[np.logical_and(ann_dilation>0,edge_label==(edge_class_num-1))]=class_num
-                    ann_dilation = cv2.dilate(ann_dilation, kernel, iterations=1)
+            for class_num in range(edge_class_num-1):
+                edge_label[np.logical_and(ann_dilation>0,edge_label==(edge_class_num-1))]=class_num
+                ann_dilation = cv2.dilate(ann_dilation, kernel, iterations=1)
+                
+        # remove ignore area in ann_img
+        edge_label[ann_img==self.ignore_index]=self.ignore_index
         return edge_label
 
 
