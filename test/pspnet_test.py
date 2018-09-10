@@ -50,6 +50,16 @@ if __name__ == '__main__':
                         help='use l1 and l2 regularizer or not (default False)',
                         default=False,
                         type=str2bool)
+    
+    parser.add_argument('--l1_reg',
+                        help='l1 reg loss weights',
+                        type=float,
+                        default=1e-7)
+    
+    parser.add_argument('--l2_reg',
+                        help='l2 reg loss weights',
+                        type=float,
+                        default=1e-5)
 
     parser.add_argument('--dataset_name',
                         help='dataset name',
@@ -145,6 +155,11 @@ if __name__ == '__main__':
                         help='width for dilate edge',
                         type=int,
                         default=10)
+    
+    parser.add_argument('--edge_seg_order',
+                        help='edge seg order',
+                        choices=['first','later','same'],
+                        default='same')
 
     parser.add_argument('--use_momentum',
                         help='use mometnum or not?',
@@ -184,8 +199,12 @@ if __name__ == '__main__':
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
     config.model.use_reg = args.use_reg
+    config.model.l1_reg=args.l1_reg
+    config.model.l2_reg=args.l2_reg
     config.model.backbone_name = args.backbone_name
+    config.model.backbone_freeze = args.backbone_freeze
     config.model.layer_preference = 'first'
+    config.model.edge_seg_order=args.edge_seg_order
 
     config.model.midnet_pool_sizes = [6, 3, 2, 1]
     config.model.midnet_scale = args.midnet_scale

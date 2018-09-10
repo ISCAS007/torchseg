@@ -42,6 +42,7 @@ class psp_edge(TN.Module):
 
         if hasattr(self.config.model, 'edge_seg_order'):
             self.edge_seg_order = self.config.model.edge_seg_order
+            print('the edge and seg order is %s'%self.edge_seg_order,'*'*30)
             assert self.edge_seg_order in ['same','first','later'],'unexcepted edge seg order %s'%self.edge_seg_order
         else:
             self.edge_seg_order = 'same'
@@ -53,30 +54,25 @@ class psp_edge(TN.Module):
                 self.config, self.midnet_out_channels, self.edge_class_num)
         elif self.edge_seg_order == 'later':
             self.seg_decoder = get_suffix_net(
-                self.config, self.midnet_out_channels, self.class_number)
+                self.config, self.midnet_out_channels, self.class_number,need_upsample_feature=True)
             self.edge_decoder = get_suffix_net(
                 self.config, self.class_number, self.edge_class_num)
         else:
             self.edge_decoder = get_suffix_net(
-                self.config, self.class_number, self.edge_class_num)
-            self.edge_conv = conv_bn_relu(n_channels=self.edge_class_num,
-                                          out_channels=512,
-                                          kernel_size=1,
-                                          stride=1,
-                                          padding=0)
+                self.config, self.midnet_out_channels, self.edge_class_num, need_upsample_feature=True)
             self.feature_conv = conv_bn_relu(in_channels=self.midnet_out_channels,
-                                             out_channels=512,
+                                             out_channels=self.class_number,
                                              kernel_size=1,
                                              stride=1,
                                              padding=0)
-            # the input is torch.cat[512,512]
-            self.seg_conv = conv_bn_relu(in_channels=1024,
-                                         out_channels=512,
+            # the input is torch.cat[self.edge_class_num,self.class_number]
+            self.seg_conv = conv_bn_relu(in_channels=self.edge_class_num+self.class_number,
+                                         out_channels=2*self.class_number,
                                          kernel_size=1,
                                          stride=1,
                                          padding=0)
             self.seg_decoder = get_suffix_net(
-                self.config, 512, self.class_number)
+                self.config, 2*self.class_number, self.class_number)
             
 
     def forward(self, x):
@@ -87,13 +83,12 @@ class psp_edge(TN.Module):
             seg = self.seg_decoder(feature_mid)
             edge = self.edge_decoder(feature_mid)
         elif self.edge_seg_order == 'later':
-            seg = self.seg_decoder(feature_mid)
-            edge = self.edge_decoder(seg)
+            seg_feature, seg = self.seg_decoder(feature_mid)
+            edge = self.edge_decoder(seg_feature)
         else:
-            edge = self.edge_decoder(seg)
-            x_edge = self.edge_conv(edge)
+            edge_feature,edge = self.edge_decoder(feature_mid)
             x_feature = self.feature_conv(feature_mid)
-            x_merge = torch.cat([x_edge, x_feature], dim=1)
+            x_merge = torch.cat([edge_feature, x_feature], dim=1)
             x_seg = self.seg_conv(x_merge)
             seg = self.seg_decoder(x_seg)
 
@@ -276,17 +271,17 @@ class psp_edge(TN.Module):
                             origin_img = normalizations.backward(origin_img)
 
                         origin_edge = edges.data.cpu().numpy()
-                        print('origine edge shape', origin_edge.shape)
+                        print('origine edge shape', origin_edge.shape, type(origin_edge))
 #                        origin_edge = origin_edge.transpose((0, 2, 3, 1))
 
                         writer.add_image(
                             'val/images', origin_img[idx, :, :, :].astype(np.uint8), epoch)
                         writer.add_image(
-                            'val/edges', torch.from_numpy(edge_pixel_scale*origin_edge[idx, :, :].astype(np.uint8)), epoch)
-                        writer.add_image(
                             'val/predicts', torch.from_numpy((predicts[idx, :, :]*pixel_scale).astype(np.uint8)), epoch)
                         writer.add_image(
-                            'val/edges_predicts', torch.from_numpy((edge_pixel_scale*edge_pre[idx, :, :]).astype(np.uint8)), epoch)
+                            'val/edges', torch.from_numpy((origin_edge[idx, :, :]*edge_pixel_scale).astype(np.uint8)), epoch)
+                        writer.add_image(
+                            'val/edges_predicts', torch.from_numpy((edge_pre[idx, :, :]*edge_pixel_scale).astype(np.uint8)), epoch)
                         writer.add_image(
                             'val/trues', torch.from_numpy((trues[idx, :, :]*pixel_scale).astype(np.uint8)), epoch)
                         diff_img = (predicts[idx, :, :] ==

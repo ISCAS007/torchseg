@@ -216,8 +216,8 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
             print(loader_name+'.'*50)
             n_step = len(loader)
             losses = []
-            l1_reg = 1e-7
-            l2_reg = 1e-5
+            l1_reg = config.model.l1_reg
+            l2_reg = config.model.l2_reg
             running_metrics.reset()
             for i, (images, labels) in enumerate(loader):
                 # work only for sgd

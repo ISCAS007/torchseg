@@ -50,7 +50,6 @@ image_rgb=cv2.cvtColor(image_bgr,cv2.COLOR_BGR2RGB)
 image_rgb_forward=normalizations.forward(image_rgb)
 image_diff_forward=cv2.absdiff(image_rgb_forward.astype(np.uint8),image_rgb)
 image_rgb_backward=normalizations.backward(image_rgb_forward)
-image_diff_backward=cv2.absdiff(image_rgb_forward.astype(np.uint8),image_norm)
 for n_iter in trange(30):
 
     dummy_s1 = torch.rand(1)
@@ -59,9 +58,9 @@ for n_iter in trange(30):
     writer.add_scalar('test/scalar1', dummy_s1[0], n_iter)
     writer.add_scalar('test/scalar2', dummy_s2[0], n_iter)
 
-    writer.add_scalars('test/scalar_group', {'xsinx': n_iter * np.sin(n_iter),
-                                             'xcosx': n_iter * np.cos(n_iter),
-                                             'arctanx': np.arctan(n_iter)}, n_iter)
+#    writer.add_scalars('test/scalar_group', {'xsinx': n_iter * np.sin(n_iter),
+#                                             'xcosx': n_iter * np.cos(n_iter),
+#                                             'arctanx': np.arctan(n_iter)}, n_iter)
     
     if (n_iter+1)%10==0:
         image_a = torch.rand(3,100,100)

@@ -19,7 +19,7 @@ class conv_bn_relu(TN.Module):
         out_channels: class number
         upsample_ratio: 2**upsample_layer
         """
-        super(upsample_duc, self).__init__()
+        super().__init__()
 
         self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
                                                     out_channels=out_channels,
@@ -81,11 +81,12 @@ class upsample_duc(TN.Module):
 
 
 class upsample_bilinear(TN.Module):
-    def __init__(self, in_channels, out_channels, output_shape, eps=1e-5, momentum=0.1):
+    def __init__(self, in_channels, out_channels, output_shape, eps=1e-5, momentum=0.1, need_upsample_feature=False):
         """
         out_channels: class number
         """
         super().__init__()
+        self.need_upsample_feature=need_upsample_feature
         self.output_shape = output_shape
         self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
                                                     out_channels=512,
@@ -116,10 +117,14 @@ class upsample_bilinear(TN.Module):
 
     def forward(self, x):
         x = self.conv_bn_relu(x)
-        x = self.conv(x)
-        x = F.upsample(x, size=self.output_shape,
+        upsample_feature = self.conv(x)
+        x = F.upsample(upsample_feature, size=self.output_shape,
                        mode='bilinear', align_corners=True)
-        return x
+        
+        if self.need_upsample_feature:
+            return upsample_feature,x
+        else:
+            return x
 
 
 class transform_psp_caffe(TN.Module):
@@ -580,7 +585,7 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
     return midnet
 
 
-def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
+def get_suffix_net(config, midnet_out_channels, class_number, aux=False, need_upsample_feature=False):
     if aux:
         upsample_type = config.model.auxnet_type
         upsample_layer = config.model.auxnet_layer
@@ -607,7 +612,7 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
     elif upsample_type == 'bilinear':
         print('upsample is bilinear'+'*'*50)
         decoder = upsample_bilinear(
-            midnet_out_channels, class_number, input_shape[0:2], eps=eps, momentum=momentum)
+            midnet_out_channels, class_number, input_shape[0:2], eps=eps, momentum=momentum, need_upsample_feature=need_upsample_feature)
     else:
         assert False, 'unknown upsample type %s' % upsample_type
 
