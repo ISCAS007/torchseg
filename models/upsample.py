@@ -115,10 +115,11 @@ class upsample_bilinear(TN.Module):
                 TN.init.constant_(m.weight, 1)
                 TN.init.constant_(m.bias, 0)
 
+    #TODO upsampel feature is self.conv_bn_relu(x) or self.conv(x)
     def forward(self, x):
-        x = self.conv_bn_relu(x)
-        upsample_feature = self.conv(x)
-        x = F.upsample(upsample_feature, size=self.output_shape,
+        upsample_feature = x = self.conv_bn_relu(x)
+        x = self.conv(x)
+        x = F.upsample(x, size=self.output_shape,
                        mode='bilinear', align_corners=True)
         
         if self.need_upsample_feature:

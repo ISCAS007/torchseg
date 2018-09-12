@@ -5,6 +5,7 @@ from models.backbone import backbone
 from models.upsample import get_midnet, get_suffix_net
 from tensorboardX import SummaryWriter
 from utils.metrics import runningScore
+from utils.torch_tools import get_optimizer
 import numpy as np
 import time
 import os
@@ -46,7 +47,7 @@ class psp_aux(TN.Module):
                                       self.midnet_out_channels,
                                       self.class_number)
 
-        self.optimizer_params = [{'params': self.backbone.parameters(), 'lr_mult': 1},
+        self.optimizer_params = [{'params': [p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1},
                                  {'params': self.midnet.parameters(), 'lr_mult': 10},
                                  {'params': self.auxnet.parameters(), 'lr_mult': 20},
                                  {'params': self.decoder.parameters(), 'lr_mult': 20}]
@@ -69,7 +70,8 @@ class psp_aux(TN.Module):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
         self.backbone.model.to(device)
-        optimizer = self.optimizer
+        #TODO loss fn for all model!
+        optimizer = get_optimizer(self, self.config)
         loss_fn = torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
 
         # metrics

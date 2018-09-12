@@ -118,7 +118,7 @@ class psp_caffe(TN.Module):
                 TN.init.constant_(m.weight, 1)
                 TN.init.constant_(m.bias, 0)
 
-        self.optimizer_params = [{'params': self.backbone.parameters(), 'lr_mult': 1},
+        self.optimizer_params = [{'params': [p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1},
                                  {'params': self.midnet.parameters(),
                                   'lr_mult': 10},
                                  {'params': self.suffix_net.parameters(), 'lr_mult': 20}]

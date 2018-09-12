@@ -56,17 +56,17 @@ class psp_edge(TN.Module):
             self.seg_decoder = get_suffix_net(
                 self.config, self.midnet_out_channels, self.class_number,need_upsample_feature=True)
             self.edge_decoder = get_suffix_net(
-                self.config, self.class_number, self.edge_class_num)
+                self.config, 512, self.edge_class_num)
         else:
             self.edge_decoder = get_suffix_net(
                 self.config, self.midnet_out_channels, self.edge_class_num, need_upsample_feature=True)
             self.feature_conv = conv_bn_relu(in_channels=self.midnet_out_channels,
-                                             out_channels=self.class_number,
+                                             out_channels=512,
                                              kernel_size=1,
                                              stride=1,
                                              padding=0)
             # the input is torch.cat[self.edge_class_num,self.class_number]
-            self.seg_conv = conv_bn_relu(in_channels=self.edge_class_num+self.class_number,
+            self.seg_conv = conv_bn_relu(in_channels=512+512,
                                          out_channels=2*self.class_number,
                                          kernel_size=1,
                                          stride=1,
@@ -247,8 +247,13 @@ class psp_edge(TN.Module):
                                   score['Overall Acc: \t'], epoch)
                 writer.add_scalar('%s/iou' % loader_name,
                                   score['Mean IoU : \t'], epoch)
+                
                 writer.add_scalar('%s/lr' % loader_name,
                                   optimizer.param_groups[0]['lr'], epoch)
+                for idx,params in enumerate(optimizer.param_groups):
+                    if idx>0:
+                        writer.add_scalar('%s/lr_%d' % (loader_name,idx),
+                                  optimizer.param_groups[idx]['lr'], epoch)
 
                 if loader_name == 'val':
                     if score['Mean IoU : \t'] >= best_iou:

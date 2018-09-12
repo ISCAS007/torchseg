@@ -88,10 +88,9 @@ def poly_lr_scheduler(optimizer, init_lr, iter,
         return optimizer
 
     lr = init_lr*(1 - iter/(1.0+max_iter))**power
-    for param_group in optimizer.param_groups:
-        lr_mult = param_group['lr_mult'] if hasattr(
-            param_group, 'lr_mult') else 1
-        param_group['lr'] = lr*lr_mult
+    for i,p in enumerate(optimizer.param_groups):
+        lr_mult = p['lr_mult'] if 'lr_mult' in p.keys() else 1.0
+        optimizer.param_groups[i]['lr'] = lr*lr_mult
 
     return lr
 
@@ -101,8 +100,16 @@ def get_optimizer(model, config):
         config.model, 'learning_rate') else 0.0001
     optimizer_str = config.model.optimizer if hasattr(
         config.model, 'optimizer') else 'adam'
-    optimizer_params = model.params if hasattr(model, 'params') else [
-        p for p in model.parameters() if p.requires_grad]
+            
+    if hasattr(model,'optimizer_params'):
+        optimizer_params = model.optimizer_params
+        for i,p in enumerate(optimizer_params):
+            lr_mult = p['lr_mult'] if 'lr_mult' in p.keys() else 1.0
+            optimizer_params[i]['lr']=init_lr*lr_mult
+    else:
+        optimizer_params = [
+            p for p in model.parameters() if p.requires_grad]
+
     if optimizer_str == 'adam':
         optimizer = torch.optim.Adam(
             optimizer_params, lr=init_lr, weight_decay=0.0001)
@@ -136,12 +143,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
         if hasattr(model.backbone, 'model'):
             model.backbone.model.to(device)
 
-    if hasattr(model, 'optimizer'):
-        print('use optimizer in model'+'*'*30)
-        optimizer = model.optimizer
-    else:
-        print('use default optimizer'+'*'*30)
-        optimizer = get_optimizer(model, config)
+    optimizer = get_optimizer(model, config)
 
     use_reg = config.model.use_reg if hasattr(
         config.model, 'use_reg') else False
@@ -247,8 +249,9 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
                             if param.requires_grad==False:
                                 continue
                             if 'bias' not in name:
-                                l2_loss = l2_loss + torch.norm(param, 2)
+#                                l2_loss = l2_loss + torch.norm(param, 2)
                                 l1_loss = l1_loss + torch.norm(param, 1)
+                                l2_loss = l2_loss + torch.sum(param**2)/2
                         loss = loss + l2_reg * l2_loss + l1_reg * l1_loss
                     loss.backward()
                     optimizer.step()
@@ -291,7 +294,11 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
                               score['Mean IoU : \t'], epoch)
             writer.add_scalar('%s/lr' % loader_name,
                               optimizer.param_groups[0]['lr'], epoch)
-
+            for idx,params in enumerate(optimizer.param_groups):
+                if idx>0:
+                    writer.add_scalar('%s/lr_%d' % (loader_name,idx),
+                              optimizer.param_groups[idx]['lr'], epoch)
+                        
             if loader_name == 'val':
                 if score['Mean IoU : \t'] >= best_iou:
                     best_iou = score['Mean IoU : \t']
