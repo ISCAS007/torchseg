@@ -53,7 +53,7 @@ def get_parser():
     choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
                'backbone', 'dict', 'fractal', 'upsample_type',
                'pretrained', 'summary', 'naive', 'coarse',
-               'convert']
+               'convert','hyperopt']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -209,7 +209,12 @@ def get_parser():
                         help='augmentations rotate',
                         type=str2bool,
                         default=True)
-
+    
+    parser.add_argument('--hyperopt',
+                        help='tree search or bayes search for hyper parameters',
+                        choices=['tpe','bayes'],
+                        default='tpe')
+    
     parser.add_argument('--note',
                         help='comment for tensorboard log',
                         default=None)

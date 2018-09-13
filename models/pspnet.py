@@ -20,7 +20,7 @@ class pspnet(TN.Module):
         
         if hasattr(self.config.model,'backbone_freeze'):
             if self.config.model.backbone_freeze:
-                print('freeze backbone weights'+'*'*30)
+#                print('freeze backbone weights'+'*'*30)
                 freeze_layer(self.backbone)
 
         self.upsample_layer = self.config.model.upsample_layer

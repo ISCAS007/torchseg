@@ -7,6 +7,7 @@ import os
 from tensorboardX import SummaryWriter
 from utils.metrics import runningScore
 from dataset.dataset_generalize import image_normalizations
+from tqdm import tqdm
 
 
 def add_image(summary_writer, name, image, step):
@@ -131,7 +132,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
     dataset_name = config.dataset.name
 
     if hasattr(model, 'do_train_or_val'):
-        print('warning: use do_train_or_val in model'+'*'*30)
+#        print('warning: use do_train_or_val in model'+'*'*30)
         model.do_train_or_val(args, train_loader, val_loader)
         return 0
 
@@ -147,15 +148,15 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
 
     use_reg = config.model.use_reg if hasattr(
         config.model, 'use_reg') else False
-    if use_reg:
-        print('use l1 and l2 reg loss'+'*'*30)
+#    if use_reg:
+#        print('use l1 and l2 reg loss'+'*'*30)
 
     if hasattr(model, 'loss_fn'):
-        print('use loss function in model'+'*'*30)
+#        print('use loss function in model'+'*'*30)
         loss_fn = model.loss_fn
     else:
-        print('use default loss funtion with ignore_index=%d' %
-              ignore_index, '*'*30)
+#        print('use default loss funtion with ignore_index=%d' %
+#              ignore_index, '*'*30)
         loss_fn = torch.nn.CrossEntropyLoss(ignore_index=ignore_index)
 
     # TODO metrics supprot ignore_index
@@ -167,7 +168,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
     checkpoint_path = os.path.join(
         log_dir, "{}_{}_best_model.pkl".format(model.name, dataset_name))
     writer = None
-    best_iou = 0.6
+    best_iou = 0.0
 
     power = 0.9
 
@@ -181,12 +182,14 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
         if gpu_num > 1:
             device_ids = [i for i in range(gpu_num)]
             model = torch.nn.DataParallel(model, device_ids=device_ids)
-            print('use multi gpu', device_ids, '*'*30)
+#            print('use multi gpu', device_ids, '*'*30)
             time.sleep(3)
         else:
-            print('use single gpu', '*'*30)
+#            print('use single gpu', '*'*30)
+            pass
     else:
-        print('use cpu only', '*'*30)
+#        print('use cpu only', '*'*30)
+        pass
 
     if train_loader is None:
         args.n_epoch = 1
@@ -215,13 +218,13 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
             else:
                 model.train()
 
-            print(loader_name+'.'*50)
+#            print(loader_name+'.'*50)
             n_step = len(loader)
             losses = []
             l1_reg = config.model.l1_reg
             l2_reg = config.model.l2_reg
             running_metrics.reset()
-            for i, (images, labels) in enumerate(loader):
+            for i, (images, labels) in enumerate(tqdm(loader)):
                 # work only for sgd
                 poly_lr_scheduler(optimizer,
                                   init_lr=init_lr,
@@ -252,7 +255,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
 #                                l2_loss = l2_loss + torch.norm(param, 2)
                                 l1_loss = l1_loss + torch.norm(param, 1)
                                 l2_loss = l2_loss + torch.sum(param**2)/2
-                        loss = loss + l2_reg * l2_loss + l1_reg * l1_loss
+                        loss = loss + l2_loss*l2_reg + l1_loss*l1_reg
                     loss.backward()
                     optimizer.step()
 
@@ -262,11 +265,11 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
                 running_metrics.update(trues, predicts)
                 score, class_iou = running_metrics.get_scores()
 
-                if (i+1) % 5 == 0:
-                    print("%s, Epoch [%d/%d] Step [%d/%d] Total Loss: %.4f" %
-                          (loader_name, epoch+1, args.n_epoch, i, n_step, loss.data))
-                    for k, v in score.items():
-                        print(k, v)
+#                if (i+1) % 5 == 0:
+#                    print("%s, Epoch [%d/%d] Step [%d/%d] Total Loss: %.4f" %
+#                          (loader_name, epoch+1, args.n_epoch, i, n_step, loss.data))
+#                    for k, v in score.items():
+#                        print(k, v)
 
             if writer is None:
                 os.makedirs(log_dir, exist_ok=True)
@@ -285,9 +288,9 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
                               np.mean(losses), epoch)
             if use_reg:
                 writer.add_scalar('%s/l1_loss' % loader_name,
-                                  l1_reg*l1_loss, epoch)
+                                  l1_loss*l1_reg, epoch)
                 writer.add_scalar('%s/l2_loss' % loader_name,
-                                  l2_reg*l2_loss, epoch)
+                                  l2_loss*l2_reg, epoch)
             writer.add_scalar('%s/acc' % loader_name,
                               score['Overall Acc: \t'], epoch)
             writer.add_scalar('%s/iou' % loader_name,
@@ -302,15 +305,15 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
             if loader_name == 'val':
                 if score['Mean IoU : \t'] >= best_iou:
                     best_iou = score['Mean IoU : \t']
-                    state = {'epoch': epoch+1,
-                             'miou': best_iou,
-                             'model_state': model.state_dict(),
-                             'optimizer_state': optimizer.state_dict(), }
-
-                    torch.save(state, checkpoint_path)
+#                    state = {'epoch': epoch+1,
+#                             'miou': best_iou,
+#                             'model_state': model.state_dict(),
+#                             'optimizer_state': optimizer.state_dict(), }
+#
+#                    torch.save(state, checkpoint_path)
 
                 if val_image:
-                    print('write image to tensorboard'+'.'*50)
+#                    print('write image to tensorboard'+'.'*50)
                     pixel_scale = 255//config.model.class_number
                     idx = np.random.choice(predicts.shape[0])
 
@@ -331,3 +334,4 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
                                      torch.from_numpy(diff_img), epoch)
 
     writer.close()
+    return best_iou

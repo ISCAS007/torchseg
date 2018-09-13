@@ -75,7 +75,7 @@ def summary(rootpath):
 if __name__ == '__main__':
     rootpath=os.path.expanduser('~/tmp/logs/pytorch')
     tasks=summary(rootpath)
-    print(tasks)
+    print(tasks.sort_values(by='val/iou'))
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
     tab_file=os.path.join(rootpath,time_str+'.tab')
-    tasks.to_csv(tab_file,sep='\t')
+#    tasks.to_csv(tab_file,sep='\t')

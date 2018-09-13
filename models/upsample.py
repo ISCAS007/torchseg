@@ -565,7 +565,7 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
         momentum = 0.1
 
     if midnet_name == 'psp':
-        print('midnet is psp'+'*'*50)
+#        print('midnet is psp'+'*'*50)
         midnet_pool_sizes = config.model.midnet_pool_sizes
         midnet_scale = config.model.midnet_scale
         midnet = transform_psp(midnet_pool_sizes,
@@ -575,7 +575,7 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
                                eps=eps,
                                momentum=momentum)
     elif midnet_name == 'aspp':
-        print('midnet is aspp'+'*'*50)
+#        print('midnet is aspp'+'*'*50)
         output_stride = 2**config.model.upsample_layer
         midnet = transform_aspp(output_stride=output_stride,
                                 input_shape=midnet_input_shape,
@@ -606,12 +606,12 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False, need_up
         momentum = 0.1
 
     if upsample_type == 'duc':
-        print('upsample is duc'+'*'*50)
+#        print('upsample is duc'+'*'*50)
         r = 2**upsample_layer
         decoder = upsample_duc(midnet_out_channels,
                                class_number, r, eps=eps, momentum=momentum)
     elif upsample_type == 'bilinear':
-        print('upsample is bilinear'+'*'*50)
+#        print('upsample is bilinear'+'*'*50)
         decoder = upsample_bilinear(
             midnet_out_channels, class_number, input_shape[0:2], eps=eps, momentum=momentum, need_upsample_feature=need_upsample_feature)
     else:
