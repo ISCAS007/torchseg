@@ -42,6 +42,7 @@ def get_dataset_generalize_config(config, dataset_name):
     if dataset_name == 'ADEChallengeData2016':
         # train + val, no test
         config.root_path = '/media/sdb/CVDataset/ObjectSegmentation/ADEChallengeData2016'
+        assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.image_txt_path = os.path.join(config.root_path, 'images')
         config.annotation_txt_path = os.path.join(
             config.root_path, 'annotations')
@@ -51,30 +52,40 @@ def get_dataset_generalize_config(config, dataset_name):
         assert False, 'the ADE20K dataset luck some of detail'
         # train + val
         config.root_path = '/media/sdb/CVDataset/ObjectSegmentation/ADE20K_2016_07_26/images'
+        assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'ade20k'
-        config.txt_path = '/home/yzbx/git/torchseg/dataset/txt'
+        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
+        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
 #        config.foreground_class_ids=[i for i in range(20)]
 #        config.ignore_index=255
     elif dataset_name == 'VOC2012':
         # train + val, no test
-        config.root_path = '/media/sdb/CVDataset/VOC'
+#        config.root_path = '/media/sdb/CVDataset/VOC'
+        config.root_path = os.path.expanduser('~/.cv/datasets/VOC')
+        assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'voc2012'
-        config.txt_path = '/home/yzbx/git/torchseg/dataset/txt'
+        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
+        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
+#        config.txt_path = '/home/yzbx/git/torchseg/dataset/txt'
         config.foreground_class_ids = [i for i in range(21)]
         config.ignore_index = 255
     elif dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
         # train + val + test
-        config.root_path = '/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+        config.root_path = os.path.expanduser('~/.cv/datasets/Cityscapes')
+        assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'cityscapes_fine'
-        config.txt_path = '/home/yzbx/git/torchseg/dataset/txt'
+        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
+        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
         config.foreground_class_ids = [
             7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
         config.ignore_index = 255
     elif dataset_name == 'Cityscapes_Coarse':
         # train + val + train_extra
         config.root_path = '/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+        assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'cityscapes_coarse'
-        config.txt_path = '/home/yzbx/git/torchseg/dataset/txt'
+        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
+        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
         config.foreground_class_ids = [
             7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
         config.ignore_index = 255
@@ -223,16 +234,21 @@ class dataset_generalize(TD.Dataset):
             img = img.transpose((2, 0, 1))
 
         if hasattr(self.config, 'with_edge'):
+            edge_img=None
+            if hasattr(self.config,'edge_with_gray'):
+                if self.config.edge_with_gray:
+                    edge_img=img
+            
             if self.config.with_edge:
                 edge = self.get_edge(
-                    ann_img=ann, edge_width=self.config.edge_width)
+                    ann_img=ann, edge_width=self.config.edge_width, img=edge_img)
                 return img, ann, edge
         if hasattr(self.config, 'with_path'):
             return {'image': (img, ann), 'filename': (img_path, lbl_path)}
 
         return img, ann
 
-    def get_edge(self, ann_img, edge_width=5):
+    def get_edge(self, ann_img, edge_width=5, img=None):
         if hasattr(self.config, 'edge_class_num'):
             edge_class_num = self.config.edge_class_num
         else:
@@ -240,7 +256,13 @@ class dataset_generalize(TD.Dataset):
         
         assert edge_class_num>=2,'edge class number %d must > 2'%edge_class_num
         kernel = np.ones((edge_width, edge_width), np.uint8)
-        ann_edge = cv2.Canny(ann_img, 0, 1)
+        if img is None:
+            ann_edge = cv2.Canny(ann_img, 0, 1)
+        else:
+            ann_edge = cv2.Canny(ann_img, 0, 1)
+            gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+            edge=cv2.Canny(gray,100,200)
+            ann_edge=edge+ann_edge
         # remove ignore area in ann_img
         ann_edge[ann_img==self.ignore_index]=0
         
