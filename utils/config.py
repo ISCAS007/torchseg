@@ -189,6 +189,11 @@ def get_parser():
                         help='edge seg order',
                         choices=['first','later','same'],
                         default='same')
+    
+    parser.add_argument('--edge_with_gray',
+                        help='add semantic edge with gray edge',
+                        type=str2bool,
+                        default=False)
 
     parser.add_argument('--use_momentum',
                         help='use mometnum or not?',

@@ -56,6 +56,7 @@ if __name__ == '__main__':
     config.dataset = edict()
     config.dataset.edge_class_num=args.edge_class_num
     config.dataset.edge_width=args.edge_width
+    config.dataset.edge_with_gray=args.edge_with_gray
     if args.dataset_name in ['VOC2012','Cityscapes']:
         config.dataset.norm_ways = args.dataset_name.lower()
     else:
@@ -139,6 +140,8 @@ if __name__ == '__main__':
     note = config.args.note
     test = args.test
     if test == 'naive':
+        if args.net_name=='psp_edge':
+            config.dataset.with_edge = True
         net = globals()[args.net_name](config)
         do_train_or_val(net, config.args, train_loader, val_loader)
     elif test == 'edge':

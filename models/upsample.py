@@ -81,12 +81,11 @@ class upsample_duc(TN.Module):
 
 
 class upsample_bilinear(TN.Module):
-    def __init__(self, in_channels, out_channels, output_shape, eps=1e-5, momentum=0.1, need_upsample_feature=False):
+    def __init__(self, in_channels, out_channels, output_shape, eps=1e-5, momentum=0.1):
         """
         out_channels: class number
         """
         super().__init__()
-        self.need_upsample_feature=need_upsample_feature
         self.output_shape = output_shape
         self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
                                                     out_channels=512,
@@ -116,13 +115,13 @@ class upsample_bilinear(TN.Module):
                 TN.init.constant_(m.bias, 0)
 
     #TODO upsampel feature is self.conv_bn_relu(x) or self.conv(x)
-    def forward(self, x):
+    def forward(self, x, need_upsample_feature=False):
         upsample_feature = x = self.conv_bn_relu(x)
         x = self.conv(x)
         x = F.upsample(x, size=self.output_shape,
                        mode='bilinear', align_corners=True)
         
-        if self.need_upsample_feature:
+        if need_upsample_feature:
             return upsample_feature,x
         else:
             return x
@@ -586,7 +585,7 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
     return midnet
 
 
-def get_suffix_net(config, midnet_out_channels, class_number, aux=False, need_upsample_feature=False):
+def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
     if aux:
         upsample_type = config.model.auxnet_type
         upsample_layer = config.model.auxnet_layer
@@ -613,7 +612,7 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False, need_up
     elif upsample_type == 'bilinear':
 #        print('upsample is bilinear'+'*'*50)
         decoder = upsample_bilinear(
-            midnet_out_channels, class_number, input_shape[0:2], eps=eps, momentum=momentum, need_upsample_feature=need_upsample_feature)
+            midnet_out_channels, class_number, input_shape[0:2], eps=eps, momentum=momentum)
     else:
         assert False, 'unknown upsample type %s' % upsample_type
 

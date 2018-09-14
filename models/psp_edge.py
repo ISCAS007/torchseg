@@ -54,12 +54,12 @@ class psp_edge(TN.Module):
                 self.config, self.midnet_out_channels, self.edge_class_num)
         elif self.edge_seg_order == 'later':
             self.seg_decoder = get_suffix_net(
-                self.config, self.midnet_out_channels, self.class_number,need_upsample_feature=True)
+                self.config, self.midnet_out_channels, self.class_number)
             self.edge_decoder = get_suffix_net(
                 self.config, 512, self.edge_class_num)
         else:
             self.edge_decoder = get_suffix_net(
-                self.config, self.midnet_out_channels, self.edge_class_num, need_upsample_feature=True)
+                self.config, self.midnet_out_channels, self.edge_class_num)
             self.feature_conv = conv_bn_relu(in_channels=self.midnet_out_channels,
                                              out_channels=512,
                                              kernel_size=1,
@@ -67,12 +67,12 @@ class psp_edge(TN.Module):
                                              padding=0)
             # the input is torch.cat[self.edge_class_num,self.class_number]
             self.seg_conv = conv_bn_relu(in_channels=512+512,
-                                         out_channels=2*self.class_number,
+                                         out_channels=512,
                                          kernel_size=1,
                                          stride=1,
                                          padding=0)
             self.seg_decoder = get_suffix_net(
-                self.config, 2*self.class_number, self.class_number)
+                self.config, 512, self.class_number)
             
 
     def forward(self, x):
@@ -83,10 +83,10 @@ class psp_edge(TN.Module):
             seg = self.seg_decoder(feature_mid)
             edge = self.edge_decoder(feature_mid)
         elif self.edge_seg_order == 'later':
-            seg_feature, seg = self.seg_decoder(feature_mid)
+            seg_feature, seg = self.seg_decoder(feature_mid,need_upsample_feature=True)
             edge = self.edge_decoder(seg_feature)
         else:
-            edge_feature,edge = self.edge_decoder(feature_mid)
+            edge_feature,edge = self.edge_decoder(feature_mid,need_upsample_feature=True)
             x_feature = self.feature_conv(feature_mid)
             x_merge = torch.cat([edge_feature, x_feature], dim=1)
             x_seg = self.seg_conv(x_merge)
