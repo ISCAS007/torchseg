@@ -6,6 +6,8 @@ import argparse
 import pandas as pd
 from utils.torch_tools import do_train_or_val
 import torch
+from tqdm import tqdm,trange
+from time import sleep
 
 class psp_opt():
     def __init__(self,psp_model,config,train_loader,val_loader):
@@ -136,8 +138,9 @@ if __name__ == '__main__':
         px=torch.tensor(x,device='cpu',requires_grad=True)
         py=torch.tensor(y,device='cpu',requires_grad=True)
         s=torch.tensor(0.5,device='cpu',requires_grad=True)
-        for i in range(3):
+        for i in trange(10,leave=False):
             s=s+0.5*px+py
+            sleep(0.1)
         return s
     
     if args.fn=='fn_demo':

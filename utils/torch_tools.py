@@ -7,7 +7,7 @@ import os
 from tensorboardX import SummaryWriter
 from utils.metrics import runningScore
 from dataset.dataset_generalize import image_normalizations
-from tqdm import tqdm
+from tqdm import tqdm,trange
 
 
 def add_image(summary_writer, name, image, step):
@@ -195,7 +195,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
         args.n_epoch = 1
 
     normalizations = image_normalizations(config.dataset.norm_ways)
-    for epoch in range(args.n_epoch):
+    for epoch in trange(args.n_epoch,desc='epoches',leave=False):
         for loader, loader_name in zip(loaders, loader_names):
             if loader is None:
                 continue
@@ -224,7 +224,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
             l1_reg = config.model.l1_reg
             l2_reg = config.model.l2_reg
             running_metrics.reset()
-            for i, (images, labels) in enumerate(tqdm(loader)):
+            for i, (images, labels) in enumerate(trange(loader,desc='steps',leave=False)):
                 # work only for sgd
                 poly_lr_scheduler(optimizer,
                                   init_lr=init_lr,
