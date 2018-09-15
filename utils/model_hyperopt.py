@@ -52,7 +52,7 @@ class psp_opt():
                     results[col]=[value]
                 
             tasks=pd.DataFrame(results,columns=cols)
-            tasks.to_csv(path='hyperopt_%s.tab'%args.note,sep='\t')
+            tasks.to_csv(path_or_buf='hyperopt_%s.tab'%args.note,sep='\t')
             score=1-best_val_miou
             return score
         
@@ -90,11 +90,11 @@ class psp_opt():
                     results[col]=[value]
                 
             tasks=pd.DataFrame(results,columns=cols)
-            tasks.to_csv(path='hyperopt_%s.tab'%args.note,sep='\t')
+            tasks.to_csv(path_or_buf='hyperopt_%s.tab'%config.args.note,sep='\t')
             return best_val_miou
         
         bo=bayesopt(target,{'base_lr':[0.01,1e-4],'l1_reg':[1e-3,1e-7],'l2_reg':[1e-3,1e-7]})
-        bo.maximize(init_points=5,n_iter=10,kappa=2)
+        bo.maximize(init_points=1,n_iter=1,kappa=2)
         best=bo.res['max']
         
         print('*'*50)
@@ -134,7 +134,7 @@ if __name__ == '__main__':
         x,y=xyz
         return x+y
     
-    def fn_bayes(x,y):
+    def fn_bayes(x,y,z):
         px=torch.tensor(x,device='cpu',requires_grad=True)
         py=torch.tensor(y,device='cpu',requires_grad=True)
         s=torch.tensor(0.5,device='cpu',requires_grad=True)
@@ -159,7 +159,7 @@ if __name__ == '__main__':
                     algo=tpe.suggest,
                     max_evals=30)
     else:
-        bo=bayesopt(fn_bayes,{'x':[-10,10],'y':[-10,10]})
+        bo=bayesopt(fn_bayes,{'x':[-10,10],'y':[-10,10],'z':[-10,10]})
         bo.maximize(init_points=5,n_iter=10,kappa=2)
         best=bo.res['max']
         print(bo.res['all'])

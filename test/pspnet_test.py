@@ -15,10 +15,12 @@ from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
 from models.fcn import fcn, fcn8s, fcn16s, fcn32s
 from models.psp_aux import psp_aux
+from models.merge_seg import merge_seg
+from models.cross_merge import cross_merge
 from models.psp_convert import psp_convert
 from models.psp_convert import CONFIG as psp_convert_config
 from utils.augmentor import Augmentations
-from utils.torch_tools import do_train_or_val
+from utils.torch_tools import do_train_or_val,keras_fit
 from utils.config import get_parser
 
 if __name__ == '__main__':
@@ -31,6 +33,7 @@ if __name__ == '__main__':
     config.model.auxnet_type = args.auxnet_type
     config.model.upsample_layer = args.upsample_layer
     config.model.auxnet_layer = args.auxnet_layer
+    config.model.cross_merge_times=args.cross_merge_times
     config.model.use_momentum = args.use_momentum
     config.model.backbone_pretrained = args.backbone_pretrained
     config.model.eps = 1e-5
@@ -57,6 +60,7 @@ if __name__ == '__main__':
     config.dataset.edge_class_num=args.edge_class_num
     config.dataset.edge_width=args.edge_width
     config.dataset.edge_with_gray=args.edge_with_gray
+    config.dataset.with_edge=False
     if args.dataset_name in ['VOC2012','Cityscapes']:
         config.dataset.norm_ways = args.dataset_name.lower()
     else:
@@ -140,10 +144,11 @@ if __name__ == '__main__':
     note = config.args.note
     test = args.test
     if test == 'naive':
-        if args.net_name=='psp_edge':
+        if args.net_name in ['psp_edge','merge_seg','cross_merge']:
             config.dataset.with_edge = True
         net = globals()[args.net_name](config)
-        do_train_or_val(net, config.args, train_loader, val_loader)
+#        do_train_or_val(net, config.args, train_loader, val_loader)
+        keras_fit(net,train_loader,val_loader)
     elif test == 'edge':
         config.dataset.with_edge = True
         net = psp_edge(config)
@@ -269,7 +274,7 @@ if __name__ == '__main__':
                             train_loader=train_loader, val_loader=val_loader, config=config)
 
     elif test == 'summary':
-        net = pspnet(config)
+        net = globals()[args.net_name](config)
         config_str = json.dumps(config, indent=2, sort_keys=True)
         print(config_str)
         print('args is '+'*'*30)

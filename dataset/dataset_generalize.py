@@ -226,23 +226,24 @@ class dataset_generalize(TD.Dataset):
 #        print('bgr',np.min(img),np.max(img),np.mean(img),np.std(img))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 #        print('rgb',np.min(img),np.max(img),np.mean(img),np.std(img))
-        if self.normalizations is not None:
-            img = self.normalizations.forward(img)
-
-        if self.bchw:
-            # convert image from (height,width,channel) to (channel,height,width)
-            img = img.transpose((2, 0, 1))
-
-        if hasattr(self.config, 'with_edge'):
+        if self.config.with_edge:
             edge_img=None
             if hasattr(self.config,'edge_with_gray'):
                 if self.config.edge_with_gray:
                     edge_img=img
+            edge = self.get_edge(
+                ann_img=ann, edge_width=self.config.edge_width, img=edge_img)
+    
+        if self.normalizations is not None:
+            img = self.normalizations.forward(img)
+        
+        if self.bchw:
+            # convert image from (height,width,channel) to (channel,height,width)
+            img = img.transpose((2, 0, 1))
+        
+        if self.config.with_edge:
+            return img, ann, edge
             
-            if self.config.with_edge:
-                edge = self.get_edge(
-                    ann_img=ann, edge_width=self.config.edge_width, img=edge_img)
-                return img, ann, edge
         if hasattr(self.config, 'with_path'):
             return {'image': (img, ann), 'filename': (img_path, lbl_path)}
 
@@ -260,6 +261,7 @@ class dataset_generalize(TD.Dataset):
             ann_edge = cv2.Canny(ann_img, 0, 1)
         else:
             ann_edge = cv2.Canny(ann_img, 0, 1)
+#            print(type(img),img.shape)
             gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
             edge=cv2.Canny(gray,100,200)
             ann_edge=edge+ann_edge

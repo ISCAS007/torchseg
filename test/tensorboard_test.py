@@ -57,6 +57,8 @@ for n_iter in trange(30):
     # data grouping by `slash`
     writer.add_scalar('test/scalar1', dummy_s1[0], n_iter)
     writer.add_scalar('test/scalar2', dummy_s2[0], n_iter)
+    writer.add_scalar('test/acc/scalar1', dummy_s1[0], n_iter)
+    writer.add_scalar('test/miou/scalar2', dummy_s2[0], n_iter)
 
 #    writer.add_scalars('test/scalar_group', {'xsinx': n_iter * np.sin(n_iter),
 #                                             'xcosx': n_iter * np.cos(n_iter),

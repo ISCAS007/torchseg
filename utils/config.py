@@ -117,7 +117,8 @@ def get_parser():
                         help='net name for semantic segmentaion',
                         choices=['pspnet', 'psp_edge', 'psp_global',
                                  'psp_fractal', 'psp_dict', 'psp_aux',
-                                 'fcn', 'fcn8s', 'fcn16s', 'fcn32s'],
+                                 'fcn', 'fcn8s', 'fcn16s', 'fcn32s',
+                                 'merge_seg','cross_merge'],
                         default='pspnet')
 
     parser.add_argument('--midnet_scale',
@@ -194,6 +195,11 @@ def get_parser():
                         help='add semantic edge with gray edge',
                         type=str2bool,
                         default=False)
+    
+    parser.add_argument('--cross_merge_times',
+                        help='cross merge times 1,2 or 3?',
+                        type=int,
+                        default=1)
 
     parser.add_argument('--use_momentum',
                         help='use mometnum or not?',
