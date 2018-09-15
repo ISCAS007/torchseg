@@ -289,6 +289,8 @@ if __name__ == '__main__':
             hyperopt.tpe()
         elif args.hyperopt=='bayes':
             hyperopt.bayes()
+        elif args.hyperopt=='skopt':
+            hyperopt.skopt()
         else:
             assert False,'unknown hyperopt %s'%args.hyperopt
     else:

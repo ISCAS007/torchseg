@@ -5,6 +5,8 @@ from bayes_opt import BayesianOptimization as bayesopt
 import argparse
 import pandas as pd
 from utils.torch_tools import do_train_or_val
+from skopt.space import Real,Integer
+from skopt import gp_minimize
 import torch
 from tqdm import tqdm,trange
 from time import sleep
@@ -99,10 +101,47 @@ class psp_opt():
         
         print('*'*50)
         print(best)
+    
+    def skopt(self):
+        results={}
+
+        def target(param):
+            base_lr,l1_reg,l2_reg=param
+            config=self.config
+            train_loader=self.train_loader
+            val_loader=self.val_loader
+            psp_model=self.psp_model
+            config.model.learning_rate=base_lr
+            config.model.l1_reg=l1_reg
+            config.model.l2_reg=l2_reg
+            
+            net = psp_model(config)
+            best_val_miou=do_train_or_val(net, config.args, train_loader, val_loader)
+            
+            cols=['base_lr','l1_reg','l2_reg','val_miou']
+            for col,value in zip(cols,(base_lr,l1_reg,l2_reg,best_val_miou)):
+                if col in results.keys():
+                    results[col].append(value)
+                else:
+                    results[col]=[value]
+                
+            tasks=pd.DataFrame(results,columns=cols)
+            tasks.to_csv(path_or_buf='hyperopt_%s.tab'%config.args.note,sep='\t')
+            return best_val_miou
+        
+        res_gp=gp_minimize(func=target,
+                         dimensions=[Real(0.01,1e-4,'log-uniform',name='base_lr'),
+                         Real(1e-3,1e-7,'log-uniform',name='l1_reg'),
+                         Real(1e-3,1e-7,'log-uniform',name='l2_reg')],
+                         n_calls=15,
+                         random_state=0)
+        print('*'*50)
+        print("Best score=%.4f" % res_gp.fun)
+        print('best param',res_gp.x)
         
             
 if __name__ == '__main__':
-    choices = ['fn_demo', 'fn_test','fn_bayes']
+    choices = ['fn_demo', 'fn_test','fn_bayes', 'fn_skopt']
     parser = argparse.ArgumentParser()
     parser.add_argument("--fn",
                         help="function to optimizer",
@@ -141,8 +180,19 @@ if __name__ == '__main__':
         for i in trange(10,leave=False):
             s=s+0.5*px+py
             sleep(0.1)
-        return s
+        return s.data.cpu().numpy()
     
+    def fn_skopt(params):
+        x,y,z=params
+
+        px=torch.tensor(x,device='cpu',requires_grad=True)
+        py=torch.tensor(y,device='cpu',requires_grad=True)
+        s=torch.tensor(0.5,device='cpu',requires_grad=True)
+        for i in trange(10,leave=False):
+            s=s+0.5*px+py
+            sleep(0.1)
+        return float(s.data.cpu().numpy())
+
     if args.fn=='fn_demo':
         best = fmin(fn=fn_demo,
                     space=[hp.uniform('x', -10, 10),
@@ -158,6 +208,16 @@ if __name__ == '__main__':
                            hp.uniform('y', -10, 10)],
                     algo=tpe.suggest,
                     max_evals=30)
+    elif args.fn=='fn_skopt':
+        res_gp=gp_minimize(func=fn_skopt,
+                         dimensions=[Real(-10,10,'uniform',name='x'),
+                         Real(-10,10,'uniform',name='y'),
+                         Integer(-10,10,name='z')],
+                         n_calls=15,
+                         random_state=0)
+        print("Best score=%.4f" % res_gp.fun)
+        print('best param',res_gp.x)
+        best=res_gp.fun
     else:
         bo=bayesopt(fn_bayes,{'x':[-10,10],'y':[-10,10],'z':[-10,10]})
         bo.maximize(init_points=5,n_iter=10,kappa=2)
