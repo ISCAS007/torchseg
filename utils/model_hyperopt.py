@@ -95,7 +95,7 @@ class psp_opt():
             tasks.to_csv(path_or_buf='hyperopt_%s.tab'%config.args.note,sep='\t')
             return best_val_miou
         
-        bo=bayesopt(target,{'base_lr':[0.01,1e-4],'l1_reg':[1e-3,1e-7],'l2_reg':[1e-3,1e-7]})
+        bo=bayesopt(target,{'base_lr':[1e-4,0.01],'l1_reg':[1e-7,1e-3],'l2_reg':[1e-7,1e-3]})
         bo.maximize(init_points=1,n_iter=1,kappa=2)
         best=bo.res['max']
         
@@ -130,9 +130,9 @@ class psp_opt():
             return best_val_miou
         
         res_gp=gp_minimize(func=target,
-                         dimensions=[Real(0.01,1e-4,'log-uniform',name='base_lr'),
-                         Real(1e-3,1e-7,'log-uniform',name='l1_reg'),
-                         Real(1e-3,1e-7,'log-uniform',name='l2_reg')],
+                         dimensions=[Real(1e-4,0.01,'log-uniform',name='base_lr'),
+                         Real(1e-7,1e-3,'log-uniform',name='l1_reg'),
+                         Real(1e-7,1e-3,'log-uniform',name='l2_reg')],
                          n_calls=15,
                          random_state=0)
         print('*'*50)

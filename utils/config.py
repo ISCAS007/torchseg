@@ -223,7 +223,7 @@ def get_parser():
     
     parser.add_argument('--hyperopt',
                         help='tree search or bayes search for hyper parameters',
-                        choices=['tpe','bayes'],
+                        choices=['tpe','bayes','skopt'],
                         default='tpe')
     
     parser.add_argument('--note',
