@@ -10,6 +10,7 @@ from skopt import gp_minimize
 import torch
 from tqdm import tqdm,trange
 from time import sleep
+import time
 
 class psp_opt():
     def __init__(self,psp_model,config,train_loader,val_loader):
@@ -17,6 +18,7 @@ class psp_opt():
         self.config=config
         self.train_loader=train_loader
         self.val_loader=val_loader
+        self.time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
     
     def tpe(self):
         config=self.config
@@ -54,7 +56,7 @@ class psp_opt():
                     results[col]=[value]
                 
             tasks=pd.DataFrame(results,columns=cols)
-            tasks.to_csv(path_or_buf='hyperopt_%s.tab'%args.note,sep='\t')
+            tasks.to_csv(path_or_buf='hyperopt_%s_%s.tab'%(config.args.note,self.time_str),sep='\t')
             score=1-best_val_miou
             return score
         
@@ -92,7 +94,7 @@ class psp_opt():
                     results[col]=[value]
                 
             tasks=pd.DataFrame(results,columns=cols)
-            tasks.to_csv(path_or_buf='hyperopt_%s.tab'%config.args.note,sep='\t')
+            tasks.to_csv(path_or_buf='hyperopt_%s_%s.tab'%(config.args.note,self.time_str),sep='\t')
             return best_val_miou
         
         bo=bayesopt(target,{'base_lr':[1e-4,0.01],'l1_reg':[1e-7,1e-3],'l2_reg':[1e-7,1e-3]})
@@ -126,7 +128,7 @@ class psp_opt():
                     results[col]=[value]
                 
             tasks=pd.DataFrame(results,columns=cols)
-            tasks.to_csv(path_or_buf='hyperopt_%s.tab'%config.args.note,sep='\t')
+            tasks.to_csv(path_or_buf='hyperopt_%s_%s.tab'%(config.args.note,self.time_str),sep='\t')
             return best_val_miou
         
         res_gp=gp_minimize(func=target,
