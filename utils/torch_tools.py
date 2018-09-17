@@ -196,6 +196,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
 
     normalizations = image_normalizations(config.dataset.norm_ways)
     for epoch in trange(args.n_epoch,desc='epoches',leave=False):
+#    for epoch in range(args.n_epoch):
         for loader, loader_name in zip(loaders, loader_names):
             if loader is None:
                 continue
@@ -225,6 +226,7 @@ def do_train_or_val(model, args, train_loader=None, val_loader=None, config=None
             l2_reg = config.model.l2_reg
             running_metrics.reset()
             for i, (images, labels) in enumerate(tqdm(loader,desc='steps',leave=False)):
+#            for i, (images, labels) in enumerate(loader):
                 # work only for sgd
                 poly_lr_scheduler(optimizer,
                                   init_lr=init_lr,
@@ -346,9 +348,6 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
     if config is None:
         config=model.config
     
-    # support for multiple gpu
-    
-    
     # support for cpu/gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
@@ -361,7 +360,9 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
     init_lr = config.model.learning_rate
     
     loss_fn_dict=get_loss_fn_dict(config)
-    metric_fn_dict=get_metric_fn_dict(config)
+    metric_fn_dict={}
+    # output for main output
+    running_metrics = runningScore(config.model.class_number)
     
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
     log_dir = os.path.join(config.args.log_dir, model.name,
@@ -392,13 +393,13 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
             
             # summary only 10 image
             if epoch % (1+config.args.n_epoch//10) == 0:
-                summary_image = True
+                summary_all = True
             else:
-                summary_image = False
+                summary_all = False
                     
             if loader_name == 'val':
                 # summary metrics every 10 epoch
-                if summary_image or epoch % 10 == 0:
+                if summary_all or epoch % 10 == 0:
                     val_log = True
                 else:
                     val_log = False
@@ -411,7 +412,9 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
                 model.train()
                 
             losses_dict = {}
-            metrics_dict={}
+            running_metrics.reset()
+            for k,v in metric_fn_dict.items():
+                metric_fn_dict[k].reset()
             for i, (datas) in enumerate(tqdm(loader,desc='steps',leave=False)):
                 # work only for sgd
                 poly_lr_scheduler(optimizer,
@@ -465,27 +468,29 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
                     loss_dict['%s/total_loss'%loader_name].backward()
                     optimizer.step()
                 
+                # other metric for edge and aux, not run for each epoch to save time
+                running_metrics,metric_fn_dict=update_metric(outputs_dict,
+                                                             targets_dict,
+                                                             running_metrics,
+                                                             metric_fn_dict,
+                                                             config,
+                                                             summary_all=summary_all,
+                                                             prefix_note=loader_name)
                 # note, the dict format seg_xxx, aux_xxx for seg
                 # edge_xxx for edge
-                metric_dict=get_metric(outputs_dict,targets_dict,metric_fn_dict,config,prefix_note=loader_name)
-                for k,v in metric_dict.items():
-                    if k in metrics_dict.keys():
-                        metrics_dict[k].append(v)
-                    else:
-                        metrics_dict[k]=[v]
-                        
             
+            metric_dict=get_metric(running_metrics,metric_fn_dict,summary_all=summary_all,prefix_note=loader_name)
             if loader_name=='val':
-                val_iou=np.mean(metrics_dict['val/iou'])
+                val_iou=metric_dict['val/iou']
                 if val_iou >= best_iou:
                     best_iou = val_iou
-            image_dict=get_image_dict(outputs_dict,targets_dict,config,summary_image=summary_image,prefix_note=loader_name)
+            image_dict=get_image_dict(outputs_dict,targets_dict,config,summary_all=summary_all,prefix_note=loader_name)
             lr_dict=get_lr_dict(optimizer,prefix_note=loader_name)
             writer=write_summary(writer=writer,
                           config=config,
                           log_dir=log_dir,
                           losses_dict=losses_dict,
-                          metrics_dict=metrics_dict,
+                          metric_dict=metric_dict,
                           lr_dict=lr_dict,
                           image_dict=image_dict,
                           epoch=epoch)
@@ -590,45 +595,58 @@ def get_loss(outputs_dict,targets_dict,loss_fn_dict,config,model,prefix_note='tr
         
     return loss_dict
     
-def get_metric(outputs_dict,targets_dict,metric_fn_dict,config,prefix_note='train'):
+def update_metric(outputs_dict,targets_dict,running_metrics,metric_fn_dict,config,summary_all=False,prefix_note='train'):
     """
-    return metric for summary
-    input tensor, output numpy
-    """
-    # convert tensor to numpy, 
-    np_outputs_dict={}
-    for key,value in outputs_dict.items():
-        np_outputs_dict[key]=value.data.cpu().numpy().argmax(1)
-        
-    np_targets_dict={}
-    for key,value in targets_dict.items():
-        np_targets_dict[key]=value.data.cpu().numpy()
-    
-    metric_dict={}
-    for key,value in np_outputs_dict.items():
-        if key.startswith(('seg','aux')):
-            metric=metric_fn_dict['seg'](value,np_targets_dict['seg'])
-        elif key.startswith('edge'):
-            metric=metric_fn_dict['edge'](value,np_targets_dict['seg'])
-        else:
-            assert False,'unexcepted key %s in outputs_dict'%key
+    update running_metrics and metric_fn_dict summary
+    running_metrics: update seg miou and acc for summary
+    metric_fn_dict: update aux,edge miou and acc for summary
+    """   
+    if summary_all:
+        # convert tensor to numpy, 
+        np_outputs_dict={}
+        for key,value in outputs_dict.items():
+            np_outputs_dict[key]=torch.argmax(value,dim=1).data.cpu().numpy()
+            if key not in metric_fn_dict.keys():
+                metric_fn_dict[key]=runningScore(config.model.class_number)
             
-    if key in ['seg','edge']:
-        metric_dict[prefix_note+'_metric/'+key+'_acc']=metric['Overall Acc: \t']
-        metric_dict[prefix_note+'_metric/'+key+'_iou']=metric['Mean IoU : \t']
-        # for history code
-        if key=='seg':
-            metric_dict['%s/%s'%(prefix_note,'iou')]=metric['Mean IoU : \t']
-            metric_dict['%s/%s'%(prefix_note,'acc')]=metric['Overall Acc: \t']
-    else:
-        metric_dict[prefix_note+'branch_metric/'+key+'_acc']=metric['Overall Acc: \t']
-        metric_dict[prefix_note+'branch_metric/'+key+'_iou']=metric['Mean IoU : \t']
+        np_targets_dict={}
+        for key,value in targets_dict.items():
+            np_targets_dict[key]=value.data.cpu().numpy()
         
-    return metric_dict
+        # main metric, run for each epoch
+        running_metrics.update(np_targets_dict['seg'], np_outputs_dict['seg'])
+        for key,value in np_outputs_dict.items():
+            if key.startswith(('seg','aux')):
+                metric_fn_dict[key].update(np_targets_dict['seg'],value)
+            elif key.startswith('edge'):
+                metric_fn_dict[key].update(np_targets_dict['edge'],value)
+            else:
+                assert False,'unexcepted key %s in outputs_dict'%key
+    else:
+        # main metric, run for each epoch
+        running_metrics.update(targets_dict['seg'].data.cpu().numpy(), torch.argmax(outputs_dict['seg'],dim=1).data.cpu().numpy())
+    return running_metrics,metric_fn_dict
 
-def get_image_dict(outputs_dict,targets_dict,config,summary_image=False,prefix_note='train'):
+def get_metric(running_metrics,metric_fn_dict,summary_all=False,prefix_note='train'):
+    metric_dict={}
+    score, class_iou = running_metrics.get_scores()
+    metric_dict['%s/acc'%prefix_note]=score['Overall Acc: \t']
+    metric_dict['%s/iou'%prefix_note]=score['Mean IoU : \t']
+    if summary_all:
+        for key,v in metric_fn_dict.items():
+            score, class_iou = metric_fn_dict[key].get_scores()
+            if key in ['seg','edge']:
+                metric_dict[prefix_note+'_metric/'+key+'_acc']=score['Overall Acc: \t']
+                metric_dict[prefix_note+'_metric/'+key+'_iou']=score['Mean IoU : \t']
+            else:
+                metric_dict[prefix_note+'_branch_metric/'+key+'_acc']=score['Overall Acc: \t']
+                metric_dict[prefix_note+'_branch_metric/'+key+'_iou']=score['Mean IoU : \t']
+            
+    return metric_dict
+    
+def get_image_dict(outputs_dict,targets_dict,config,summary_all=False,prefix_note='train'):
     image_dict={}
-    if summary_image:
+    if summary_all:
         # convert tensor to numpy, 
         np_outputs_dict={}
         for key,value in outputs_dict.items():
@@ -672,7 +690,7 @@ def get_lr_dict(optimizer,prefix_note='train'):
 
     return lr_dict
                 
-def write_summary(writer,config,log_dir,losses_dict,metrics_dict,image_dict,lr_dict,epoch):
+def write_summary(writer,config,log_dir,losses_dict,metric_dict,lr_dict,image_dict,epoch):
     if writer is None:
         os.makedirs(log_dir, exist_ok=True)
         writer = SummaryWriter(log_dir=log_dir)
@@ -690,9 +708,9 @@ def write_summary(writer,config,log_dir,losses_dict,metrics_dict,image_dict,lr_d
     for k,v in losses_dict.items():
         writer.add_scalar(k,np.mean(v),epoch)
     
-    # metrics_dict value is numpy
-    for k,v in metrics_dict.items():
-        writer.add_scalar(k,np.mean(v),epoch)
+    # summary metrics
+    for k,v in metric_dict.items():
+        writer.add_scalar(k,v,epoch)
     
     # summary learning rate
     for k,v in lr_dict.items():

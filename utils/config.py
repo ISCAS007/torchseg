@@ -95,6 +95,11 @@ def get_parser():
                         choices=['ADEChallengeData2016', 'VOC2012', 'Kitti2015',
                                  'Cityscapes', 'Cityscapes_Fine', 'Cityscapes_Coarse'],
                         default='Cityscapes')
+    
+    parser.add_argument('--dataset_use_part',
+                        help='use part of dataset or not',
+                        type=str2bool,
+                        default=False)
 
     parser.add_argument("--backbone_name",
                         help="backbone name",

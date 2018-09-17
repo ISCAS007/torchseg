@@ -95,6 +95,7 @@ if __name__ == '__main__':
     config.dataset.resize_shape = input_shape
     config.dataset.name = args.dataset_name.lower()
     config.dataset.augmentations_blur = args.augmentations_blur
+    config.dataset.dataset_use_part=args.dataset_use_part
 
     config.args = edict()
     config.args.n_epoch = args.n_epoch
@@ -147,8 +148,8 @@ if __name__ == '__main__':
         if args.net_name in ['psp_edge','merge_seg','cross_merge']:
             config.dataset.with_edge = True
         net = globals()[args.net_name](config)
-#        do_train_or_val(net, config.args, train_loader, val_loader)
-        keras_fit(net,train_loader,val_loader)
+        do_train_or_val(net, config.args, train_loader, val_loader)
+#        keras_fit(net,train_loader,val_loader)
     elif test == 'edge':
         config.dataset.with_edge = True
         net = psp_edge(config)
