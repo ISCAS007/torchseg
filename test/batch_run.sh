@@ -16,5 +16,5 @@
 for cross_merge_times in 0 1 2
 do
     python test/pspnet_test.py --test=naive --batch_size=4 --use_reg=True --backbone_pretrained=True \
-    --midnet_scale=15 --cross_merge_times=${cross_merge_times} --note=cm${cross_merge_times} 
+    --midnet_scale=15 --upsample_type=bilinear --cross_merge_times=${cross_merge_times} --note=cm${cross_merge_times} 
 done

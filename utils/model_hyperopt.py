@@ -4,7 +4,7 @@ from hyperopt import fmin,tpe,hp
 from bayes_opt import BayesianOptimization as bayesopt
 import argparse
 import pandas as pd
-from utils.torch_tools import do_train_or_val
+from utils.torch_tools import keras_fit
 from skopt.space import Real,Integer
 from skopt import gp_minimize
 import torch
@@ -46,7 +46,7 @@ class psp_opt():
             config.model.backbone_pretrained=bp
             config.model.backbone_name=bn
             net = psp_model(config)
-            best_val_miou=do_train_or_val(net, config.args, train_loader, val_loader)
+            best_val_miou=keras_fit(net, train_loader, val_loader)
             
             cols=['base_lr','l1_reg','l2_reg','backbone_freeze','backbone_pretrained','backbone_name','val_miou']
             for col,value in zip(cols,xyz+(best_val_miou)):
@@ -84,7 +84,7 @@ class psp_opt():
             config.model.l2_reg=l2_reg
             
             net = psp_model(config)
-            best_val_miou=do_train_or_val(net, config.args, train_loader, val_loader)
+            best_val_miou=keras_fit(net, train_loader, val_loader)
             
             cols=['base_lr','l1_reg','l2_reg','val_miou']
             for col,value in zip(cols,(base_lr,l1_reg,l2_reg,best_val_miou)):
@@ -118,7 +118,7 @@ class psp_opt():
             config.model.l2_reg=l2_reg
             
             net = psp_model(config)
-            best_val_miou=do_train_or_val(net, config.args, train_loader, val_loader)
+            best_val_miou=keras_fit(net, train_loader, val_loader)
             
             cols=['base_lr','l1_reg','l2_reg','val_miou']
             for col,value in zip(cols,(base_lr,l1_reg,l2_reg,best_val_miou)):

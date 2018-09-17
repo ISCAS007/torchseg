@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """write psp model directly from caffe proto.txt
-1. first model `from utils.torch_tools import do_train_or_val`
+1. first model `from utils.torch_tools import keras_fit`
 2. exclusive `transfrom_psp`
 3. modified resnet
 4. layer-wise learning rate

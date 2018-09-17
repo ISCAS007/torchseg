@@ -18,7 +18,7 @@ from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
 from models.psp_caffe import psp_caffe
 from utils.augmentor import Augmentations
-from utils.torch_tools import do_train_or_val
+from utils.torch_tools import keras_fit
 from utils.disc_tools import str2bool
 
 if __name__ == '__main__':
@@ -159,5 +159,5 @@ if __name__ == '__main__':
     val_loader=TD.DataLoader(dataset=val_dataset,batch_size=args.batch_size, shuffle=True,drop_last=False,num_workers=8)
     
     net=globals()[args.net_name](config)
-    do_train_or_val(net,config.args,train_loader,val_loader)
+    keras_fit(net,train_loader,val_loader)
     

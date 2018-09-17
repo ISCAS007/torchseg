@@ -20,7 +20,7 @@ from models.cross_merge import cross_merge
 from models.psp_convert import psp_convert
 from models.psp_convert import CONFIG as psp_convert_config
 from utils.augmentor import Augmentations
-from utils.torch_tools import do_train_or_val,keras_fit
+from utils.torch_tools import keras_fit
 from utils.config import get_parser
 
 if __name__ == '__main__':
@@ -148,17 +148,16 @@ if __name__ == '__main__':
         if args.net_name in ['psp_edge','merge_seg','cross_merge']:
             config.dataset.with_edge = True
         net = globals()[args.net_name](config)
-        do_train_or_val(net, config.args, train_loader, val_loader)
-#        keras_fit(net,train_loader,val_loader)
+        keras_fit(net,train_loader,val_loader)
     elif test == 'edge':
         config.dataset.with_edge = True
         net = psp_edge(config)
-        do_train_or_val(net, config.args, train_loader, val_loader)
+        keras_fit(net, train_loader, val_loader)
     elif test == 'global':
         config.model.gnet_dilation_sizes = [16, 8, 4]
         config.args.note = note
         net = psp_global(config)
-        do_train_or_val(net, config.args, train_loader, val_loader)
+        keras_fit(net, train_loader, val_loader)
     elif test == 'backbone':
         for backbone in ['vgg16', 'vgg19', 'vgg16_bn', 'vgg19_bn']:
             config.model.backbone_name = backbone
@@ -168,7 +167,7 @@ if __name__ == '__main__':
                                          backbone
                                          ])
             net = pspnet(config)
-            do_train_or_val(net, config.args, train_loader, val_loader)
+            keras_fit(net, train_loader, val_loader)
     elif test == 'dict':
         config.args.note = 'dict'
         dict_number = config.model.class_number*5+1
@@ -178,7 +177,7 @@ if __name__ == '__main__':
         config.args.note = '_'.join(
             [config.args.note, '%dx%d' % (dict_number, dict_lenght)])
         net = psp_dict(config)
-        do_train_or_val(net, config.args, train_loader, val_loader)
+        keras_fit(net, train_loader, val_loader)
     elif test == 'fractal':
         before_upsample = True
         fractal_depth = 8
@@ -191,7 +190,7 @@ if __name__ == '__main__':
         config.args.note = '_'.join([config.args.note, location_str, 'depth', str(
             fractal_depth), 'fusion', fractal_fusion_type])
         net = psp_fractal(config)
-        do_train_or_val(net, config.args, train_loader, val_loader)
+        keras_fit(net, train_loader, val_loader)
     elif test == 'upsample_type':
         backbone = 'resnet52'
         config.model.backbone_name = backbone
@@ -199,7 +198,7 @@ if __name__ == '__main__':
             config.model.upsample_type = upsample_type
             config.args.note = '_'.join([backbone, upsample_type, 'keras_psp'])
             net = pspnet(config)
-            do_train_or_val(net, config.args, train_loader, val_loader)
+            keras_fit(net, train_loader, val_loader)
     elif test == 'momentum':
         backbone = 'vgg19_bn'
         config.model.backbone_name = backbone
@@ -207,7 +206,7 @@ if __name__ == '__main__':
         for momentum in [0.1, 0.3, 0.5, 0.7, 0.9]:
             config.args.note = '_'.join([note, backbone, 'mo', str(momentum)])
             net = pspnet(config)
-            do_train_or_val(net, config.args, train_loader, val_loader)
+            keras_fit(net, train_loader, val_loader)
             break
     elif test == 'midnet':
         # midnet will change input shape
@@ -217,7 +216,7 @@ if __name__ == '__main__':
             config.model.backbone_name = backbone
             config.args.note = '_'.join([note, backbone, args.midnet_name])
             net = pspnet(config)
-            do_train_or_val(net, config.args, train_loader, val_loader)
+            keras_fit(net, train_loader, val_loader)
     elif test == 'pretrained':
         midnet_name = 'aspp'
         backbone = config.model.backbone_name
@@ -227,7 +226,7 @@ if __name__ == '__main__':
             config.args.note = '_'.join(
                 [note, 'pretrain', str(pretrained)[0], backbone, midnet_name])
             net = pspnet(config)
-            do_train_or_val(net, config.args, train_loader, val_loader)
+            keras_fit(net, train_loader, val_loader)
     elif test == 'coarse':
         net = globals()[args.net_name](config)
         for dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
@@ -258,20 +257,19 @@ if __name__ == '__main__':
                 shuffle=True, 
                 drop_last=False, 
                 num_workers=8)
-            do_train_or_val(net, config.args,
-                            coarse_train_loader, coarse_val_loader)
+            keras_fit(net,coarse_train_loader, coarse_val_loader)
     elif test == 'convert':
         train_loader = None
         load_caffe_weight = True
         net = psp_convert(dataset_name=args.dataset_name,
                           load_caffe_weight=load_caffe_weight)
         if load_caffe_weight:
-            do_train_or_val(model=net, args=config.args,
+            keras_fit(model=net,
                             train_loader=train_loader, val_loader=val_loader, config=config)
         else:
             net.load_state_dict(torch.load(
                 psp_convert_config[args.dataset_name]['params']))
-            do_train_or_val(model=net, args=config.args,
+            keras_fit(model=net, 
                             train_loader=train_loader, val_loader=val_loader, config=config)
 
     elif test == 'summary':
