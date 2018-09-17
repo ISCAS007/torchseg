@@ -79,6 +79,7 @@ class psp_opt():
             train_loader=self.train_loader
             val_loader=self.val_loader
             psp_model=self.psp_model
+            config.model.use_reg=True
             config.model.learning_rate=base_lr
             config.model.l1_reg=l1_reg
             config.model.l2_reg=l2_reg
@@ -98,7 +99,7 @@ class psp_opt():
             return best_val_miou
         
         bo=bayesopt(target,{'base_lr':[1e-4,0.01],'l1_reg':[1e-7,1e-3],'l2_reg':[1e-7,1e-3]})
-        bo.maximize(init_points=1,n_iter=1,kappa=2)
+        bo.maximize(init_points=5,n_iter=15,kappa=2)
         best=bo.res['max']
         
         print('*'*50)
@@ -113,6 +114,7 @@ class psp_opt():
             train_loader=self.train_loader
             val_loader=self.val_loader
             psp_model=self.psp_model
+            config.model.use_reg=True
             config.model.learning_rate=base_lr
             config.model.l1_reg=l1_reg
             config.model.l2_reg=l2_reg

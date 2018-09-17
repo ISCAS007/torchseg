@@ -36,6 +36,7 @@ pip install tensorboardX
 pip install easydict
 pip install imgaug
 pip install pandas
+...
 ```
 
 # code reference
@@ -57,18 +58,18 @@ the miou is 0.8+
 
 # todo
 - [x] [pspnet](models/pspnet.py)
-    - [ ] [train on corse dataset and then finetune + optimizer config(not adam)](https://github.com/ZijunDeng/pytorch-semantic-segmentation/issues/6)
-    - [ ] [slice/slide + flipped prediction/evaluation](https://github.com/Vladkryvoruchko/PSPNet-Keras-tensorflow/issues/12)
+    - [x] [train on corse dataset and then finetune + optimizer config(not adam)](https://github.com/ZijunDeng/pytorch-semantic-segmentation/issues/6)
+    - [x] [slice/slide + flipped prediction/evaluation](https://github.com/Vladkryvoruchko/PSPNet-Keras-tensorflow/issues/12)
     - [x] official pspnet layer setting
         - https://raw.githubusercontent.com/hszhao/PSPNet/master/evaluation/prototxt/pspnet101_cityscapes_713.prototxt
         - [resnet-101](https://dgschwend.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85) [ethereon](https://ethereon.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85)
         - [resnet-101-deploy](https://dgschwend.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150) [ethereon](https://ethereon.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150)
         - [pspnet101 cityscapes 713](https://dgschwend.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79) [ethereon](https://ethereon.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79)
 - [x] pspnet + edge
-    - [ ] multi input, output, loss, log
+    - [x] multi input, output, loss, log
     - [ ] edge before pspnet or after pspnet ?
-    - [ ] Series connection or Parallel connection
-    - [ ] change edge width with epoch
+    - [x] Series connection or Parallel connection
+    - [x] change edge width with epoch
 - [x] pspnet + global
     - very different from keras version, from single dilation to multi dilation
 - [x] pspnet + dict learning
@@ -94,3 +95,7 @@ the miou is 0.8+
 - the image size and id transform can be view in [test/benchmark_test.py](test/benchmark_test.py)
 - note: the benchmark is very slow, even for only 500 val images, about 5-10s/per image
 - a failed result can be see in [#3](https://github.com/ISCAS007/torchseg/issues/3)
+
+# useful script
+- `python utils/summary_to_csv.py` output best val/iou to orange tab file
+- `python test/dp_log.py` view pid and detail

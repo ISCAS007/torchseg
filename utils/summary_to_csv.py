@@ -27,6 +27,9 @@ def edict_to_pandas(ed):
     return task
 
 def config_to_log(config_file):
+    """
+    convert config file to log file
+    """
     dirname=os.path.dirname(config_file)
     log_files=glob(os.path.join(dirname,'events.out.*'))
     
@@ -78,4 +81,4 @@ if __name__ == '__main__':
     print(tasks.sort_values(by='val/iou'))
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
     tab_file=os.path.join(rootpath,time_str+'.tab')
-#    tasks.to_csv(tab_file,sep='\t')
+    tasks.to_csv(tab_file,sep='\t')

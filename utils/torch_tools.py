@@ -269,9 +269,10 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
                     best_iou = val_iou
             image_dict=get_image_dict(outputs_dict,targets_dict,config,summary_all=summary_all,prefix_note=loader_name)
             lr_dict=get_lr_dict(optimizer,prefix_note=loader_name)
-            writer=write_summary(writer=writer,
-                          config=config,
-                          log_dir=log_dir,
+            if writer is None:
+                writer=init_writer(config=config,log_dir=log_dir)
+            
+            write_summary(writer=writer,
                           losses_dict=losses_dict,
                           metric_dict=metric_dict,
                           lr_dict=lr_dict,
@@ -472,21 +473,23 @@ def get_lr_dict(optimizer,prefix_note='train'):
         lr_dict['%s_lr/%d'%(prefix_note,idx)]=params['lr']
 
     return lr_dict
-                
-def write_summary(writer,config,log_dir,losses_dict,metric_dict,lr_dict,image_dict,epoch):
-    if writer is None:
-        os.makedirs(log_dir, exist_ok=True)
-        writer = SummaryWriter(log_dir=log_dir)
-        config_str = json.dumps(config, indent=2, sort_keys=True).replace(
-            '\n', '\n\n').replace('  ', '\t')
-        writer.add_text(tag='config', text_string=config_str)
 
-        # write config to config.txt
-        config_path = os.path.join(log_dir, 'config.txt')
-        config_file = open(config_path, 'w')
-        json.dump(config, config_file, sort_keys=True)
-        config_file.close()
+def init_writer(config,log_dir):
+    os.makedirs(log_dir, exist_ok=True)
+    writer = SummaryWriter(log_dir=log_dir)
+    config_str = json.dumps(config, indent=2, sort_keys=True).replace(
+        '\n', '\n\n').replace('  ', '\t')
+    writer.add_text(tag='config', text_string=config_str)
+
+    # write config to config.txt
+    config_path = os.path.join(log_dir, 'config.txt')
+    config_file = open(config_path, 'w')
+    json.dump(config, config_file, sort_keys=True)
+    config_file.close()
     
+    return writer
+
+def write_summary(writer,losses_dict,metric_dict,lr_dict,image_dict,epoch):
     # losses_dict value is numpy
     for k,v in losses_dict.items():
         writer.add_scalar(k,np.mean(v),epoch)
@@ -502,5 +505,3 @@ def write_summary(writer,config,log_dir,losses_dict,metric_dict,lr_dict,image_di
     # summary image
     for k,v in image_dict.items():
         add_image(summary_writer=writer,name=k,image=v,step=epoch)
-        
-    return writer

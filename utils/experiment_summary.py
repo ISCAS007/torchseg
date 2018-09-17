@@ -26,7 +26,5 @@ class experiment_summary(object):
                 log_files.sort()
                 summarys.append((cfg_file,log_files[-1]))
         
-        
-
 if __name__ == '__main__':
     fire.Fire(experiment_summary)
