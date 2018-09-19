@@ -272,9 +272,11 @@ class Augmentations(object):
     def __init__(self, p=0.25, config=None, use_imgaug=True, rotate=True):
         if config is None:
             config = get_default_augmentor_config(rotate)
-
+        # augmentation for image
         self.aug = ImageAugmenter(propability=p, use_imgaug=use_imgaug)
+        # augmentation for image and mask
         self.tran = ImageTransformer(config=config, propability=p, use_imgaug=use_imgaug)
+        # augmentation propability
         self.p = p
 
     def transform(self, image, mask=None):

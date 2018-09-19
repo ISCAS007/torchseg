@@ -67,7 +67,9 @@ the miou is 0.8+
         - [pspnet101 cityscapes 713](https://dgschwend.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79) [ethereon](https://ethereon.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79)
 - [x] pspnet + edge
     - [x] multi input, output, loss, log
-    - [ ] edge before pspnet or after pspnet ?
+    - [x] edge before pspnet or after pspnet
+        - [x] psp_edge
+        - [x] psp_hed [pytorch-hed](https://github.com/buntyke/pytorch-hed/blob/master/model.py) [caffe-hed](https://ethereon.github.io/netscope/#/gist/cc277790d05d8d87d131d222a6b7f613)
     - [x] Series connection or Parallel connection
     - [x] change edge width with epoch
 - [x] pspnet + global

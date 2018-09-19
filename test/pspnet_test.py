@@ -15,6 +15,7 @@ from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
 from models.fcn import fcn, fcn8s, fcn16s, fcn32s
 from models.psp_aux import psp_aux
+from models.psp_hed import psp_hed
 from models.merge_seg import merge_seg
 from models.cross_merge import cross_merge
 from models.psp_convert import psp_convert
@@ -55,16 +56,20 @@ if __name__ == '__main__':
     config.model.edge_bg_weight=args.edge_bg_weight
     config.model.edge_base_weight=args.edge_base_weight
     config.model.edge_power=args.edge_power
+    config.model.aux_base_weight=args.aux_base_weight
 
     config.dataset = edict()
     config.dataset.edge_class_num=args.edge_class_num
     config.dataset.edge_width=args.edge_width
     config.dataset.edge_with_gray=args.edge_with_gray
     config.dataset.with_edge=False
+    
     if args.dataset_name in ['VOC2012','Cityscapes']:
         config.dataset.norm_ways = args.dataset_name.lower()
     else:
         config.dataset.norm_ways = 'pytorch'
+    
+    config.dataset.norm_ways = 'pytorch'
     
     if args.test == 'convert':
         input_shape = tuple(
@@ -145,7 +150,7 @@ if __name__ == '__main__':
     note = config.args.note
     test = args.test
     if test == 'naive':
-        if args.net_name in ['psp_edge','merge_seg','cross_merge']:
+        if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
             config.dataset.with_edge = True
         net = globals()[args.net_name](config)
         keras_fit(net,train_loader,val_loader)

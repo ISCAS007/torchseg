@@ -9,7 +9,7 @@ from easydict import EasyDict as edict
 
 class backbone(TN.Module):
     def __init__(self,config,use_momentum=False):
-        super(backbone,self).__init__()
+        super().__init__()
         self.config=config
         if hasattr(self.config,'eps'):
             self.eps=self.config.eps
@@ -54,6 +54,34 @@ class backbone(TN.Module):
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
     
+    def forward_layers(self,x):
+        features=[]
+        if self.format=='vgg':
+            layer_num=0
+            assert hasattr(self.layer_depths,str(layer_num))
+            for idx,layer in enumerate(self.model.features):
+                x=layer(x)
+                if idx == self.layer_depths[str(layer_num)]:
+                    features.append(x)
+                    layer_num+=1
+                
+        elif self.format=='resnet':
+            features.append(x)
+            x=self.prefix_net(x)
+            features.append(x)
+            x = self.layer1(x)
+            features.append(x)
+            x = self.layer2(x)
+            features.append(x)
+            x = self.layer3(x)
+            features.append(x)
+            x = self.layer4(x)
+            features.append(x)
+        else:
+            assert False,'unexpected format %s'%(self.format)
+        
+        return features
+    
     def forward_aux(self,x,main_level,aux_level):
         assert main_level in [1,2,3,4,5],'main feature level %d not in range(0,5)'%main_level
         assert aux_level in [1,2,3,4,5],'aux feature level %d not in range(0,5)'%aux_level
@@ -63,7 +91,8 @@ class backbone(TN.Module):
             assert hasattr(self.layer_depths,str(main_level))
             for idx,layer in enumerate(self.model.features):
                 x=layer(x)
-                features.append(x)
+                if idx == self.layer_depths[str(main_level)]:
+                    features.append(x)
         elif self.format=='resnet':
             features.append(x)
             x=self.prefix_net(x)
@@ -132,7 +161,16 @@ class backbone(TN.Module):
         x=torch.autograd.Variable(x.to(device).float())
         x=self.forward(x,level)
         return x.shape
-        
+    
+    def get_layer_shapes(self,input_size):
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(device)
+        x=torch.rand(2,3,input_size[0],input_size[1])
+        x=torch.autograd.Variable(x.to(device).float())
+        features=self.forward_layers(x)
+        shapes=[f.shape for f in features]
+        return shapes
+    
     def get_model(self):
         if self.use_momentum:
 #            from models.psp_resnet import *

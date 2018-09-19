@@ -42,3 +42,5 @@ for k,v in score.items():
 score=get_scores(preds,trues)
 for k,v in score.items():
     print(k,v)
+    
+print(class_iou)

@@ -123,7 +123,7 @@ def get_parser():
                         choices=['pspnet', 'psp_edge', 'psp_global',
                                  'psp_fractal', 'psp_dict', 'psp_aux',
                                  'fcn', 'fcn8s', 'fcn16s', 'fcn32s',
-                                 'merge_seg','cross_merge'],
+                                 'merge_seg','cross_merge', 'psp_hed'],
                         default='pspnet')
 
     parser.add_argument('--midnet_scale',
@@ -173,6 +173,11 @@ def get_parser():
     
     parser.add_argument('--edge_base_weight',
                         help='base weight for edge loss, weight for segmentation is 1.0',
+                        type=float,
+                        default=1.0)
+    
+    parser.add_argument('--aux_base_weight',
+                        help='aux weight for aux loss, weight for segmentation is 1.0',
                         type=float,
                         default=1.0)
     

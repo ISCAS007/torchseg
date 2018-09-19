@@ -240,7 +240,8 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
                     assert False,'unexcepted outputs type %s'%type(outputs)
                 
                 # return reg loss and predict loss
-                loss_dict=get_loss(outputs_dict,targets_dict,loss_fn_dict,config,model,prefix_note=loader_name)
+                loss_weight_dict=get_loss_weight(step=i+epoch*len(loader),max_step=config.args.n_epoch*len(loader),config=config)
+                loss_dict=get_loss(outputs_dict,targets_dict,loss_fn_dict,config,model,loss_weight_dict=loss_weight_dict,prefix_note=loader_name)
                 for k,v in loss_dict.items():
                     if k in losses_dict.keys():
                         losses_dict[k].append(v.data.cpu().numpy())
@@ -262,7 +263,7 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
                 # note, the dict format seg_xxx, aux_xxx for seg
                 # edge_xxx for edge
             
-            metric_dict=get_metric(running_metrics,metric_fn_dict,summary_all=summary_all,prefix_note=loader_name)
+            metric_dict,class_iou_dict=get_metric(running_metrics,metric_fn_dict,summary_all=summary_all,prefix_note=loader_name)
             if loader_name=='val':
                 val_iou=metric_dict['val/iou']
                 if val_iou >= best_iou:
@@ -275,6 +276,7 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
             write_summary(writer=writer,
                           losses_dict=losses_dict,
                           metric_dict=metric_dict,
+                          class_iou_dict=class_iou_dict,
                           lr_dict=lr_dict,
                           image_dict=image_dict,
                           epoch=epoch)
@@ -323,19 +325,54 @@ def get_metric_fn_dict(config):
         metric_fn_dict['edge']=get_scores
     
     return metric_fn_dict
+
+def get_loss_weight(step,max_step,config=None):
+    loss_weight_dict={}
+    loss_power=0.9
+    edge_power=aux_power=loss_power
+    edge_base_weight=aux_base_weight=1.0
+    if config is not None:
+        if hasattr(config.model,'edge_power'):
+            edge_power=config.model.edge_power
+        if hasattr(config.model,'aux_power'):
+            aux_power=config.model.aux_power
+        if hasattr(config.model,'edge_base_weight'):
+            edge_base_weight=config.model.edge_base_weight
+        if hasattr(config.model,'aux_base_weight'):
+            aux_base_weight=config.model.aux_base_weight
     
-def get_loss(outputs_dict,targets_dict,loss_fn_dict,config,model,prefix_note='train'):
+        if hasattr(config.model,'poly_loss_weight'):
+            if config.model.poly_loss_weight:
+                loss_weight_dict['seg']=1.0
+                loss_weight_dict['edge']=edge_base_weight*(1-step/(1.0+max_step))**edge_power
+                loss_weight_dict['aux']=aux_base_weight*(1-step/(1.0+max_step))**aux_power
+                
+                return loss_weight_dict
+            
+    loss_weight_dict['seg']=1.0
+    loss_weight_dict['edge']=edge_base_weight
+    loss_weight_dict['aux']=aux_base_weight
+    
+    return loss_weight_dict
+
+def get_loss(outputs_dict,targets_dict,loss_fn_dict,config,model,loss_weight_dict=None,prefix_note='train'):
     """
     return loss for backward
     return reg loss for summary
     input tensor, output tensor
     """
+    if loss_weight_dict is None:
+        loss_weight_dict={}
+        loss_weight_dict['seg']=1.0
+        loss_weight_dict['edge']=1.0
+        loss_weight_dict['aux']=1.0
+    
     loss_dict={}
     for key,value in outputs_dict.items():
         if key.startswith(('seg','aux')):
-            loss=loss_fn_dict['seg'](input=value,target=targets_dict['seg'])
+            loss=loss_fn_dict['seg'](input=value,target=targets_dict['seg'])*loss_weight_dict[key[0:3]]
         elif key.startswith('edge'):
-            loss=loss_fn_dict['edge'](input=value,target=targets_dict['edge'])
+            loss=loss_fn_dict['edge'](input=value,target=targets_dict['edge'])*loss_weight_dict['edge']
         else:
             assert False,'unexcepted key %s in outputs_dict'%key
         
@@ -376,7 +413,6 @@ def get_loss(outputs_dict,targets_dict,loss_fn_dict,config,model,prefix_note='tr
         loss_dict['%s/l1_loss'%prefix_note]=l1_loss*l1_reg
         loss_dict['%s/l2_loss'%prefix_note]=l2_loss*l2_reg
         loss_dict['%s/total_loss'%prefix_note]+=l1_loss*l1_reg+l2_loss*l2_reg
-        
     return loss_dict
     
 def update_metric(outputs_dict,targets_dict,running_metrics,metric_fn_dict,config,summary_all=False,prefix_note='train'):
@@ -416,6 +452,13 @@ def get_metric(running_metrics,metric_fn_dict,summary_all=False,prefix_note='tra
     score, class_iou = running_metrics.get_scores()
     metric_dict['%s/acc'%prefix_note]=score['Overall Acc: \t']
     metric_dict['%s/iou'%prefix_note]=score['Mean IoU : \t']
+    
+    class_iou_dict={}
+    tag_scalar_dict={}
+    for k,v in class_iou.items():
+        tag_scalar_dict['%02d'%k]=v
+    class_iou_dict['%s/class_iou'%prefix_note]=tag_scalar_dict
+
     if summary_all:
         for key,v in metric_fn_dict.items():
             score, class_iou = metric_fn_dict[key].get_scores()
@@ -426,43 +469,45 @@ def get_metric(running_metrics,metric_fn_dict,summary_all=False,prefix_note='tra
                 metric_dict[prefix_note+'_branch_metric/'+key+'_acc']=score['Overall Acc: \t']
                 metric_dict[prefix_note+'_branch_metric/'+key+'_iou']=score['Mean IoU : \t']
             
-    return metric_dict
+    return metric_dict,class_iou_dict
     
 def get_image_dict(outputs_dict,targets_dict,config,summary_all=False,prefix_note='train'):
     image_dict={}
     if summary_all:
+        gpu_num = torch.cuda.device_count()
+        # for parallel, the true batch size for image will be config.args.batch_size//gpu_num
+        idx = np.random.randint(config.args.batch_size//gpu_num)
         # convert tensor to numpy, 
         np_outputs_dict={}
         for key,value in outputs_dict.items():
-            np_outputs_dict[key]=value.data.cpu().numpy().argmax(1)
+            np_outputs_dict[key]=value[idx].data.cpu().numpy().argmax(1)
             
         np_targets_dict={}
         for key,value in targets_dict.items():
-            np_targets_dict[key]=value.data.cpu().numpy()
+            np_targets_dict[key]=value[idx].data.cpu().numpy()
         
         seg_pixel_scale = 255//config.model.class_number
         edge_pixel_scale = 255//config.dataset.edge_class_num
-        idx = np.random.randint(config.args.batch_size)
         
         for k,v in np_outputs_dict.items():
             if k.startswith(('seg','aux')):
-                image_dict['%s/predict_%s'%(prefix_note,k)]=(v[idx,:,:]*seg_pixel_scale).astype(np.uint8)
+                image_dict['%s/predict_%s'%(prefix_note,k)]=(v*seg_pixel_scale).astype(np.uint8)
             elif k.startswith('edge'):
-                image_dict['%s/predict_%s'%(prefix_note,k)]=(v[idx,:,:]*edge_pixel_scale).astype(np.uint8)
+                image_dict['%s/predict_%s'%(prefix_note,k)]=(v*edge_pixel_scale).astype(np.uint8)
             else:
                 assert False,'unexcepted key %s in outputs_dict'%key
                 
         normalizations = image_normalizations(config.dataset.norm_ways)
         for k,v in np_targets_dict.items():
             if k=='img':
-                org_img=v.transpose((0,2,3,1))
+                org_img=v.transpose((1,2,0))
                 if normalizations is not None:
                     org_img = normalizations.backward(org_img)
-                image_dict['%s/%s'%(prefix_note,k)]=org_img[idx,:,:,:].astype(np.uint8)
+                image_dict['%s/%s'%(prefix_note,k)]=org_img.astype(np.uint8)
             elif k=='seg':
-                image_dict['%s/%s'%(prefix_note,k)]=(v[idx,:,:]*seg_pixel_scale).astype(np.uint8)
+                image_dict['%s/%s'%(prefix_note,k)]=(v*seg_pixel_scale).astype(np.uint8)
             elif k=='edge':
-                image_dict['%s/%s'%(prefix_note,k)]=(v[idx,:,:]*edge_pixel_scale).astype(np.uint8)
+                image_dict['%s/%s'%(prefix_note,k)]=(v*edge_pixel_scale).astype(np.uint8)
             else:
                 assert False,'unexcepted key %s in outputs_dict'%key
     return image_dict
@@ -489,7 +534,7 @@ def init_writer(config,log_dir):
     
     return writer
 
-def write_summary(writer,losses_dict,metric_dict,lr_dict,image_dict,epoch):
+def write_summary(writer,losses_dict,metric_dict,class_iou_dict,lr_dict,image_dict,epoch):
     # losses_dict value is numpy
     for k,v in losses_dict.items():
         writer.add_scalar(k,np.mean(v),epoch)
@@ -498,10 +543,15 @@ def write_summary(writer,losses_dict,metric_dict,lr_dict,image_dict,epoch):
     for k,v in metric_dict.items():
         writer.add_scalar(k,v,epoch)
     
+    # summary class iou
+    if hasattr(writer,'add_scalars'):
+        for k,v in class_iou_dict.items():
+            writer.add_scalars(k, v, epoch)
+    
     # summary learning rate
     for k,v in lr_dict.items():
         writer.add_scalar(k,v,epoch)
-        
+    
     # summary image
     for k,v in image_dict.items():
         add_image(summary_writer=writer,name=k,image=v,step=epoch)

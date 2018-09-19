@@ -39,7 +39,7 @@ def get_text():
     
     return json.dumps(config,indent=2,sort_keys=True).replace('\n','\n\n').replace('  ','\t')
 
-log_dir='/home/yzbx/tmp/logs/pytorch/test/norm_uint8'
+log_dir='/home/yzbx/tmp/logs/pytorch/test/histgrames'
 os.makedirs(name=log_dir,exist_ok=True)
 writer = SummaryWriter(log_dir)
 
@@ -59,6 +59,15 @@ for n_iter in trange(30):
     writer.add_scalar('test/scalar2', dummy_s2[0], n_iter)
     writer.add_scalar('test/acc/scalar1', dummy_s1[0], n_iter)
     writer.add_scalar('test/miou/scalar2', dummy_s2[0], n_iter)
+    
+    class_iou={0: 0.02561840174824816, 1: 0.02539294979398749, 2: 0.02540968514085804, 3: 0.025540797740621738, 4: 0.025543059621013713, 5: 0.024963605421254434, 6: 0.02547022343914425, 7: 0.02561703598995251, 8: 0.02568687353761584, 9: 0.02691302038648527, 10: 0.02606248470511461, 11: 0.025379828962022212, 12: 0.025659944253156253, 13: 0.02601991319887669, 14: 0.025118687075386757, 15: 0.026091755495825115, 16: 0.02615292066437595, 17: 0.025671171815895476, 18: 0.025110617213465733, 19: 0.025298578490067853}
+    
+    writer.add_histogram(tag='class_iou',values=np.array(list(class_iou.values())),global_step=n_iter)
+    
+    class_iou_dict={}
+    for k,v in class_iou.items():
+        class_iou_dict[str(k)]=v
+    writer.add_scalars('test/class_iou', class_iou_dict, n_iter)
 
 #    writer.add_scalars('test/scalar_group', {'xsinx': n_iter * np.sin(n_iter),
 #                                             'xcosx': n_iter * np.cos(n_iter),

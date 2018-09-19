@@ -113,3 +113,5 @@ test/comp6_test_cls_voc
 test/results
 
 *.tar.gz
+.vscode
+hyperopt_hyperopt_2018-09-17___19-54-10.tab

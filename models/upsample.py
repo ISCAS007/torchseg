@@ -7,13 +7,13 @@ import torch
 
 
 class conv_bn_relu(TN.Module):
-    def __init__(self, 
-                 in_channels, 
+    def __init__(self,
+                 in_channels,
                  out_channels,
                  kernel_size=1,
                  padding=0,
-                 stride=1, 
-                 eps=1e-5, 
+                 stride=1,
+                 eps=1e-5,
                  momentum=0.1):
         """
         out_channels: class number
@@ -30,7 +30,8 @@ class conv_bn_relu(TN.Module):
                                           TN.BatchNorm2d(num_features=out_channels,
                                                          eps=eps,
                                                          momentum=momentum),
-                                          TN.ReLU())
+                                          TN.ReLU(),
+                                          TN.Dropout2d(p=0.1))
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
                 TN.init.kaiming_normal_(
@@ -114,15 +115,15 @@ class upsample_bilinear(TN.Module):
                 TN.init.constant_(m.weight, 1)
                 TN.init.constant_(m.bias, 0)
 
-    #TODO upsampel feature is self.conv_bn_relu(x) or self.conv(x)
+    # TODO upsampel feature is self.conv_bn_relu(x) or self.conv(x)
     def forward(self, x, need_upsample_feature=False):
         upsample_feature = x = self.conv_bn_relu(x)
         x = self.conv(x)
         x = F.upsample(x, size=self.output_shape,
                        mode='bilinear', align_corners=True)
-        
+
         if need_upsample_feature:
-            return upsample_feature,x
+            return upsample_feature, x
         else:
             return x
 
@@ -242,6 +243,7 @@ class transform_psp(TN.Module):
                                                      eps=eps,
                                                      momentum=momentum),
                                       TN.ReLU(),
+                                      TN.Dropout2d(p=0.1),
                                       TN.Upsample(size=(height, width), mode='bilinear', align_corners=True))
             pool_paths.append(pool_path)
 
@@ -291,7 +293,8 @@ class transform_global(TN.Module):
                 num_features=class_number,
                 eps=eps,
                 momentum=momentum),
-                TN.ReLU(inplace=False))
+                TN.ReLU(inplace=False),
+                TN.Dropout2d(p=0.1))
 
             dil_paths.append(seq)
         self.dil_paths = TN.ModuleList(dil_paths)
@@ -564,7 +567,7 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
         momentum = 0.1
 
     if midnet_name == 'psp':
-#        print('midnet is psp'+'*'*50)
+        #        print('midnet is psp'+'*'*50)
         midnet_pool_sizes = config.model.midnet_pool_sizes
         midnet_scale = config.model.midnet_scale
         midnet = transform_psp(midnet_pool_sizes,
@@ -574,7 +577,7 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
                                eps=eps,
                                momentum=momentum)
     elif midnet_name == 'aspp':
-#        print('midnet is aspp'+'*'*50)
+        #        print('midnet is aspp'+'*'*50)
         output_stride = 2**config.model.upsample_layer
         midnet = transform_aspp(output_stride=output_stride,
                                 input_shape=midnet_input_shape,
@@ -605,12 +608,12 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
         momentum = 0.1
 
     if upsample_type == 'duc':
-#        print('upsample is duc'+'*'*50)
+        #        print('upsample is duc'+'*'*50)
         r = 2**upsample_layer
         decoder = upsample_duc(midnet_out_channels,
                                class_number, r, eps=eps, momentum=momentum)
     elif upsample_type == 'bilinear':
-#        print('upsample is bilinear'+'*'*50)
+        #        print('upsample is bilinear'+'*'*50)
         decoder = upsample_bilinear(
             midnet_out_channels, class_number, input_shape[0:2], eps=eps, momentum=momentum)
     else:
