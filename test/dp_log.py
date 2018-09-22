@@ -54,7 +54,7 @@ def process_cmd(parser,cmdline):
         return {}
 
 nv_out=subprocess.check_output("nvidia-smi", shell=True)
-print("nvidia-smi",nv_out)
+#print("nvidia-smi",nv_out)
 lines_nv_out=str(nv_out).split('\\n')
 
 tasks=pd.DataFrame()
@@ -68,11 +68,13 @@ for line in lines_nv_out:
         task=process_line(line)
         if task is not None:
             pid=int(task[1])
-            gpu=int(task[-1])
+            gpu=int(task[0])
+            gpu_memory=int(task[-1])
             cmd=process_pid(pid)
             dicts={'gpu':gpu,
                    'pid':pid,
                    'username':cmd['username'],
+                   'gpu-memory':gpu_memory,
                    'train_miou':0.0,
                    'val_miou':0.0,
                    'train_acc':0.0,
@@ -91,7 +93,7 @@ for line in lines_nv_out:
                 task= pd.DataFrame(data=[dicts.values()], columns=dicts.keys())
                 tasks=tasks.append(task,ignore_index=True)
                 
-print(tasks)
+print(tasks[['gpu','pid','username','gpu-memory','note']])
 
 d=tasks.to_dict()
 for pid,note,cmd in zip(d['pid'].values(),d['note'].values(),d['cmdline'].values()):

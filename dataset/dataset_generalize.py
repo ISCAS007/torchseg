@@ -305,10 +305,14 @@ class image_normalizations():
             scale = 255.0
             mean_rgb = [0.485, 0.456, 0.406]
             std_rgb = [0.229, 0.224, 0.225]
-        elif ways == 'common(-1,1)' or ways == 'common':
+        elif ways == 'common(-1,1)' or ways == 'common' or ways=='-1,1':
             scale = 255.0
             mean_rgb = [0.5, 0.5, 0.5]
             std_rgb = [0.5, 0.5, 0.5]
+        elif ways == '0,1':
+            scale = 255.0
+            mean_rgb=[0,0,0]
+            std_rgb=[1,1,1]
         else:
             assert False, 'unknown ways %s' % ways
 

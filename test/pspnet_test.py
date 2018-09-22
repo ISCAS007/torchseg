@@ -42,7 +42,7 @@ if __name__ == '__main__':
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
     config.model.use_reg = args.use_reg
-    config.model.l1_reg=args.l1_reg
+#    config.model.l1_reg=args.l1_reg
     config.model.l2_reg=args.l2_reg
     config.model.backbone_name = args.backbone_name
     config.model.backbone_freeze = args.backbone_freeze
@@ -64,12 +64,12 @@ if __name__ == '__main__':
     config.dataset.edge_with_gray=args.edge_with_gray
     config.dataset.with_edge=False
     
-    if args.dataset_name in ['VOC2012','Cityscapes']:
-        config.dataset.norm_ways = args.dataset_name.lower()
-    else:
-        config.dataset.norm_ways = 'pytorch'
-    
-    config.dataset.norm_ways = 'pytorch'
+#    if args.dataset_name in ['VOC2012','Cityscapes']:
+#        config.dataset.norm_ways = args.dataset_name.lower()
+#    else:
+#        config.dataset.norm_ways = 'pytorch'
+#    config.dataset.norm_ways = 'pytorch'
+    config.dataset.norm_ways = args.norm_ways
     
     if args.test == 'convert':
         input_shape = tuple(
@@ -153,7 +153,8 @@ if __name__ == '__main__':
         if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
             config.dataset.with_edge = True
         net = globals()[args.net_name](config)
-        keras_fit(net,train_loader,val_loader)
+        best_val_iou=keras_fit(net,train_loader,val_loader)
+        print('best val iou is %0.3f'%best_val_iou)
     elif test == 'edge':
         config.dataset.with_edge = True
         net = psp_edge(config)
@@ -288,6 +289,7 @@ if __name__ == '__main__':
         torchsummary.summary(net.to(device), (3, height, width))
     elif test == 'hyperopt':
         psp_model=globals()[args.net_name]
+        config.args.n_calls=args.hyperopt_calls
         hyperopt=psp_opt(psp_model,config,train_loader,val_loader)
         if args.hyperopt=='tpe':
             hyperopt.tpe()

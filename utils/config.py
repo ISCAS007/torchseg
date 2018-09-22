@@ -141,11 +141,6 @@ def get_parser():
                         type=int,
                         default=100)
 
-    parser.add_argument('--augmentation',
-                        help='true or false to do augmentation',
-                        type=str2bool,
-                        default=True)
-
     parser.add_argument('--upsample_type',
                         help='bilinear or duc upsample',
                         choices=['duc', 'bilinear'],
@@ -221,6 +216,11 @@ def get_parser():
                         type=int,
                         default=0)
 
+    parser.add_argument('--augmentation',
+                        help='true or false to do augmentation',
+                        type=str2bool,
+                        default=True)
+    
     parser.add_argument('--augmentations_blur',
                         help='augmentations blur',
                         type=str2bool,
@@ -231,10 +231,20 @@ def get_parser():
                         type=str2bool,
                         default=True)
     
+    parser.add_argument('--norm_ways',
+                        help='normalize image value ways',
+                        choices=['caffe','pytorch','cityscapes','-1,1','0,1'],
+                        default='pytorch')
+    
     parser.add_argument('--hyperopt',
                         help='tree search or bayes search for hyper parameters',
-                        choices=['tpe','bayes','skopt'],
+                        choices=['tpe','bayes','skopt','loop'],
                         default='tpe')
+    
+    parser.add_argument('--hyperopt_calls',
+                        help='numbers for hyperopt calls',
+                        type=int,
+                        default=50)
     
     parser.add_argument('--note',
                         help='comment for tensorboard log',

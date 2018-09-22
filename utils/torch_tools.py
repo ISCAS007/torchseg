@@ -273,12 +273,19 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
             if writer is None:
                 writer=init_writer(config=config,log_dir=log_dir)
             
+            if loader_name=='train':
+                weight_dict={}
+                for k,v in loss_weight_dict.items():
+                    weight_dict['%s/weight_%s'%(loader_name,k)]=v
+            else:
+                weight_dict={}
             write_summary(writer=writer,
                           losses_dict=losses_dict,
                           metric_dict=metric_dict,
                           class_iou_dict=class_iou_dict,
                           lr_dict=lr_dict,
                           image_dict=image_dict,
+                          weight_dict=weight_dict,
                           epoch=epoch)
     writer.close()
     return best_iou
@@ -340,11 +347,14 @@ def get_loss_weight(step,max_step,config=None):
             edge_base_weight=config.model.edge_base_weight
         if hasattr(config.model,'aux_base_weight'):
             aux_base_weight=config.model.aux_base_weight
-    
+            
+        config.model.poly_loss_weight=True
         if hasattr(config.model,'poly_loss_weight'):
             if config.model.poly_loss_weight:
                 loss_weight_dict['seg']=1.0
-                loss_weight_dict['edge']=edge_base_weight*(1-step/(1.0+max_step))**edge_power
+                # from small to big
+                loss_weight_dict['edge']=edge_base_weight*(step/(1.0+max_step))**edge_power
+                # from big to small
                 loss_weight_dict['aux']=aux_base_weight*(1-step/(1.0+max_step))**aux_power
                 
                 return loss_weight_dict
@@ -393,26 +403,27 @@ def get_loss(outputs_dict,targets_dict,loss_fn_dict,config,model,loss_weight_dic
             loss_dict['%s/total_loss'%prefix_note]+=loss
             
     if config.model.use_reg:
-        l1_reg = config.model.l1_reg
+#        l1_reg = config.model.l1_reg
         l2_reg = config.model.l2_reg
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         l2_loss = torch.autograd.Variable(
                             torch.FloatTensor(1), requires_grad=True).to(device)
-        l1_loss = torch.autograd.Variable(
-            torch.FloatTensor(1), requires_grad=True).to(device)
+#        l1_loss = torch.autograd.Variable(
+#            torch.FloatTensor(1), requires_grad=True).to(device)
         l2_loss = 0
-        l1_loss = 0
+#        l1_loss = 0
         for name, param in model.named_parameters():
             if param.requires_grad==False:
                 continue
             if 'bias' not in name:
-#                l2_loss = l2_loss + torch.norm(param, 2)
-                l1_loss = l1_loss + torch.norm(param, 1)
-                l2_loss = l2_loss + torch.sum(param**2)/2
+                l2_loss = l2_loss + torch.norm(param, 2)
+#                l1_loss = l1_loss + torch.norm(param, 1)
+#                l2_loss = l2_loss + torch.sum(param**2)/2
         # for history code
-        loss_dict['%s/l1_loss'%prefix_note]=l1_loss*l1_reg
+#        loss_dict['%s/l1_loss'%prefix_note]=l1_loss*l1_reg
         loss_dict['%s/l2_loss'%prefix_note]=l2_loss*l2_reg
-        loss_dict['%s/total_loss'%prefix_note]+=l1_loss*l1_reg+l2_loss*l2_reg
+#        loss_dict['%s/total_loss'%prefix_note]+=l1_loss*l1_reg+l2_loss*l2_reg
+        loss_dict['%s/total_loss'%prefix_note]+=l2_loss*l2_reg
     return loss_dict
     
 def update_metric(outputs_dict,targets_dict,running_metrics,metric_fn_dict,config,summary_all=False,prefix_note='train'):
@@ -454,10 +465,8 @@ def get_metric(running_metrics,metric_fn_dict,summary_all=False,prefix_note='tra
     metric_dict['%s/iou'%prefix_note]=score['Mean IoU : \t']
     
     class_iou_dict={}
-    tag_scalar_dict={}
     for k,v in class_iou.items():
-        tag_scalar_dict['%02d'%k]=v
-    class_iou_dict['%s/class_iou'%prefix_note]=tag_scalar_dict
+        class_iou_dict['%s_class_iou/%02d'%(prefix_note,k)]=v
 
     if summary_all:
         for key,v in metric_fn_dict.items():
@@ -534,7 +543,7 @@ def init_writer(config,log_dir):
     
     return writer
 
-def write_summary(writer,losses_dict,metric_dict,class_iou_dict,lr_dict,image_dict,epoch):
+def write_summary(writer,losses_dict,metric_dict,class_iou_dict,lr_dict,image_dict,weight_dict,epoch):
     # losses_dict value is numpy
     for k,v in losses_dict.items():
         writer.add_scalar(k,np.mean(v),epoch)
@@ -544,9 +553,12 @@ def write_summary(writer,losses_dict,metric_dict,class_iou_dict,lr_dict,image_di
         writer.add_scalar(k,v,epoch)
     
     # summary class iou
-    if hasattr(writer,'add_scalars'):
-        for k,v in class_iou_dict.items():
-            writer.add_scalars(k, v, epoch)
+    for k,v in class_iou_dict.items():
+        writer.add_scalar(k, v, epoch)
+    
+    # summary for class weight
+    for k,v in weight_dict.items():
+        writer.add_scalar(k,v,epoch)
     
     # summary learning rate
     for k,v in lr_dict.items():
