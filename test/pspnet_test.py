@@ -297,6 +297,8 @@ if __name__ == '__main__':
             hyperopt.bayes()
         elif args.hyperopt=='skopt':
             hyperopt.skopt()
+        elif args.hyperopt=='loop':
+            hyperopt.loop()
         else:
             assert False,'unknown hyperopt %s'%args.hyperopt
     else:

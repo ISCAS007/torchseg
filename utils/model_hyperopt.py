@@ -35,12 +35,12 @@ class psp_opt():
             """
             random for single variale
             """
-            config.dataset.norm_ways=xyz
+            config.model.l2_reg=xyz
             net = psp_model(config)
             best_val_miou=keras_fit(net, train_loader, val_loader)
             
-            cols=['norm_ways','val_miou']
-            for col,value in zip(cols,xyz+(best_val_miou)):
+            cols=['l2_reg','val_miou']
+            for col,value in zip(cols,(xyz,best_val_miou)):
                 if col in results.keys():
                     results[col].append(value)
                 else:
@@ -56,8 +56,8 @@ class psp_opt():
         best_score=0
         best_call=0
         for t in range(self.n_calls):
-            norm_ways=random.choice(['caffe','pytorch','cityscapes','-1,1','0,1'])
-            score=fn_loop(norm_ways)
+            l2_reg=random.choice([0.1,0.01,0.001,1e-4,1e-5])
+            score=fn_loop(l2_reg)
             if score > best_score:
                 best_score=score
                 best_call=t

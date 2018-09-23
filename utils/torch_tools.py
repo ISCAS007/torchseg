@@ -168,8 +168,9 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
     if train_loader is None:
         config.args.n_epoch = 1
         
-    
-    for epoch in trange(config.args.n_epoch,desc='epoches',leave=False):
+    tqdm_epoch=trange(config.args.n_epoch,desc='epoches',leave=False)
+    for epoch in tqdm_epoch:
+        tqdm_epoch.set_postfix(best_iou=best_iou)
         for loader, loader_name in zip(loaders, loader_names):
             if loader is None:
                 continue
@@ -198,7 +199,9 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
             running_metrics.reset()
             for k,v in metric_fn_dict.items():
                 metric_fn_dict[k].reset()
-            for i, (datas) in enumerate(tqdm(loader,desc='steps',leave=False)):
+            
+            tqdm_step=tqdm(loader,desc='steps',leave=False)
+            for i, (datas) in enumerate(tqdm_step):
                 # work only for sgd
                 poly_lr_scheduler(optimizer,
                                   init_lr=init_lr,
