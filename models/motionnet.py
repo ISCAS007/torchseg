@@ -167,7 +167,7 @@ if __name__ == '__main__':
     val_loader=TD.DataLoader(dataset=val_dataset,batch_size=32, shuffle=True,drop_last=False)
     config.args=edict()
     config.args.n_epoch=300
-    config.args.log_dir='/home/yzbx/tmp/logs/pytorch'
+    config.args.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
     config.args.note='image'
     net=motionnet(config)
     net.train(config.args,train_loader,val_loader)

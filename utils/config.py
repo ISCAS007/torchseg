@@ -25,7 +25,7 @@ def get_config():
     config.training=edict()
     config.training.n_epoch=300
     config.training.batch_size=4
-    config.training.log_dir='/home/yzbx/tmp/logs/pytorch'
+    config.training.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
     config.training.note='default'
     
     return config

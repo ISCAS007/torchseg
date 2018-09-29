@@ -32,7 +32,7 @@ class empty_net(SS):
     def get_default_config():
         config = SS.get_default_config()
         config.model.activation='softmax'
-        config.training.log_dir='/home/yzbx/tmp/logs/keras'
+        config.training.log_dir=os.path.expanduser('~/tmp/logs/keras')
         config.dataset.resize_shape=(32,32)
         config.model.input_shape=(32,32)
         config.dataset.batch_size=2

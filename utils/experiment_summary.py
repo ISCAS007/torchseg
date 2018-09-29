@@ -8,7 +8,7 @@ import pandas
 class experiment_summary(object):
     """A simple calculator class."""
 
-    def __init__(self, log_dir='/home/yzbx/tmp/logs/pytorch', **kwargs):
+    def __init__(self, log_dir=os.path.expanduser('~/tmp/logs/pytorch'), **kwargs):
         self.log_dir = log_dir
 
         for k, v in kwargs.iteritems():

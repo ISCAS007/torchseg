@@ -34,12 +34,12 @@ def get_text():
     
     config.args = edict()
     config.args.n_epoch = 100
-    config.args.log_dir = '/home/yzbx/tmp/logs/pytorch'
+    config.args.log_dir = os.path.expanduser('~/tmp/logs/pytorch')
     config.args.note = 'aug'
     
     return json.dumps(config,indent=2,sort_keys=True).replace('\n','\n\n').replace('  ','\t')
 
-log_dir='/home/yzbx/tmp/logs/pytorch/test/histgrames'
+log_dir=os.path.expanduser('~/tmp/logs/pytorch/test/histgrames')
 os.makedirs(name=log_dir,exist_ok=True)
 writer = SummaryWriter(log_dir)
 

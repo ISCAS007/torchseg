@@ -74,27 +74,21 @@ for line in lines_nv_out:
             dicts={'gpu':gpu,
                    'pid':pid,
                    'username':cmd['username'],
-                   'gpu-memory':gpu_memory,
-                   'train_miou':0.0,
-                   'val_miou':0.0,
-                   'train_acc':0.0,
-                   'val_acc':0.0}
+                   'gpu-memory':gpu_memory}
             t=process_time(cmd['create_time'])
             for k,v in t.items():
                 dicts[k]=v
             
-            args=process_cmd(parser,cmd['cmdline'])
+#            args=process_cmd(parser,cmd['cmdline'])
             dicts['cmdline']=' '.join(cmd['cmdline'])
-            for k,v in args.items():
-                dicts[k]=v
+#            for k,v in args.items():
+#                dicts[k]=v
                 
-            if len(args) > 0:
-                dicts['model_file']=cmd['cmdline'][1]
-                task= pd.DataFrame(data=[dicts.values()], columns=dicts.keys())
-                tasks=tasks.append(task,ignore_index=True)
+            task= pd.DataFrame(data=[dicts.values()], columns=dicts.keys())
+            tasks=tasks.append(task,ignore_index=True)
                 
-print(tasks[['gpu','pid','username','gpu-memory','note']])
+print(tasks[['gpu','pid','username','gpu-memory']])
 
 d=tasks.to_dict()
-for pid,note,cmd in zip(d['pid'].values(),d['note'].values(),d['cmdline'].values()):
-    print(pid,note,cmd)
+for pid,username,cmd in zip(d['pid'].values(),d['username'].values(),d['cmdline'].values()):
+    print(pid,username,cmd)

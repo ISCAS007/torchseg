@@ -132,7 +132,7 @@ if __name__ == '__main__':
     
     config.args=edict()
     config.args.n_epoch=args.n_epoch
-    config.args.log_dir='/home/yzbx/tmp/logs/pytorch'
+    config.args.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
     
     if args.note is None:
         config.args.note='_'.join([args.backbone_name,

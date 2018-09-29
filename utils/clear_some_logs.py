@@ -6,8 +6,9 @@ clear old time logs, but keep the newest.
 import os
 import glob
 import shutil
+import os
 
-def clear_some_logs(logdir='/home/yzbx/tmp/logs/pytorch'):
+def clear_some_logs(logdir=os.path.expanduser('~/tmp/logs/pytorch')):
     """
     logdir/psp_caffe/cityscapes/caffe/2018-07-23___17-51-43
     logdir/model_name/dataset_name/note/timestr
