@@ -106,6 +106,7 @@ if __name__ == '__main__':
     config.args = edict()
     config.args.n_epoch = args.n_epoch
     config.args.log_dir = os.path.expanduser('~/tmp/logs/pytorch')
+    config.args.summary_image=args.summary_image
     config.args.note = args.note
     # must change batch size here!!!
     batch_size = args.batch_size

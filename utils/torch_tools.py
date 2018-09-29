@@ -485,7 +485,7 @@ def get_metric(running_metrics,metric_fn_dict,summary_all=False,prefix_note='tra
     
 def get_image_dict(outputs_dict,targets_dict,config,summary_all=False,prefix_note='train'):
     image_dict={}
-    if summary_all:
+    if summary_all and config.args.summary_image:
         gpu_num = torch.cuda.device_count()
         # for parallel, the true batch size for image will be config.args.batch_size//gpu_num
         idx = np.random.randint(config.args.batch_size//gpu_num)

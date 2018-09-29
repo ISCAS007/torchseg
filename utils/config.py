@@ -250,6 +250,11 @@ def get_parser():
                         type=int,
                         default=50)
     
+    parser.add_argument('--summary_image',
+                        help='summary image or not',
+                        type=str2bool,
+                        default=False)
+    
     parser.add_argument('--note',
                         help='comment for tensorboard log',
                         default=None)
