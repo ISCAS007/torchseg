@@ -7,12 +7,24 @@ import pandas as pd
 from utils.torch_tools import keras_fit
 from skopt.space import Real,Integer
 from skopt import gp_minimize
+from utils.config import get_hyperparams
 import torch
 from tqdm import tqdm,trange
 from time import sleep
 import random
 import time
 
+def set_edict(d,key,value):
+    keys=key.split('.')
+    if len(keys)==1:
+        d[keys[0]]=value
+    elif len(keys)==2:
+        d[keys[0]][keys[1]]=value
+    elif len(keys)==3:
+        d[keys[0]][keys[1]][keys[2]]=value
+    else:
+        assert False,'unexcepted len for key'
+        
 class psp_opt():
     def __init__(self,psp_model,config,train_loader,val_loader):
         self.psp_model=psp_model
@@ -22,6 +34,8 @@ class psp_opt():
         self.time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
         self.n_calls=config.args.n_calls
         self.current_call=0
+        self.hyperkey=config.args.hyperkey
+
     
     def loop(self):
         config=self.config
@@ -35,11 +49,11 @@ class psp_opt():
             """
             random for single variale
             """
-            config.model.l2_reg=xyz
+            set_edict(config,self.hyperkey,xyz)
             net = psp_model(config)
             best_val_miou=keras_fit(net, train_loader, val_loader)
             
-            cols=['l2_reg','val_miou']
+            cols=[self.hyperkey,'val_miou']
             for col,value in zip(cols,(xyz,best_val_miou)):
                 if col in results.keys():
                     results[col].append(value)
@@ -53,11 +67,21 @@ class psp_opt():
             print('%s/%s calls, score=%0.3f'%(self.current_call,self.n_calls,score))
             return score
         
+        assert len(self.hyperkey.split(','))==1,'hyperopt=loop can only deal with 1 hyperkey'
         best_score=0
         best_call=0
+        hyper_type,hyper_params=get_hyperparams(self.hyperkey)
         for t in range(self.n_calls):
-            l2_reg=random.choice([0.1,0.01,0.001,1e-4,1e-5])
-            score=fn_loop(l2_reg)
+            if hyper_type=='int':
+                value=random.randint(hyper_params[0],hyper_params[1])
+            elif hyper_type=='float':
+                value=random.uniform(hyper_params[0],hyper_params[1])
+            elif hyper_type in ['bool','choices']:
+                value=random.choice(hyper_params)
+            else:
+                assert False,'unknown hyper type %s'%hyper_type
+            
+            score=fn_loop(value)
             if score > best_score:
                 best_score=score
                 best_call=t

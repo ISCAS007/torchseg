@@ -550,6 +550,7 @@ def write_summary(writer,losses_dict,metric_dict,class_iou_dict,lr_dict,image_di
     # losses_dict value is numpy
     for k,v in losses_dict.items():
         writer.add_scalar(k,np.mean(v),epoch)
+        writer.add_scalar(k+'_std',np.std(v),epoch)
     
     # summary metrics
     for k,v in metric_dict.items():

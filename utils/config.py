@@ -97,9 +97,9 @@ def get_parser():
                         default='Cityscapes')
     
     parser.add_argument('--dataset_use_part',
-                        help='use part of dataset or not',
-                        type=str2bool,
-                        default=False)
+                        help='use images number in dataset (0 for use all)',
+                        type=int,
+                        default=0)
 
     parser.add_argument("--backbone_name",
                         help="backbone name",
@@ -241,6 +241,10 @@ def get_parser():
                         choices=['tpe','bayes','skopt','loop'],
                         default='tpe')
     
+    parser.add_argument('--hyperkey',
+                        help='key for single hyperopt,split with , eg: model.l2_reg',
+                        default='model.l2_reg')
+    
     parser.add_argument('--hyperopt_calls',
                         help='numbers for hyperopt calls',
                         type=int,
@@ -251,3 +255,10 @@ def get_parser():
                         default=None)
     
     return parser
+
+def get_hyperparams(key):
+    hyper_dict={
+            'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),
+            'model.l2_reg':('choices',[1e-5,1e-4,1e-3,1e-2,1e-1])}
+    
+    return hyper_dict[key]

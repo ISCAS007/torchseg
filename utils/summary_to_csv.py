@@ -54,7 +54,7 @@ def load_log(log_file,tags=['train/acc','val/acc','train/iou','val/iou']):
                 else:
                     best_metrics[v.tag]=max(best_metrics[v.tag],v.simple_value)
         
-    print(best_metrics)
+#    print(best_metrics)
     return best_metrics
 
 def summary(rootpath):

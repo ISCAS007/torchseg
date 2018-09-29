@@ -149,9 +149,9 @@ class dataset_generalize(TD.Dataset):
         assert len(self.image_files) == len(self.annotation_files)
         
         if hasattr(self.config,'dataset_use_part'):
-            if self.config.dataset_use_part:
-                self.image_files=self.image_files[0:32]
-                self.annotation_files=self.annotation_files[0:32]
+            if self.config.dataset_use_part > 0:
+                self.image_files=self.image_files[0:self.config.dataset_use_part]
+                self.annotation_files=self.annotation_files[0:self.config.dataset_use_part]
                 print("use %d image files, %d annotation files" %
                       (len(self.image_files), len(self.annotation_files)))
 

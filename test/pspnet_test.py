@@ -290,6 +290,7 @@ if __name__ == '__main__':
     elif test == 'hyperopt':
         psp_model=globals()[args.net_name]
         config.args.n_calls=args.hyperopt_calls
+        config.args.hyperkey=args.hyperkey
         hyperopt=psp_opt(psp_model,config,train_loader,val_loader)
         if args.hyperopt=='tpe':
             hyperopt.tpe()

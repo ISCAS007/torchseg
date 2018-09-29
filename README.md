@@ -65,6 +65,10 @@ the miou is 0.8+
         - [resnet-101](https://dgschwend.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85) [ethereon](https://ethereon.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85)
         - [resnet-101-deploy](https://dgschwend.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150) [ethereon](https://ethereon.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150)
         - [pspnet101 cityscapes 713](https://dgschwend.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79) [ethereon](https://ethereon.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79)
+- [x] [convolution pose machine](https://github.com/CMU-Perceptual-Computing-Lab/convolutional-pose-machines-release/tree/master/model)
+    - [x] [FLIC](https://ethereon.github.io/netscope/#/gist/c37f3ec677831ca706115fb7238b52a9)
+    - [x] [LEEDS_PC]
+    - [x] [MPI]
 - [x] pspnet + edge
     - [x] multi input, output, loss, log
     - [x] edge before pspnet or after pspnet
