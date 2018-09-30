@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 import torch.utils.data as TD
+import sys
+if '.' not in sys.path:
+    sys.path.append('..')
+
 from dataset.dataset_generalize import dataset_generalize, get_dataset_generalize_config, image_normalizations
 from easydict import EasyDict as edict
 import torchsummary
