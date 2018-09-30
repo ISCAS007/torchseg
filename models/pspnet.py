@@ -42,9 +42,14 @@ class pspnet(TN.Module):
                                       self.midnet_out_channels,
                                       self.class_number)
         
-        self.optimizer_params = [{'params': [p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1},
-                                 {'params': self.midnet.parameters(),'lr_mult': 10},
-                                 {'params': self.decoder.parameters(), 'lr_mult': 10}]
+        if config.model.use_lr_mult:
+            self.optimizer_params = [{'params': [p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1},
+                                     {'params': self.midnet.parameters(),'lr_mult': 10},
+                                     {'params': self.decoder.parameters(), 'lr_mult': 10}]
+        else:
+            self.optimizer_params = [{'params': [p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1},
+                                     {'params': self.midnet.parameters(),'lr_mult': 1},
+                                     {'params': self.decoder.parameters(), 'lr_mult': 1}]
         
     def forward(self, x):
         feature_map = self.backbone.forward(x, self.upsample_layer)

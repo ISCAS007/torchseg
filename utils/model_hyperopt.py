@@ -102,15 +102,18 @@ class psp_opt():
         psp_model=self.psp_model
         self.current_call=0
         results={}
+        
+        assert len(self.hyperkey.split(','))>1,'hyperopt=tpe can only deal with >1 hyperkey'
+        hyperkeys=self.hyperkey.split(',')
         def fn_tpe(xyz):
-            assert False
-#            base_lr,l1_reg,l2_reg,bf,bp,bn=xyz
-            norm_ways=xyz
-            config.dataset.norm_ways=norm_ways
+            for key,value in zip(hyperkeys,xyz):
+                set_edict(config,key,value)
+            
             net = psp_model(config)
             best_val_miou=keras_fit(net, train_loader, val_loader)
             
-            cols=['norm_ways','val_miou']
+            cols=hyperkeys.copy()
+            cols.extend(['val_miou'])
             for col,value in zip(cols,xyz+(best_val_miou)):
                 if col in results.keys():
                     results[col].append(value)
@@ -124,15 +127,23 @@ class psp_opt():
             print('%s/%s calls, score=%0.3f'%(self.current_call,self.n_calls,score))
             return score
         
+        space=[]
+        for key in hyperkeys:
+            param_type,params=get_hyperparams(key)
+            if param_type == 'int':
+                s=hp.randint(key,params[0],params[1])
+            elif param_type == 'float':
+                s=hp.uniform(key,params[0],params[1])
+            elif param_type in ['bool','choices']:
+                s=hp.choice(key,params)
+            else:
+                assert False,'unknown param_type %s'%param_type
+                
+            space.append(s)
         best = fmin(fn=fn_tpe,
-                        space=[hp.uniform('base_lr',0.01,1e-4),
-                               hp.uniform('l1_reg',1e-3,1e-7),
-                               hp.uniform('l2_reg',1e-3,1e-7),
-                               hp.choice('backbone_freeze',[True,False]),
-                               hp.choice('backbone_pretrained',[True,False]),
-                               hp.choice('backbone_name',['resnet50','resnet101'])],
-                        algo=tpe.suggest,
-                        max_evals=self.n_calls)
+                    space=space,
+                    algo=tpe.suggest,
+                    max_evals=self.n_calls)
         print('*'*50)
         print(best)
     def bayes(self):

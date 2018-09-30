@@ -105,3 +105,4 @@ the miou is 0.8+
 # useful script
 - `python utils/summary_to_csv.py` output best val/iou to orange tab file
 - `python test/dp_log.py` view pid and detail
+- `pipreqs --ignore models/examples,models/mxnet --force .` pip requirements

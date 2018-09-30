@@ -42,6 +42,7 @@ if __name__ == '__main__':
     config.model.momentum = 0.9
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
+    config.model.use_lr_mult = args.use_lr_mult
     config.model.use_reg = args.use_reg
 #    config.model.l1_reg=args.l1_reg
     config.model.l2_reg=args.l2_reg
