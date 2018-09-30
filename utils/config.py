@@ -270,6 +270,7 @@ def get_hyperparams(key):
     hyper_dict={
             'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),
             'model.l2_reg':('choices',[1e-5,1e-4,1e-3,1e-2,1e-1]),
-            'model.use_lr_mult':('choices',[True,False])}
+            'model.use_lr_mult':('choices',[True,False]),
+            'model.backbone_pretrained':('bool',[True,False])}
     
     return hyper_dict[key]

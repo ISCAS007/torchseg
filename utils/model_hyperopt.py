@@ -146,6 +146,7 @@ class psp_opt():
                     max_evals=self.n_calls)
         print('*'*50)
         print(best)
+        
     def bayes(self):
         """
         bayes for serveral continuous variables
