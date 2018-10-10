@@ -12,6 +12,7 @@ from tqdm import tqdm,trange
 from time import sleep
 import random
 import time
+import os
 
 def set_edict(d,key,value):
     keys=key.split('.')
@@ -34,6 +35,7 @@ class psp_opt():
         self.n_calls=config.args.n_calls
         self.current_call=0
         self.hyperkeys=config.args.hyperkey.split(',')
+        os.makedirs('output',exist_ok=True)
 
     
     def loop(self):
@@ -50,19 +52,22 @@ class psp_opt():
             """
             random for single variale
             """
+            assert len(self.hyperkeys)==len(xyz)
+            assert isinstance(xyz,list)
             for key,value in zip(self.hyperkeys,xyz):
-                set_edict(config,key,xyz)
+                set_edict(config,key,value)
             net = psp_model(config)
             best_val_miou=keras_fit(net, train_loader, val_loader)
             
-            for col,value in zip(cols,(xyz,best_val_miou)):
+            xyz.append(best_val_miou)
+            for col,value in zip(cols,xyz):
                 if col in results.keys():
                     results[col].append(value)
                 else:
                     results[col]=[value]
                 
             tasks=pd.DataFrame(results,columns=cols)
-            tasks.to_csv(path_or_buf='loop_%s_%s.tab'%(config.args.note,self.time_str),sep='\t')
+            tasks.to_csv(path_or_buf='output/loop_%s_%s.tab'%(config.args.note,self.time_str),sep='\t')
             score=best_val_miou
             self.current_call+=1
             print('%s/%s calls, score=%0.3f'%(self.current_call,self.n_calls,score))
@@ -76,7 +81,7 @@ class psp_opt():
         for t in range(self.n_calls):
             values=[]
             for hyperkey in self.hyperkeys:
-                hyper_type,hyper_params=get_hyperparams(hyperkey)
+                hyper_type,hyper_params=get_hyperparams(hyperkey,discrete=True)
                 if hyper_type=='int':
                     value=random.randint(hyper_params[0],hyper_params[1])
                 elif hyper_type=='float':
@@ -125,7 +130,7 @@ class psp_opt():
                     results[col]=[value]
                 
             tasks=pd.DataFrame(results,columns=cols)
-            tasks.to_csv(path_or_buf='bayes_%s_%s.tab'%(config.args.note,self.time_str),sep='\t')
+            tasks.to_csv(path_or_buf='output/bayes_%s_%s.tab'%(config.args.note,self.time_str),sep='\t')
             self.current_call+=1
             print('%s/%s calls,score=%0.3f'%(self.current_call,self.n_calls,best_val_miou))
             return best_val_miou
@@ -165,7 +170,7 @@ class psp_opt():
                     results[col]=[value]
                 
             tasks=pd.DataFrame(results,columns=cols)
-            tasks.to_csv(path_or_buf='skopt_%s_%s.tab'%(config.args.note,self.time_str),sep='\t')
+            tasks.to_csv(path_or_buf='output/skopt_%s_%s.tab'%(config.args.note,self.time_str),sep='\t')
             self.current_call+=1
             print('%s/%s calls'%(self.current_call,self.n_calls))
             return 1-best_val_miou

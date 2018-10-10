@@ -266,14 +266,20 @@ def get_parser():
     
     return parser
 
-def get_hyperparams(key):
-    hyper_dict={
+def get_hyperparams(key,discrete=False):
+    discrete_hyper_dict={
             'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),
             'model.l2_reg':('choices',[1e-5,1e-4,1e-3,1e-2,1e-1]),
             'model.use_lr_mult':('choices',[True,False]),
             'model.backbone_pretrained':('bool',[True,False]),
             'model.backbone_freeze':('bool',[True,False]),
-            'model.learning_rate':(float,[1e-5,1e-3]),
+            'model.learning_rate':('choices',[1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3]),
             'model.optimizer':('choices',['sgd','adam'])}
     
-    return hyper_dict[key]
+    continuous_hyper_dict={
+            'model.learning_rate':(float,[1e-5,1e-3]),
+            }
+    if discrete:
+        return discrete_hyper_dict[key]
+    else:
+        return continuous_hyper_dict[key]
