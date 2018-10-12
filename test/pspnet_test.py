@@ -148,7 +148,7 @@ if __name__ == '__main__':
     
     if args.note is None:
         config.args.note = '_'.join([args.test,
-                                     'bn'+str(batch_size),
+                                     'bs'+str(batch_size),
                                      'aug', str(args.augmentation)[0],
                                      ])
     else:

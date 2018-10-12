@@ -5,6 +5,27 @@ import numpy as np
 import torch.nn.functional as F
 import torch
 
+class local_bn(TN.Module):
+    def __init__(self,num_features,eps=1e-5,momentum=0.1):
+        super().__init__()
+        self.bn=TN.BatchNorm2d(num_features=num_features,
+                             eps=eps,
+                             momentum=momentum)
+        self.use_bn=False
+        
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+        
+    def forward(self,x):
+        if self.use_bn:
+            return self.bn(x)
+        else:
+            return x
 
 class conv_bn_relu(TN.Module):
     def __init__(self,
@@ -27,7 +48,7 @@ class conv_bn_relu(TN.Module):
                                                     padding=padding,
                                                     stride=stride,
                                                     bias=False),
-                                          TN.BatchNorm2d(num_features=out_channels,
+                                          local_bn(num_features=out_channels,
                                                          eps=eps,
                                                          momentum=momentum),
                                           TN.ReLU(),
@@ -59,7 +80,7 @@ class upsample_duc(TN.Module):
                                                     padding=1,
                                                     stride=1,
                                                     bias=False),
-                                          TN.BatchNorm2d(
+                                          local_bn(
             num_features=out_channels*upsample_ratio*upsample_ratio,
             eps=eps,
             momentum=momentum),
@@ -94,7 +115,7 @@ class upsample_bilinear(TN.Module):
                                                     stride=1,
                                                     padding=1,
                                                     bias=False),
-                                          TN.BatchNorm2d(
+                                          local_bn(
                                               num_features=512,
                                               eps=eps,
                                               momentum=momentum),
@@ -159,7 +180,7 @@ class transform_psp_caffe(TN.Module):
                                                 stride=1,
                                                 padding=0,
                                                 bias=False),
-                                      TN.BatchNorm2d(num_features=out_c,
+                                      local_bn(num_features=out_c,
                                                      eps=eps,
                                                      momentum=momentum),
                                       TN.ReLU(),
@@ -239,7 +260,7 @@ class transform_psp(TN.Module):
                                                 stride=1,
                                                 padding=0,
                                                 bias=False),
-                                      TN.BatchNorm2d(num_features=out_c,
+                                      local_bn(num_features=out_c,
                                                      eps=eps,
                                                      momentum=momentum),
                                       TN.ReLU(),
@@ -289,7 +310,7 @@ class transform_global(TN.Module):
                                           stride=dilation_size,
                                           padding=dilation_size,
                                           bias=False),
-                                TN.BatchNorm2d(
+                                local_bn(
                 num_features=class_number,
                 eps=eps,
                 momentum=momentum),
@@ -374,7 +395,7 @@ class transform_fractal(TN.Module):
                                            stride=1,
                                            padding=0,
                                            bias=False),
-                                 TN.BatchNorm2d(
+                                 local_bn(
                 num_features=class_number,
                 eps=eps,
                 momentum=momentum),
@@ -393,7 +414,7 @@ class transform_fractal(TN.Module):
                                                    stride=1,
                                                    padding=0,
                                                    bias=False),
-                                         TN.BatchNorm2d(
+                                         local_bn(
                                              num_features=(2**i)*class_number),
                                          TN.ReLU(inplace=False),
                                          transform_fractal((2**i)*class_number, i, class_number, fusion_type))
@@ -481,7 +502,7 @@ class transform_aspp(TN.Module):
                                            dilation=r,
                                            bias=False
                                            ),
-                                 TN.BatchNorm2d(num_features=out_c,
+                                 local_bn(num_features=out_c,
                                                 eps=eps,
                                                 momentum=momentum),
                                  TN.ReLU())
@@ -494,7 +515,7 @@ class transform_aspp(TN.Module):
                                                         stride=1,
                                                         padding=0,
                                                         bias=False),
-                                              TN.BatchNorm2d(num_features=out_c,
+                                              local_bn(num_features=out_c,
                                                              eps=eps,
                                                              momentum=momentum),
                                               TN.ReLU(),
@@ -508,7 +529,7 @@ class transform_aspp(TN.Module):
                                                   stride=1,
                                                   padding=0,
                                                   bias=False),
-                                        TN.BatchNorm2d(num_features=out_c,
+                                        local_bn(num_features=out_c,
                                                        eps=eps,
                                                        momentum=momentum),
                                         TN.ReLU())
