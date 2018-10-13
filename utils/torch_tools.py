@@ -351,7 +351,7 @@ def get_loss_weight(step,max_step,config=None):
         if hasattr(config.model,'aux_base_weight'):
             aux_base_weight=config.model.aux_base_weight
             
-        config.model.poly_loss_weight=True
+        config.model.poly_loss_weight=False
         if hasattr(config.model,'poly_loss_weight'):
             if config.model.poly_loss_weight:
                 loss_weight_dict['seg']=1.0
