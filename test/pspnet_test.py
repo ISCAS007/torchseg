@@ -42,8 +42,12 @@ if __name__ == '__main__':
     config.model.cross_merge_times=args.cross_merge_times
     config.model.use_momentum = args.use_momentum
     config.model.backbone_pretrained = args.backbone_pretrained
+    config.model.use_bn=args.use_bn
+    # use_bn will change the variable in local_bn
+    os.environ['torchseg_use_bn']=str(args.use_bn)
+    
     config.model.eps = 1e-5
-    config.model.momentum = 0.9
+    config.model.momentum = 0.1
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
     config.model.use_lr_mult = args.use_lr_mult
@@ -123,7 +127,10 @@ if __name__ == '__main__':
             p=0.25, use_imgaug=True, rotate=args.augmentations_rotate)
     else:
         augmentations = None
-
+    
+    if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
+        config.dataset.with_edge = True
+        
     train_dataset = dataset_generalize(
         config.dataset, split='train',
         augmentations=augmentations,
@@ -156,9 +163,8 @@ if __name__ == '__main__':
         
     note = config.args.note
     test = args.test
+
     if test == 'naive':
-        if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
-            config.dataset.with_edge = True
         net = globals()[args.net_name](config)
         best_val_iou=keras_fit(net,train_loader,val_loader)
         print('best val iou is %0.3f'%best_val_iou)

@@ -75,6 +75,11 @@ def get_parser():
                         choices=['adam', 'sgd'],
                         default='adam')
     
+    parser.add_argument('--use_bn',
+                        help='use batch norm or not',
+                        default=True,
+                        type=str2bool)
+    
     parser.add_argument('--use_lr_mult',
                         help='use lr mult or not',
                         default=True,

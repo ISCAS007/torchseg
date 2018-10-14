@@ -4,6 +4,8 @@ import torch.nn as TN
 import numpy as np
 import torch.nn.functional as F
 import torch
+import os
+from utils.disc_tools import str2bool
 
 class local_bn(TN.Module):
     def __init__(self,num_features,eps=1e-5,momentum=0.1):
@@ -11,7 +13,9 @@ class local_bn(TN.Module):
         self.bn=TN.BatchNorm2d(num_features=num_features,
                              eps=eps,
                              momentum=momentum)
-        self.use_bn=False
+        self.use_bn=True
+        if 'torchseg_use_bn' in os.environ.keys():
+            self.use_bn=str2bool(os.environ['torchseg_use_bn'])
         
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
@@ -72,7 +76,7 @@ class upsample_duc(TN.Module):
         out_channels: class number
         upsample_ratio: 2**upsample_layer
         """
-        super(upsample_duc, self).__init__()
+        super().__init__()
 
         self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
                                                     out_channels=out_channels*upsample_ratio*upsample_ratio,
