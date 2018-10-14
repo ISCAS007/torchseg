@@ -291,7 +291,7 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
                           weight_dict=weight_dict,
                           epoch=epoch)
     writer.close()
-    print('best iou is',best_iou)
+    print('total epoch is %d, best iou is'%config.args.n_epoch,best_iou)
     return best_iou
             
 def get_loss_fn_dict(config):
