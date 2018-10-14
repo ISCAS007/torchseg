@@ -168,7 +168,7 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
     if train_loader is None:
         config.args.n_epoch = 1
         
-    tqdm_epoch=trange(config.args.n_epoch,desc='epoches',leave=False)
+    tqdm_epoch=trange(config.args.n_epoch,desc='epoches',leave=True)
     for epoch in tqdm_epoch:
         tqdm_epoch.set_postfix(best_iou=best_iou)
         for loader, loader_name in zip(loaders, loader_names):
@@ -291,6 +291,7 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
                           weight_dict=weight_dict,
                           epoch=epoch)
     writer.close()
+    print('best iou is',best_iou)
     return best_iou
             
 def get_loss_fn_dict(config):
