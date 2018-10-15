@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-
+import sys
+if '.' not in sys.path:
+    sys.path.append('.')
 from dataset.dataset_generalize import dataset_generalize, get_dataset_generalize_config
 from models.keras.semantic_segmentation import SS,do_train_or_val
 from models.keras import layers
