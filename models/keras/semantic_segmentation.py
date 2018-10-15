@@ -64,6 +64,18 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
     checkpoint_path=os.path.join(log_dir,"{}_{}_best_model.pkl".format(net.name, args.dataset_name))
     os.makedirs(log_dir,exist_ok=True)
     writer = SummaryWriter(log_dir=log_dir)
+    config=net.config
+    config_str = json.dumps(config, indent=2, sort_keys=True).replace(
+        '\n', '\n\n').replace('  ', '\t')
+    writer.add_text(tag='config', text_string=config_str)
+
+    # write config to config.txt
+    config_path = os.path.join(log_dir, 'config.txt')
+    config_file = open(config_path, 'w')
+    json.dump(config, config_file, sort_keys=True)
+    config_file.close()
+    
+    
     best_iou=0.6
     
     loaders=[train_loader,val_loader]

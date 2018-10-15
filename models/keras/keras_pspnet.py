@@ -75,13 +75,14 @@ if __name__ == '__main__':
     config.training=edict()
     
     config.dataset=get_dataset_generalize_config(config.dataset,'Cityscapes')
+    config.dataset.with_edge=False
     
     config.model.class_number=len(config.dataset.foreground_class_ids)+1
     config.dataset.ignore_index=0
-    config.model.upsample_type='duc'
+    config.model.upsample_type='bilinear'
     config.model.upsample_layer=3
     config.model.midnet_pool_sizes = [6,3,2,1]
-    config.model.midnet_scale = 10
+    config.model.midnet_scale = 15
     config.model.trainable_ratio=1.0
     config.model.load_imagenet_weights=True
     config.model.backbone_type='standard'
