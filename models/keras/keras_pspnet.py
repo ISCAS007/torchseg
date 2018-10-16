@@ -78,6 +78,7 @@ if __name__ == '__main__':
     
     config.dataset=get_dataset_generalize_config(config.dataset,'Cityscapes')
     config.dataset.with_edge=False
+    config.dataset.dataset_use_part=0
     
     config.model.class_number=len(config.dataset.foreground_class_ids)+1
     config.dataset.ignore_index=0

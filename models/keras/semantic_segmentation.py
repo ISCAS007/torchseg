@@ -127,15 +127,16 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
                     best_iou = score['Mean IoU : \t']
                     net.model.save(checkpoint_path)
                 
-                if epoch % (1+args.n_epoch//10) == 0:
-                    print('write image to tensorboard'+'.'*50)
-                    idx=np.random.choice(predicts.shape[0])
-                    writer.add_image('val/images',x[idx,:,:,:],epoch)
-                    writer.add_image('val/predicts', torch.from_numpy(predicts[idx,:,:]), epoch)
-                    writer.add_image('val/trues', torch.from_numpy(trues[idx,:,:]), epoch)
-                    diff_img=(predicts[idx,:,:]==trues[idx,:,:]).astype(np.uint8)
-                    writer.add_image('val/difference', torch.from_numpy(diff_img), epoch)
+#                if epoch % (1+args.n_epoch//10) == 0:
+#                    print('write image to tensorboard'+'.'*50)
+#                    idx=np.random.choice(predicts.shape[0])
+#                    writer.add_image('val/images',x[idx,:,:,:],epoch)
+#                    writer.add_image('val/predicts', torch.from_numpy(predicts[idx,:,:]), epoch)
+#                    writer.add_image('val/trues', torch.from_numpy(trues[idx,:,:]), epoch)
+#                    diff_img=(predicts[idx,:,:]==trues[idx,:,:]).astype(np.uint8)
+#                    writer.add_image('val/difference', torch.from_numpy(diff_img), epoch)
     
+    print('best iou is',best_iou)
     writer.close()
     
 class SS():
