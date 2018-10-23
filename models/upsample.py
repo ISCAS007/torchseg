@@ -12,7 +12,8 @@ class local_bn(TN.Module):
         super().__init__()
         self.bn=TN.BatchNorm2d(num_features=num_features,
                              eps=eps,
-                             momentum=momentum)
+                             momentum=momentum,
+                             affine=True)
         self.use_bn=True
         if 'torchseg_use_bn' in os.environ.keys():
             self.use_bn=str2bool(os.environ['torchseg_use_bn'])
@@ -152,6 +153,51 @@ class upsample_bilinear(TN.Module):
         else:
             return x
 
+class upsample_fcn(TN.Module):
+    def __init__(self,in_channels,out_channels,output_shape,bias=False):
+        super().__init__()
+        self.output_shape = output_shape
+        self.conv_seq= TN.Sequential(TN.Conv2d(in_channels=in_channels,
+                                                    out_channels=4096,
+                                                    kernel_size=7,
+                                                    stride=1,
+                                                    padding=0,
+                                                    bias=bias),
+                                          TN.ReLU(),
+                                          TN.Dropout2d(p=0.5),
+                                          TN.Conv2d(in_channels=4096,
+                                                    out_channels=4096,
+                                                    kernel_size=1,
+                                                    stride=1,
+                                                    padding=0,
+                                                    bias=bias),
+                                          TN.ReLU(),
+                                          TN.Dropout2d(p=0.5)
+                                          )
+        self.conv=TN.Conv2d(in_channels=4096,
+                                          out_channels=out_channels,
+                                          kernel_size=1,
+                                          padding=0,
+                                          stride=1,
+                                          bias=bias)
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+                
+    def forward(self,x,need_upsample_feature=False):
+        upsample_feature=x=self.conv_seq(x)
+        x = self.conv(x)
+        x = F.upsample(x, size=self.output_shape,
+                       mode='bilinear', align_corners=True)
+
+        if need_upsample_feature:
+            return upsample_feature, x
+        else:
+            return x
 
 class transform_psp_caffe(TN.Module):
     """x->4x[pool->conv->bn->relu->upsample]->concat
@@ -641,6 +687,12 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
         #        print('upsample is bilinear'+'*'*50)
         decoder = upsample_bilinear(
             midnet_out_channels, class_number, input_shape[0:2], eps=eps, momentum=momentum)
+    elif upsample_type == 'fcn':
+        if hasattr(config.model,'use_bias'):
+            bias=config.model.use_bias
+        else:
+            bias=False
+        decoder=upsample_fcn(midnet_out_channels,class_number,input_shape[0:2],bias)
     else:
         assert False, 'unknown upsample type %s' % upsample_type
 

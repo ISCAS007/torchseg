@@ -158,21 +158,24 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, upsample_layer=None):
+        if upsample_layer is None:
+            upsample_layer=self.upsample_layer
+            
         x = self.prefix_net(x)
-        if self.upsample_layer==1:
+        if upsample_layer==1:
             return x
         x = self.layer1(x)
-        if self.upsample_layer==2:
+        if upsample_layer==2:
             return x
         x = self.layer2(x)
-        if self.upsample_layer==3:
+        if upsample_layer==3:
             return x
         x = self.layer3(x)
-        if self.upsample_layer==4:
+        if upsample_layer==4:
             return x
         x = self.layer4(x)
-        if self.upsample_layer==5:
+        if upsample_layer==5:
             return x
         
         assert False,'upsample_layer=%d, not in [1-5]'%self.upsample_layer

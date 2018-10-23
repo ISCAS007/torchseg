@@ -269,6 +269,7 @@ def keras_fit(model,train_loader=None,val_loader=None,config=None):
             metric_dict,class_iou_dict=get_metric(running_metrics,metric_fn_dict,summary_all=summary_all,prefix_note=loader_name)
             if loader_name=='val':
                 val_iou=metric_dict['val/iou']
+                tqdm.write('epoch %d,curruent val iou is %0.5f'%(epoch,val_iou))
                 if val_iou >= best_iou:
                     best_iou = val_iou
             image_dict=get_image_dict(outputs_dict,targets_dict,config,summary_all=summary_all,prefix_note=loader_name)

@@ -50,7 +50,13 @@ class backbone(TN.Module):
                 self.layer_depths=self.get_layer_depths()
             elif self.config.backbone_name.find('resnet')>=0:
                 # the output size of resnet layer is different from stand model!
-                raise NotImplementedError
+                # raise NotImplementedError
+                self.format='resnet'
+                self.prefix_net = self.model.prefix_net
+                self.layer1=self.model.layer1
+                self.layer2=self.model.layer2
+                self.layer3=self.model.layer3
+                self.layer4=self.model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
     
@@ -173,11 +179,14 @@ class backbone(TN.Module):
     
     def get_model(self):
         if self.use_momentum:
-#            from models.psp_resnet import *
+            from models.psp_resnet import resnet50,resnet101
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn
-            assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
-            assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
-            return locals()[self.config.backbone_name](eps=self.eps, momentum=self.momentum)
+            #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
+            #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
+            if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn']:
+                return locals()[self.config.backbone_name](eps=self.eps, momentum=self.momentum)
+            else:
+                return locals()[self.config.backbone_name](momentum=self.momentum)
         else:
             if hasattr(self.config,'backbone_pretrained'):
                 pretrained=self.config.backbone_pretrained

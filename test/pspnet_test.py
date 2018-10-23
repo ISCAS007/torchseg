@@ -52,6 +52,7 @@ if __name__ == '__main__':
     config.model.optimizer = args.optimizer
     config.model.use_lr_mult = args.use_lr_mult
     config.model.use_reg = args.use_reg
+    config.model.use_bias=args.use_bias
 #    config.model.l1_reg=args.l1_reg
     config.model.l2_reg=args.l2_reg
     config.model.backbone_name = args.backbone_name
@@ -86,13 +87,18 @@ if __name__ == '__main__':
             psp_convert_config[args.dataset_name]['input_size'])
     elif args.input_shape == 0:
         if args.midnet_name == 'psp':
+            upsample_ratio=args.upsample_layer
+            if args.use_momentum and args.upsample_layer>=3:
+                upsample_ratio=3
             count_size = max(config.model.midnet_pool_sizes) * \
-                config.model.midnet_scale*2**args.upsample_layer
+                config.model.midnet_scale*2**upsample_ratio
             input_shape = (count_size, count_size)
         else:
             input_shape = (72*8, 72*8)
     else:
         input_shape = (args.input_shape, args.input_shape)
+        
+    print('input shape is',input_shape,'*'*30)
 
     if config.dataset.norm_ways is None:
         normalizations = None
@@ -144,7 +150,7 @@ if __name__ == '__main__':
 
     val_dataset = dataset_generalize(config.dataset, 
                                      split='val',
-                                     augmentations=augmentations,
+                                     augmentations=None,
                                      normalizations=normalizations)
     val_loader = TD.DataLoader(
         dataset=val_dataset,

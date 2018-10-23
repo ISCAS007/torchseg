@@ -80,6 +80,11 @@ def get_parser():
                         default=True,
                         type=str2bool)
     
+    parser.add_argument('--use_bias',
+                        help='use bias or not',
+                        default=False,
+                        type=str2bool)
+    
     parser.add_argument('--use_lr_mult',
                         help='use lr mult or not',
                         default=True,
@@ -153,7 +158,7 @@ def get_parser():
 
     parser.add_argument('--upsample_type',
                         help='bilinear or duc upsample',
-                        choices=['duc', 'bilinear'],
+                        choices=['duc', 'bilinear','fcn'],
                         default='duc')
 
     parser.add_argument('--auxnet_type',
@@ -282,6 +287,7 @@ def get_hyperparams(key,discrete=False):
             'model.optimizer':('choices',['sgd','adam']),
             'model.edge_base_weight':('choices',[0.1,0.2,0.5,1.0]),
             'model.use_bn':('bool',[True,False]),
+            'model.use_bias':('bool',[True,False]),
             'model.momentum':('choices',[0.1,0.3,0.5,0.7,0.9])}
     
     continuous_hyper_dict={
