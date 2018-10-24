@@ -211,7 +211,7 @@ class backbone(TN.Module):
                     level=level+1
             elif name.find('NoneLayer')>=0:
                 level=level+1
-
+            
             df=df.append({'level':level,
                        'layer_depth':idx,
                        'layer_name':name},ignore_index=True)

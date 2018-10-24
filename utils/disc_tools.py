@@ -35,3 +35,43 @@ def str2bool(s):
         return False
     else:
         assert False,'unexpected value for bool type'
+
+def changed_or_not(backbone_name,param_name):
+    changed_threshold={
+            "vgg19_bn":39,
+            "vgg19":27,
+            "vgg16_bn":33,
+            "vgg16":23,
+            }
+    
+    idx=int(param_name.split('.')[0])
+    return idx>=changed_threshold[backbone_name]
+    
+def get_backbone_optimizer_params(backbone_name,
+                              backbone,
+                              unchanged_lr_mult=1,
+                              changed_lr_mult=10):
+    
+    unchanged_backbone={'params':[],'lr_mult':unchanged_lr_mult}
+    modified_backbone={'params':[],'lr_mult':changed_lr_mult}
+    if backbone_name in ['vgg16','vgg16_bn','vgg19','vgg19_bn']:
+        for param_name, p in backbone.features.named_parameters():
+            if p.requires_grad:
+                changed=changed_or_not(backbone_name,param_name)
+                if changed:
+                    modified_backbone['params'].append(p)
+                else:
+                    unchanged_backbone['params'].append(p)
+    elif backbone_name in ['resnet50','resnet101']:
+        for child_name, child in backbone.named_children():
+            if child_name in ['avgpool','fc']:
+                continue
+            elif child_name in ['layer3','layer4']:
+                modified_backbone['params']+=[p for p in child.parameter() if p.requires_grad]
+            else:
+                unchanged_backbone['params']+=[p for p in child.parameter() if p.requires_grad]
+    else:
+        assert False,'unknonw backbone name %s'%backbone_name
+        
+    return [unchanged_backbone,modified_backbone]
+            

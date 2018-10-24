@@ -4,6 +4,7 @@ import torch.nn as TN
 from models.backbone import backbone
 from models.upsample import get_midnet, get_suffix_net
 from utils.torch_tools import freeze_layer
+from utils.disc_tools import get_backbone_optimizer_params
 
 class pspnet(TN.Module):
     def __init__(self, config):
@@ -42,10 +43,17 @@ class pspnet(TN.Module):
                                       self.midnet_out_channels,
                                       self.class_number)
         
+        # for pretrained module, use small lr_mult=1
+        # for modified module, use middle lr_mult=10
+        # for new module, use largest lr_mult=20
         if config.model.use_lr_mult:
-            self.optimizer_params = [{'params': [p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1},
-                                     {'params': self.midnet.parameters(),'lr_mult': 100},
-                                     {'params': self.decoder.parameters(), 'lr_mult': 100}]
+            if use_momentum and config.model.backbone_pretrained and self.upsample_layer>=4:
+                backbone_optmizer_params=get_backbone_optimizer_params(config.model.backbone_name,self.backbone.model)
+            else:
+                backbone_optmizer_params=[{'params': [p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1}]
+                
+            self.optimizer_params = backbone_optmizer_params + [{'params': self.midnet.parameters(),'lr_mult': 20},
+                                     {'params': self.decoder.parameters(), 'lr_mult': 20}]
         else:
             self.optimizer_params = [{'params': [p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1},
                                      {'params': self.midnet.parameters(),'lr_mult': 1},
