@@ -96,7 +96,7 @@ if __name__ == '__main__':
     config.model.activation='softmax'
     
     config.training.optimizer='adam'
-    config.training.learning_rate=0.01
+    config.training.learning_rate=0.0001
     config.training.n_epoch=100
     config.training.log_dir=os.path.join(os.getenv('HOME'),'tmp','logs','pytorch')
     config.training.note='keras'
