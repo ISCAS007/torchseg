@@ -120,6 +120,7 @@ if __name__ == '__main__':
 
     config.args = edict()
     config.args.n_epoch = args.n_epoch
+    # for hyperopt use ~/tmp/logs/hyperopt
     config.args.log_dir = os.path.expanduser('~/tmp/logs/pytorch')
     config.args.summary_image=args.summary_image
     config.args.note = args.note
@@ -307,6 +308,7 @@ if __name__ == '__main__':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         torchsummary.summary(net.to(device), (3, height, width))
     elif test == 'hyperopt':
+        config.args.log_dir = os.path.expanduser('~/tmp/logs/hyperopt')
         psp_model=globals()[args.net_name]
         config.args.n_calls=args.hyperopt_calls
         config.args.hyperkey=args.hyperkey

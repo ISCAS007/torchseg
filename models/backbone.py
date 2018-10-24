@@ -178,20 +178,21 @@ class backbone(TN.Module):
         return shapes
     
     def get_model(self):
+        if hasattr(self.config,'backbone_pretrained'):
+            pretrained=self.config.backbone_pretrained
+        else:
+            pretrained=False
+                
         if self.use_momentum:
             from models.psp_resnet import resnet50,resnet101
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn']:
-                return locals()[self.config.backbone_name](eps=self.eps, momentum=self.momentum)
+                return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum)
             else:
                 return locals()[self.config.backbone_name](momentum=self.momentum)
         else:
-            if hasattr(self.config,'backbone_pretrained'):
-                pretrained=self.config.backbone_pretrained
-            else:
-                pretrained=False
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101
             assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
@@ -208,6 +209,8 @@ class backbone(TN.Module):
             if name in ['Conv2d'] or name.find('Pool2d')>=0:
                 if layer.stride==2:
                     level=level+1
+            elif name.find('NoneLayer')>=0:
+                level=level+1
 
             df=df.append({'level':level,
                        'layer_depth':idx,

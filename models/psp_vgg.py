@@ -12,6 +12,13 @@ model_urls = {
     'vgg19_bn': 'https://download.pytorch.org/models/vgg19_bn-c79401a0.pth',
 }
 
+class NoneLayer(nn.Module):
+    def __init__(self):
+        super().__init__()
+        
+    def forward(self,x):
+        return x
+
 class VGG(nn.Module):
     def __init__(self, features, num_classes=1000, init_weights=True):
         super(VGG, self).__init__()
@@ -27,12 +34,32 @@ class VGG(nn.Module):
         )
         if init_weights:
             self._initialize_weights()
+        else:
+            # init for bias and batch norm, kernel weight will load from checkpoint weights
+            # wish all modules will be overwrite by checkpoint weights
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+#                    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                    if m.bias is not None:
+                        nn.init.constant_(m.bias, 0)
+                elif isinstance(m, nn.BatchNorm2d):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         x = self.features(x)
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
         return x
+    
+    def load_state_dict(self,state_dict):
+        model_dict = self.state_dict()
+        # 1. filter out unnecessary keys
+        pretrained_dict = {k: v for k, v in state_dict.items() if k in model_dict}
+        # 2. overwrite entries in the existing state dict
+        model_dict.update(pretrained_dict) 
+        # 3. load the new state dict
+        super().load_state_dict(model_dict)
 
     def _initialize_weights(self):
         for m in self.modules():
@@ -54,6 +81,8 @@ def make_layers(cfg, batch_norm=False,eps=1e-5,momentum=0.1):
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+        elif v == 'N':
+            layers += [NoneLayer()]
         else:
             
             if batch_norm:
@@ -74,10 +103,10 @@ def make_layers(cfg, batch_norm=False,eps=1e-5,momentum=0.1):
 #}
     
 cfg = {
-    'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 512, 512],
-    'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 512, 512],
-    'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 512, 512, 512],
-    'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 512, 512, 512, 512],
+    'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512,'N', 512, 512, 'N'],
+    'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'N', 512, 512, 'N'],
+    'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'N', 512, 512, 512, 'N'],
+    'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'N', 512, 512, 512, 512, 'N'],
 }
 
 
