@@ -46,6 +46,7 @@ class pspnet(TN.Module):
         # for pretrained module, use small lr_mult=1
         # for modified module, use middle lr_mult=10
         # for new module, use largest lr_mult=20
+        # for resnet, the begin layers is newed and the end layers is changed
         if config.model.use_lr_mult:
             if use_momentum and config.model.backbone_pretrained and self.upsample_layer>=4:
                 backbone_optmizer_params=get_backbone_optimizer_params(config.model.backbone_name,self.backbone.model)

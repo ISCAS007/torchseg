@@ -6,6 +6,16 @@ the detial change can see in get_backbone()
 """
 import torch.nn as nn
 import torchvision
+import torch.utils.model_zoo as model_zoo
+
+model_urls = {
+    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
+    'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
+    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+    'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
+    'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
+}
+
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -59,6 +69,9 @@ class ResNet(nn.Module):
         self.psp_mode=psp_mode
         super(ResNet, self).__init__()
         
+        # for pspnet, the layer1_in_channels=128
+        # but from checkpoint, the layer1_in_channels=64, make layer1 unchanged!!!
+        self.layer1_in_channels=64
         self.upsample_layer=upsample_layer
         if psp_mode:
             self.prefix_net = nn.Sequential(self.conv_bn_relu(in_channels=3,
@@ -72,7 +85,7 @@ class ResNet(nn.Module):
                                                               stride=1,
                                                               padding=1),
                                             self.conv_bn_relu(in_channels=64,
-                                                              out_channels=128,
+                                                              out_channels=self.layer1_in_channels,
                                                               kernel_size=3,
                                                               stride=1,
                                                               padding=1),
@@ -103,6 +116,24 @@ class ResNet(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
+                
+    def load_state_dict(self,state_dict):
+        model_dict = self.state_dict()
+        print('model',len(model_dict))
+        print('checkpoint',len(state_dict))
+        for k,v in model_dict.items():
+            if k.startswith('layer1.0'):
+                print(k,v.shape)
+        print('*'*30)
+        for k,v in state_dict.items():
+            if k.startswith('layer1.0'):
+                print(k,v.shape)
+        # 1. filter out unnecessary keys
+        pretrained_dict = {k: v for k, v in state_dict.items() if k in model_dict}
+        # 2. overwrite entries in the existing state dict
+        model_dict.update(pretrained_dict) 
+        # 3. load the new state dict
+        super().load_state_dict(model_dict)
     
     def conv_bn_relu(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False):
         seq = nn.Sequential(nn.Conv2d(in_channels=in_channels,
@@ -130,7 +161,7 @@ class ResNet(nn.Module):
             assert False, 'unexpected index=%d' % index
 
         if index == 1 and self.psp_mode:
-            in_channels = 128
+            in_channels = self.layer1_in_channels
         else:
             in_channels = self.inplanes
 
@@ -182,19 +213,23 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet50(momentum=0.1,upsample_layer=5):
+def resnet50(pretrained=True,momentum=0.1,upsample_layer=5):
     """Constructs a ResNet-50 model.
 
     """
     model = ResNet(Bottleneck, [3, 4, 6, 3], momentum=momentum,upsample_layer=upsample_layer)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
     return model
 
 
-def resnet101(momentum=0.1,upsample_layer=5):
+def resnet101(pretrained=True,momentum=0.1,upsample_layer=5):
     """Constructs a ResNet-101 model.
 
     """
     model = ResNet(Bottleneck, [3, 4, 23, 3], momentum=momentum,upsample_layer=upsample_layer)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))
     return model
 
 

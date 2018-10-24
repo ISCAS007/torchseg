@@ -50,10 +50,12 @@ def changed_or_not(backbone_name,param_name):
 def get_backbone_optimizer_params(backbone_name,
                               backbone,
                               unchanged_lr_mult=1,
-                              changed_lr_mult=10):
+                              changed_lr_mult=10,
+                              new_lr_mult=20):
     
     unchanged_backbone={'params':[],'lr_mult':unchanged_lr_mult}
     modified_backbone={'params':[],'lr_mult':changed_lr_mult}
+    new_backbone={'params':[],'lr_mult':new_lr_mult}
     if backbone_name in ['vgg16','vgg16_bn','vgg19','vgg19_bn']:
         for param_name, p in backbone.features.named_parameters():
             if p.requires_grad:
@@ -62,16 +64,22 @@ def get_backbone_optimizer_params(backbone_name,
                     modified_backbone['params'].append(p)
                 else:
                     unchanged_backbone['params'].append(p)
+        return [unchanged_backbone,modified_backbone]
     elif backbone_name in ['resnet50','resnet101']:
         for child_name, child in backbone.named_children():
+#            print(child_name,'*'*10)
             if child_name in ['avgpool','fc']:
                 continue
             elif child_name in ['layer3','layer4']:
-                modified_backbone['params']+=[p for p in child.parameter() if p.requires_grad]
+                modified_backbone['params']+=[p for p in child.parameters() if p.requires_grad]
+            elif child_name == 'prefix_net':
+                new_backbone['params']+=[p for p in child.parameters() if p.requires_grad]
             else:
-                unchanged_backbone['params']+=[p for p in child.parameter() if p.requires_grad]
+                unchanged_backbone['params']+=[p for p in child.parameters() if p.requires_grad]
+                
+        return [unchanged_backbone,modified_backbone,new_backbone]
     else:
         assert False,'unknonw backbone name %s'%backbone_name
         
-    return [unchanged_backbone,modified_backbone]
+    
             
