@@ -53,7 +53,7 @@ class psp_opt():
             """
             random for single variale
             """
-            assert len(self.hyperkeys)==len(xyz)
+            assert len(self.hyperkeys)==len(xyz),'{} vs {}'.format(self.hyperkeys,xyz)
             assert isinstance(xyz,list)
             for key,value in zip(self.hyperkeys,xyz):
                 set_edict(config,key,value)
@@ -91,12 +91,13 @@ class psp_opt():
             print('*'*50)
             print('warning: for each combination of params, running less than 3 times')
             print('*'*50)
-            
+        
+
         for params in itertools.product(*params_domain):
-            
-            values=[v for v in params]
             for t in range(self.n_calls//combination_number):
                 print('use hyper params',params)
+                values=[v for v in params]
+                # values will changed in fn_loop
                 score=fn_loop(values)
                 if score > best_score:
                     best_score=score
