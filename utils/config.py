@@ -53,7 +53,7 @@ def get_parser():
     choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
                'backbone', 'dict', 'fractal', 'upsample_type',
                'pretrained', 'summary', 'naive', 'coarse',
-               'convert','hyperopt']
+               'convert','hyperopt','benchmark']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -89,6 +89,16 @@ def get_parser():
                         help='use lr mult or not',
                         default=True,
                         type=str2bool)
+    
+    parser.add_argument('--changed_lr_mult',
+                        help='unchanged_lr_mult=1, changed_lr_mult=?',
+                        type=int,
+                        default=10)
+    
+    parser.add_argument('--new_lr_mult',
+                        help='unchanged_lr_mult=1, new_lr_mult=?',
+                        type=int,
+                        default=20)
     
     parser.add_argument("--use_reg",
                         help='use l1 and l2 regularizer or not (default False)',
@@ -274,6 +284,25 @@ def get_parser():
                         help='comment for tensorboard log',
                         default=None)
     
+    # save model
+    parser.add_argument('--save_model',
+                        help='save model or not',
+                        type=str2bool,
+                        default=False)
+    
+    parser.add_argument('--iou_save_threshold',
+                        help='validation iou save threshold',
+                        type=float,
+                        default=0.5)
+    
+    # benchmark
+    parser.add_argument('--checkpoint_path',
+                        help='checkpoint path used in benchmark, eg: model.pkl',
+                        default=None)
+    
+    parser.add_argument('--predict_save_path',
+                        help='benchmark result save path',
+                        default=None)
     return parser
 
 def get_hyperparams(key,discrete=False):
@@ -281,6 +310,8 @@ def get_hyperparams(key,discrete=False):
             'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),
             'model.l2_reg':('choices',[1e-5,1e-4,1e-3,1e-2,1e-1]),
             'model.use_lr_mult':('choices',[True,False]),
+            'model.changed_lr_mult':('choices',[1,2,5,10]),
+            'model.new_lr_mult':('choices',[10,20]),
             'model.backbone_pretrained':('bool',[True,False]),
             'model.backbone_freeze':('bool',[True,False]),
             'model.learning_rate':('choices',[1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3]),

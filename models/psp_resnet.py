@@ -119,15 +119,15 @@ class ResNet(nn.Module):
                 
     def load_state_dict(self,state_dict):
         model_dict = self.state_dict()
-        print('model',len(model_dict))
-        print('checkpoint',len(state_dict))
-        for k,v in model_dict.items():
-            if k.startswith('layer1.0'):
-                print(k,v.shape)
-        print('*'*30)
-        for k,v in state_dict.items():
-            if k.startswith('layer1.0'):
-                print(k,v.shape)
+#        print('model',len(model_dict))
+#        print('checkpoint',len(state_dict))
+#        for k,v in model_dict.items():
+#            if k.startswith('layer1.0'):
+#                print(k,v.shape)
+#        print('*'*30)
+#        for k,v in state_dict.items():
+#            if k.startswith('layer1.0'):
+#                print(k,v.shape)
         # 1. filter out unnecessary keys
         pretrained_dict = {k: v for k, v in state_dict.items() if k in model_dict}
         # 2. overwrite entries in the existing state dict

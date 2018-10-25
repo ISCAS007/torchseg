@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import matplotlib.pyplot as plt
-
+import torch
 import math
+import os
 
 # Minimum common multiple or least common multiple
 def lcm(a,b):
@@ -81,5 +82,22 @@ def get_backbone_optimizer_params(backbone_name,
     else:
         assert False,'unknonw backbone name %s'%backbone_name
         
-    
+def save_model_if_necessary(model,config,checkpoint_path):
+    save_model=False
+    if hasattr(config.args,'save_model'):
+        save_model=config.args.save_model
+        
+    if save_model:
+        torch.save(model.state_dict(),checkpoint_path)
             
+def get_newest_file(files):
+    t=0
+    newest_file=None
+    for full_f in files:
+        if os.path.isfile(full_f):
+            file_create_time = os.path.getctime(full_f)
+            if file_create_time > t:
+                t = file_create_time
+                newest_file = full_f
+    
+    return newest_file

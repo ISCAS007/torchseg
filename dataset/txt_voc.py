@@ -64,3 +64,15 @@ for txt_file in txt_files:
             write_file.write(img_p+' '+ann_p+'\n')
         write_file.close()
 
+txt_file='test.txt'
+filename=os.path.join(txt_path,txt_file)
+with open(filename,'r') as f:
+    write_file=open('dataset/txt/voc2012_'+txt_file,'w')
+    for line in f.readlines():
+        line=line.strip()
+        if len(line)==0:
+            continue
+        img_p=os.path.join(image_path,line+'.jpg')
+        assert os.path.join(root_path,img_p) in glob_images,'%s not exist'%img_p
+        write_file.write(img_p+'\n')
+    write_file.close()

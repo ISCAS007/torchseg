@@ -13,6 +13,7 @@ from time import sleep
 import random
 import time
 import os
+import itertools
 
 def set_edict(d,key,value):
     keys=key.split('.')
@@ -77,26 +78,49 @@ class psp_opt():
         best_score=0
         best_call=0
         
+        params_domain=[]
+        combination_number=1
+        for hyperkey in self.hyperkeys:
+            hyper_type,hyper_params=get_hyperparams(hyperkey,discrete=True)
+            assert hyper_type in ['bool','choices'],'unsupport type %s in loop'%hyper_type
+            params_domain.append(hyper_params)
+            combination_number*=len(hyper_params)
         
-        for t in range(self.n_calls):
-            values=[]
-            for hyperkey in self.hyperkeys:
-                hyper_type,hyper_params=get_hyperparams(hyperkey,discrete=True)
-                if hyper_type=='int':
-                    value=random.randint(hyper_params[0],hyper_params[1])
-                elif hyper_type=='float':
-                    value=random.uniform(hyper_params[0],hyper_params[1])
-                elif hyper_type in ['bool','choices']:
-                    value=random.choice(hyper_params)
-                else:
-                    assert False,'unknown hyper type %s'%hyper_type
-        
-                values.append(value)
-        
-            score=fn_loop(values)
-            if score > best_score:
-                best_score=score
-                best_call=t
+        assert self.n_calls >= combination_number,'n_calls %d must >= combination number %d'%(self.n_calls,combination_number)
+        if self.n_calls//combination_number < 3:
+            print('*'*50)
+            print('warning: for each combination of params, running less than 3 times')
+            print('*'*50)
+            
+        for params in itertools.product(*params_domain):
+            
+            values=[v for v in params]
+            for t in range(self.n_calls//combination_number):
+                print('use hyper params',params)
+                score=fn_loop(values)
+                if score > best_score:
+                    best_score=score
+                    best_call=t
+                    
+#        for t in range(self.n_calls):
+#            values=[]
+#            for hyperkey in self.hyperkeys:
+#                hyper_type,hyper_params=get_hyperparams(hyperkey,discrete=True)
+#                if hyper_type=='int':
+#                    value=random.randint(hyper_params[0],hyper_params[1])
+#                elif hyper_type=='float':
+#                    value=random.uniform(hyper_params[0],hyper_params[1])
+#                elif hyper_type in ['bool','choices']:
+#                    value=random.choice(hyper_params)
+#                else:
+#                    assert False,'unknown hyper type %s'%hyper_type
+#        
+#                values.append(value)
+#        
+#            score=fn_loop(values)
+#            if score > best_score:
+#                best_score=score
+#                best_call=t
         
         print('best params is'+'*'*30)
         for k,v in results.items():

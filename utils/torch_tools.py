@@ -6,6 +6,7 @@ import json
 import os
 from tensorboardX import SummaryWriter
 from utils.metrics import get_scores, runningScore
+from utils.disc_tools import save_model_if_necessary
 from dataset.dataset_generalize import image_normalizations
 from tqdm import tqdm, trange
 
@@ -191,7 +192,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
 
             if loader_name == 'val':
                 # summary metrics every 10 epoch
-                if summary_all or epoch % 10 == 0:
+                if summary_all or epoch % 10 == 0 or epoch==config.args.n_epoch-1:
                     val_log = True
                 else:
                     val_log = False
@@ -288,6 +289,18 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                            (epoch, val_iou))
                 if val_iou >= best_iou:
                     best_iou = val_iou
+                    
+                    iou_save_threshold=0.5
+                    if hasattr(config.args,'iou_save_threshold'):
+                        iou_save_threshold=config.args.iou_save_threshold
+                    
+                    if best_iou > iou_save_threshold:
+                        checkpoint_path=os.path.join(log_dir,'model-best-%d.pkl'%epoch)
+                        save_model_if_necessary(model,config,checkpoint_path)
+                    elif epoch==config.args.n_epoch-1:
+                        checkpoint_path=os.path.join(log_dir,'model-last-%d.pkl'%epoch)
+                        save_model_if_necessary(model,config,checkpoint_path)
+                    
             image_dict = get_image_dict(
                 outputs_dict, targets_dict, config, summary_all=summary_all, prefix_note=loader_name)
             lr_dict = get_lr_dict(optimizer, prefix_note=loader_name)

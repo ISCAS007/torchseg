@@ -27,6 +27,7 @@ from models.psp_convert import psp_convert
 from models.psp_convert import CONFIG as psp_convert_config
 from utils.augmentor import Augmentations
 from utils.torch_tools import keras_fit
+from utils.benchmark import keras_benchmark
 from utils.config import get_parser
 
 if __name__ == '__main__':
@@ -51,6 +52,8 @@ if __name__ == '__main__':
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
     config.model.use_lr_mult = args.use_lr_mult
+    config.model.changed_lr_mult=args.changed_lr_mult
+    config.model.new_lr_mult=args.new_lr_mult
     config.model.use_reg = args.use_reg
     config.model.use_bias=args.use_bias
 #    config.model.l1_reg=args.l1_reg
@@ -124,6 +127,8 @@ if __name__ == '__main__':
     config.args.log_dir = os.path.expanduser('~/tmp/logs/pytorch')
     config.args.summary_image=args.summary_image
     config.args.note = args.note
+    config.args.save_model=args.save_model
+    config.args.iou_save_threshold=args.iou_save_threshold
     # must change batch size here!!!
     batch_size = args.batch_size
     config.args.batch_size = batch_size
@@ -323,5 +328,13 @@ if __name__ == '__main__':
             hyperopt.loop()
         else:
             assert False,'unknown hyperopt %s'%args.hyperopt
+    elif test == 'benchmark':
+        net = globals()[args.net_name](config)
+        test_loader=None
+        keras_benchmark(model=net,
+                        test_loader=test_loader,
+                        config=config,
+                        checkpoint_path=args.checkpoint_path,
+                        predict_save_path=args.predict_save_path)
     else:
         raise NotImplementedError

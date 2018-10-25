@@ -107,53 +107,69 @@ class dataset_generalize(TD.Dataset):
         splits = ['train', 'val', 'test', 'train_extra']
         assert self.split in splits, 'unexcepted split %s for dataset, must be one of %s' % (
             self.split, str(splits))
-
-        if hasattr(self.config, 'txt_note'):
-            self.split = self.config.txt_note+'_'+self.split
-
-        if hasattr(self.config, 'txt_path'):
-            txt_file = os.path.join(config.txt_path, self.split+'.txt')
-            self.image_files, self.annotation_files = self.get_files_from_txt(
-                txt_file, self.config.root_path)
-            assert len(self.image_files) > 0, 'No files found in %s with %s' % (
-                self.config.root_path, txt_file)
-            assert len(self.annotation_files) > 0, 'No files found in %s with %s' % (
-                self.config.root_path, txt_file)
-        else:
-            assert hasattr(
-                self.config, 'image_txt_path'), 'image_txt_path and annotation_txt_path needed when txt_path not offered!'
-            assert hasattr(
-                self.config, 'annotation_txt_path'), 'image_txt_path and annotation_txt_path needed when txt_path not offered!'
-            image_txt_file = os.path.join(
-                config.image_txt_path, self.split+'.txt')
-            annotation_txt_file = os.path.join(
-                config.annotation_txt_path, self.split+'.txt')
-            self.image_files = self.get_files_from_txt(
-                image_txt_file, self.config.root_path)
-            self.annotation_files = self.get_files_from_txt(
-                annotation_txt_file, self.config.root_path)
-            assert len(self.image_files) > 0, 'No files found in %s with %s' % (
-                self.config.root_path, image_txt_file)
-            assert len(self.annotation_files) > 0, 'No files found in %s with %s' % (
-                self.config.root_path, annotation_txt_file)
-
-        self.foreground_class_ids = self.config.foreground_class_ids
-        self.n_classes = len(self.foreground_class_ids)+1
-        if hasattr(self.config, 'ignore_index'):
-            self.ignore_index = self.config.ignore_index
-        else:
-            self.ignore_index = 0
-
-        print("Found %d image files, %d annotation files" %
-              (len(self.image_files), len(self.annotation_files)))
-        assert len(self.image_files) == len(self.annotation_files)
         
-        if hasattr(self.config,'dataset_use_part'):
-            if self.config.dataset_use_part > 0:
-                self.image_files=self.image_files[0:self.config.dataset_use_part]
-                self.annotation_files=self.annotation_files[0:self.config.dataset_use_part]
-                print("use %d image files, %d annotation files" %
-                      (len(self.image_files), len(self.annotation_files)))
+        # file name for target image set
+        if hasattr(self.config, 'txt_note'):
+            self.imageset_filename = self.config.txt_note+'_'+self.split+'.txt'
+        else:
+            self.imageset_filename= self.split+'.txt'
+            
+        if self.split == 'test':
+            if hasattr(self.config, 'txt_path'):
+                image_txt_file = os.path.join(config.txt_path, self.imageset_filename)
+            else:
+                image_txt_file = os.path.join(
+                    config.image_txt_path, self.imageset_filename)
+                
+            self.image_files = self.get_files_from_txt(
+                    image_txt_file, self.config.root_path)
+            
+            assert len(self.image_files) > 0, 'No files found in %s with %s' % (
+                    self.config.root_path, image_txt_file)
+        else:    
+            if hasattr(self.config, 'txt_path'):
+                txt_file = os.path.join(config.txt_path, self.imageset_filename)
+                self.image_files, self.annotation_files = self.get_files_from_txt(
+                    txt_file, self.config.root_path)
+                assert len(self.image_files) > 0, 'No files found in %s with %s' % (
+                    self.config.root_path, txt_file)
+                assert len(self.annotation_files) > 0, 'No files found in %s with %s' % (
+                    self.config.root_path, txt_file)
+            else:
+                assert hasattr(
+                    self.config, 'image_txt_path'), 'image_txt_path and annotation_txt_path needed when txt_path not offered!'
+                assert hasattr(
+                    self.config, 'annotation_txt_path'), 'image_txt_path and annotation_txt_path needed when txt_path not offered!'
+                image_txt_file = os.path.join(
+                    config.image_txt_path, self.imageset_filename)
+                annotation_txt_file = os.path.join(
+                    config.annotation_txt_path, self.imageset_filename)
+                self.image_files = self.get_files_from_txt(
+                    image_txt_file, self.config.root_path)
+                self.annotation_files = self.get_files_from_txt(
+                    annotation_txt_file, self.config.root_path)
+                assert len(self.image_files) > 0, 'No files found in %s with %s' % (
+                    self.config.root_path, image_txt_file)
+                assert len(self.annotation_files) > 0, 'No files found in %s with %s' % (
+                    self.config.root_path, annotation_txt_file)
+    
+            self.foreground_class_ids = self.config.foreground_class_ids
+            self.n_classes = len(self.foreground_class_ids)+1
+            if hasattr(self.config, 'ignore_index'):
+                self.ignore_index = self.config.ignore_index
+            else:
+                self.ignore_index = 0
+    
+            print("Found %d image files, %d annotation files" %
+                  (len(self.image_files), len(self.annotation_files)))
+            assert len(self.image_files) == len(self.annotation_files)
+            
+            if hasattr(self.config,'dataset_use_part'):
+                if self.config.dataset_use_part > 0:
+                    self.image_files=self.image_files[0:self.config.dataset_use_part]
+                    self.annotation_files=self.annotation_files[0:self.config.dataset_use_part]
+                    print("use %d image files, %d annotation files" %
+                          (len(self.image_files), len(self.annotation_files)))
 
     @staticmethod
     def get_files_from_txt(txt_file, root_path):
@@ -184,56 +200,60 @@ class dataset_generalize(TD.Dataset):
         self.step = self.step+1
         # eg root_path/leftImg8bit_trainvaltest/leftImg8bit/test/berlin/berlin_000000_000019_leftImg8bit.png
         img_path = self.image_files[index]
-        # eg root_path/gtFine_trainvaltest/gtFine/test/berlin/berlin_000000_000019_gtFine_labelIds.png
-        lbl_path = self.annotation_files[index]
-
-        if hasattr(self.config, 'print_path'):
-            if self.config.print_path:
-                print('image path:', img_path)
-                print('label path:', lbl_path)
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-#        lbl = cv2.imread(lbl_path,cv2.IMREAD_GRAYSCALE)
-        lbl_pil = Image.open(lbl_path)
-        lbl = np.array(lbl_pil, dtype=np.uint8)
-        assert img is not None, 'empty image for path %s' % img_path
-
-        ann = np.zeros_like(lbl)+self.ignore_index
-
-#        lbl_ids = np.unique(lbl)
-#        print('label image ids',lbl_ids)
-        if self.ignore_index == 0:
-            for idx, class_id in enumerate(self.foreground_class_ids):
-                ann[lbl == class_id] = idx+1
-        else:
-            assert self.ignore_index not in self.foreground_class_ids, 'ignore_index cannot in foregournd_class_ids if not 0'
-            for idx, class_id in enumerate(self.foreground_class_ids):
-                ann[lbl == class_id] = idx
-
-        if self.augmentations is not None and self.split == 'train':
-            if hasattr(self.config, 'augmentations_blur'):
-                if self.config.augmentations_blur:
-                    img = self.augmentations.transform(img)
+        
+        if self.split != 'test':
+            # eg root_path/gtFine_trainvaltest/gtFine/test/berlin/berlin_000000_000019_gtFine_labelIds.png
+            lbl_path = self.annotation_files[index]
+    
+            if hasattr(self.config, 'print_path'):
+                if self.config.print_path:
+                    print('image path:', img_path)
+                    print('label path:', lbl_path)
+    #        lbl = cv2.imread(lbl_path,cv2.IMREAD_GRAYSCALE)
+            lbl_pil = Image.open(lbl_path)
+            lbl = np.array(lbl_pil, dtype=np.uint8)
+            assert img is not None, 'empty image for path %s' % img_path
+    
+            ann = np.zeros_like(lbl)+self.ignore_index
+    
+    #        lbl_ids = np.unique(lbl)
+    #        print('label image ids',lbl_ids)
+            if self.ignore_index == 0:
+                for idx, class_id in enumerate(self.foreground_class_ids):
+                    ann[lbl == class_id] = idx+1
             else:
-                img = self.augmentations.transform(img)
-
-            img, ann = self.augmentations.transform(img, ann)
-#            print('augmentation',img.shape,ann.shape)
-
-            assert hasattr(
-                self.config, 'resize_shape'), 'augmentations may change image to random size by random crop'
+                assert self.ignore_index not in self.foreground_class_ids, 'ignore_index cannot in foregournd_class_ids if not 0'
+                for idx, class_id in enumerate(self.foreground_class_ids):
+                    ann[lbl == class_id] = idx
+    
+            if self.augmentations is not None and self.split == 'train':
+                if hasattr(self.config, 'augmentations_blur'):
+                    if self.config.augmentations_blur:
+                        img = self.augmentations.transform(img)
+                else:
+                    img = self.augmentations.transform(img)
+    
+                img, ann = self.augmentations.transform(img, ann)
+                
+                assert hasattr(
+                    self.config, 'resize_shape'), 'augmentations may change image to random size by random crop'
 
         if hasattr(self.config, 'resize_shape'):
             assert len(self.config.resize_shape) == 2, 'resize_shape should with len of 2 but %d' % len(
                 self.config.resize_shape)
             img = cv2.resize(src=img, dsize=tuple(
                 self.config.resize_shape), interpolation=cv2.INTER_LINEAR)
-            ann = cv2.resize(src=ann, dsize=tuple(
-                self.config.resize_shape), interpolation=cv2.INTER_NEAREST)
+            
+            if self.split !='test':
+                ann = cv2.resize(src=ann, dsize=tuple(
+                    self.config.resize_shape), interpolation=cv2.INTER_NEAREST)
 
 #        print('bgr',np.min(img),np.max(img),np.mean(img),np.std(img))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 #        print('rgb',np.min(img),np.max(img),np.mean(img),np.std(img))
-        if self.config.with_edge:
+        
+        if self.config.with_edge and self.split !='test':
             edge_img=None
             if hasattr(self.config,'edge_with_gray'):
                 if self.config.edge_with_gray:
@@ -248,13 +268,16 @@ class dataset_generalize(TD.Dataset):
             # convert image from (height,width,channel) to (channel,height,width)
             img = img.transpose((2, 0, 1))
         
-        if self.config.with_edge:
+        if self.config.with_edge and self.split != 'test':
             return img, ann, edge
-            
-        if hasattr(self.config, 'with_path'):
-            return {'image': (img, ann), 'filename': (img_path, lbl_path)}
-
-        return img, ann
+        
+        if self.split == 'test':
+            return {'image': img, 'filename': img_path}
+        else:
+            if hasattr(self.config, 'with_path'):
+                return {'image': (img, ann), 'filename': (img_path, lbl_path)}
+    
+            return img, ann
 
     def get_edge(self, ann_img, edge_width=5, img=None):
         if hasattr(self.config, 'edge_class_num'):

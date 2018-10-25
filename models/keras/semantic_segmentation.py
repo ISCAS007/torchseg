@@ -86,7 +86,7 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
                 continue
             
             if loader_name == 'val':
-                if epoch % 10 != 0:
+                if epoch % 5 != 0:
                     continue
         
             print(loader_name+'.'*50)
@@ -106,20 +106,22 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
                 predicts=np.argmax(predict_outputs,axis=-1)
                 
                 losses.append(outputs[0])
-                if i % 5 == 0:
+                if epoch % 5 == 0:
+                    print('keras metrics as follow:','*'*30)
                     print("%s Epoch [%d/%d] Step [%d/%d]" % (loader_name,epoch+1, args.n_epoch, i, n_step))
                     for name,value in zip(net.model.metrics_names,outputs):
                         print(name,value)
                     
+                    print('running metrics as follow:','*'*30)
                     running_metrics.update(trues,predicts)
                     score, class_iou = running_metrics.get_scores()
                     for k, v in score.items():
                         print(k, v)
                     
-                    
-            writer.add_scalar('%s/loss'%loader_name, np.mean(losses), epoch)
-            writer.add_scalar('%s/acc'%loader_name, score['Overall Acc: \t'], epoch)
-            writer.add_scalar('%s/iou'%loader_name, score['Mean IoU : \t'], epoch)
+            if epoch % 5 == 0:
+                writer.add_scalar('%s/loss'%loader_name, np.mean(losses), epoch)
+                writer.add_scalar('%s/acc'%loader_name, score['Overall Acc: \t'], epoch)
+                writer.add_scalar('%s/iou'%loader_name, score['Mean IoU : \t'], epoch)
             
             running_metrics.reset()
             if loader_name == 'val':
