@@ -16,6 +16,7 @@ def test_ignore_index():
     config.print_path=True
     config.resize_shape=(224,224)
     config.ignore_index=255
+    config.with_edge=False
     config=get_dataset_generalize_config(config,'Cityscapes')
     
     fg_ids=[i for i in range(19)]

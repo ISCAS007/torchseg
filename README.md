@@ -92,6 +92,8 @@ the miou is 0.8+
     - [x] train id --> label id
     
 # benchmark
+    
+## cityscapes
 - use code from https://github.com/mcordts/cityscapesScripts (only support for python2)
 - change to python2 environment `source activate env2`
 - clone them and install them by `pip install .`
@@ -101,6 +103,14 @@ the miou is 0.8+
 - the image size and id transform can be view in [test/benchmark_test.py](test/benchmark_test.py)
 - note: the benchmark is very slow, even for only 500 val images, about 5-10s/per image
 - a failed result can be see in [#3](https://github.com/ISCAS007/torchseg/issues/3)
+
+## voc2012
+```
+rm -rf output/results/VOC2012/Segmentation/comp6_test_cls
+mv xxx output/results/VOC2012/Segmentation/comp6_test_cls
+tar -czvf results.tgz results
+```
+
 
 # useful script
 - `python utils/summary_to_csv.py` output best val/iou to orange tab file

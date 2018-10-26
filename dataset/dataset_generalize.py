@@ -116,13 +116,15 @@ class dataset_generalize(TD.Dataset):
             
         if self.split == 'test':
             if hasattr(self.config, 'txt_path'):
-                image_txt_file = os.path.join(config.txt_path, self.imageset_filename)
+                txt_file = os.path.join(config.txt_path, self.imageset_filename)
+                self.image_files, self.annotations_files = self.get_files_from_txt(
+                        txt_file, self.config.root_path)
             else:
                 image_txt_file = os.path.join(
                     config.image_txt_path, self.imageset_filename)
                 
-            self.image_files = self.get_files_from_txt(
-                    image_txt_file, self.config.root_path)
+                self.image_files = self.get_files_from_txt(
+                        image_txt_file, self.config.root_path)
             
             assert len(self.image_files) > 0, 'No files found in %s with %s' % (
                     self.config.root_path, image_txt_file)

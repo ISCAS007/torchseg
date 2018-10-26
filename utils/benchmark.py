@@ -15,7 +15,7 @@ def get_test_loader(config):
     else:
         normalizations = image_normalizations(config.dataset.norm_ways)
         
-    test_dataset=dataset_generalize(config.dataset,split='train',
+    test_dataset=dataset_generalize(config.dataset,split='test',
                                     normalizations=normalizations)
     
     test_loader=TD.DataLoader(dataset=test_dataset,
@@ -50,7 +50,7 @@ def save_pil_image(image,filename,palette):
     pil_img.putpalette(palette)
     pil_img.save(filename)
 
-def keras_benchmark(model,test_loader,config=None,checkpoint_path=None,predict_save_path=None):
+def keras_benchmark(model,test_loader=None,config=None,checkpoint_path=None,predict_save_path=None):
     if config is None:
         config=model.config
     
@@ -77,7 +77,7 @@ def keras_benchmark(model,test_loader,config=None,checkpoint_path=None,predict_s
         assert os.path.exists(predict_save_path),'predict save path %s not exist'%predict_save_path
     
     # support only voc currently, if cityscapes, need convert the image'
-    assert config.dataset.name=='VOC2012','current support only voc'
+    assert config.dataset.name=='voc2012','current support only voc, not %s'%config.dataset.name
     cmap=voc_color_map()
     palette=list(cmap.reshape(-1))
     
@@ -91,15 +91,18 @@ def keras_benchmark(model,test_loader,config=None,checkpoint_path=None,predict_s
     else:
         model.load_state_dict(state_dict)
     model.eval()
+    
+    if test_loader is None:
+        test_loader=get_test_loader(config)
     for step, data in enumerate(test_loader):
         # tensor with shape [b,c,h,w]
-        images=data['image']
+        images=data['image'].to(device).float()
         image_names=data['filename']
         
         # tensor with shape [b,c,h,w]
         tensor_outputs=model.forward(images)
         # numpy array with shape [b,h,w]
-        outputs = torch.argmax(tensor_outputs,dim=1).data.cpu().numpy()
+        outputs = torch.argmax(tensor_outputs,dim=1)
         
         if isinstance(outputs, dict):
             main_output=outputs['seg']
@@ -110,6 +113,7 @@ def keras_benchmark(model,test_loader,config=None,checkpoint_path=None,predict_s
         else:
             assert False, 'unexcepted outputs type %s' % type(outputs)
         
+        main_output=main_output.data.cpu().numpy()
         for idx,f in enumerate(image_names):
             save_filename=os.path.join(predict_save_path,os.path.basename(f)).replace('.jpg','.png')
             origin_img=cv2.imread(f)
