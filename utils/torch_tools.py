@@ -294,12 +294,17 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                     if hasattr(config.args,'iou_save_threshold'):
                         iou_save_threshold=config.args.iou_save_threshold
                     
-                    if best_iou > iou_save_threshold:
+                    # save the best the model if good enough
+                    if best_iou >= iou_save_threshold:
+                        print('save current best model','*'*30)
                         checkpoint_path=os.path.join(log_dir,'model-best-%d.pkl'%epoch)
                         save_model_if_necessary(model,config,checkpoint_path)
-                    elif epoch==config.args.n_epoch-1:
-                        checkpoint_path=os.path.join(log_dir,'model-last-%d.pkl'%epoch)
-                        save_model_if_necessary(model,config,checkpoint_path)
+                
+                # save the last model if the best model not good enough
+                if epoch==config.args.n_epoch-1 and best_iou < iou_save_threshold:
+                    print('save the last model','*'*30)
+                    checkpoint_path=os.path.join(log_dir,'model-last-%d.pkl'%epoch)
+                    save_model_if_necessary(model,config,checkpoint_path)
                     
             image_dict = get_image_dict(
                 outputs_dict, targets_dict, config, summary_all=summary_all, prefix_note=loader_name)

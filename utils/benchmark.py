@@ -7,6 +7,7 @@ import glob
 from utils.disc_tools import get_newest_file
 import numpy as np
 from PIL import Image
+import cv2
 
 def get_test_loader(config):
     if config.dataset.norm_ways is None:
@@ -111,6 +112,11 @@ def keras_benchmark(model,test_loader,config=None,checkpoint_path=None,predict_s
         
         for idx,f in enumerate(image_names):
             save_filename=os.path.join(predict_save_path,os.path.basename(f)).replace('.jpg','.png')
-            save_pil_image(main_output[idx],save_filename,palette)
+            origin_img=cv2.imread(f)
+            origin_shape=origin_img.shape
+            resize_img=cv2.resize(main_output[idx],
+                                  dsize=(origin_shape[1],origin_shape[0]),
+                                  interpolation=cv2.INTER_NEAREST)
+            save_pil_image(resize_img,save_filename,palette)
             print('save image to',save_filename)
         
