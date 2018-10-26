@@ -92,7 +92,7 @@ class psp_opt():
             print('warning: for each combination of params, running less than 3 times')
             print('*'*50)
         
-
+        idx=0
         for params in itertools.product(*params_domain):
             for t in range(self.n_calls//combination_number):
                 print('use hyper params',params)
@@ -101,8 +101,9 @@ class psp_opt():
                 score=fn_loop(values)
                 if score > best_score:
                     best_score=score
-                    best_call=t
-                    
+                    best_call=idx
+                
+                idx+=1
 #        for t in range(self.n_calls):
 #            values=[]
 #            for hyperkey in self.hyperkeys:

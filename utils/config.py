@@ -319,7 +319,9 @@ def get_hyperparams(key,discrete=False):
             'model.edge_base_weight':('choices',[0.1,0.2,0.5,1.0]),
             'model.use_bn':('bool',[True,False]),
             'model.use_bias':('bool',[True,False]),
-            'model.momentum':('choices',[0.1,0.3,0.5,0.7,0.9])}
+            'model.momentum':('choices',[0.1,0.3,0.5,0.7,0.9]),
+            'model.upsample_layer':('choices',[3,4,5]),
+            }
     
     continuous_hyper_dict={
             'model.learning_rate':(float,[1e-5,1e-3]),
