@@ -5,25 +5,50 @@ import torch.utils.data as TD
 from dataset.dataset_generalize import dataset_generalize, image_normalizations
 import glob
 from utils.disc_tools import get_newest_file
+from utils.augmentor import Augmentations
 import numpy as np
 from PIL import Image
 import cv2
 
-def get_test_loader(config):
+def get_loader(config,split):
     if config.dataset.norm_ways is None:
         normalizations = None
     else:
         normalizations = image_normalizations(config.dataset.norm_ways)
         
-    test_dataset=dataset_generalize(config.dataset,split='test',
+    
+    
+    if split=='test':
+        test_dataset=dataset_generalize(config.dataset,split=split,
                                     normalizations=normalizations)
-    
-    test_loader=TD.DataLoader(dataset=test_dataset,
-                              batch_size=config.args.batch_size,
-                              shuffle=False,
-                              drop_last=False)
-    
-    return test_loader
+        test_loader=TD.DataLoader(dataset=test_dataset,
+                                  batch_size=config.args.batch_size,
+                                  shuffle=False,
+                                  drop_last=False)
+        
+        return test_loader
+    else:
+        assert split in ['train','val']
+        if config.args.augmentation:
+            #        augmentations = Augmentations(p=0.25,use_imgaug=False)
+            augmentations = Augmentations(
+                p=0.25, use_imgaug=True, rotate=config.args.augmentations_rotate)
+        else:
+            augmentations = None
+        
+        dataset = dataset_generalize(
+            config.dataset, split=split,
+            augmentations=augmentations,
+            normalizations=normalizations)
+        loader = TD.DataLoader(
+            dataset=dataset, 
+            batch_size=config.args.batch_size, 
+            shuffle=(split=='train'),
+            drop_last=(split=='train'),
+            num_workers=8)
+        
+        return loader
+        
 
 def voc_color_map(N=256, normalized=False):
     def bitget(byteval, idx):
@@ -93,11 +118,15 @@ def keras_benchmark(model,test_loader=None,config=None,checkpoint_path=None,pred
     model.eval()
     
     if test_loader is None:
-        test_loader=get_test_loader(config)
+        test_loader=get_loader(config,'test')
     for step, data in enumerate(test_loader):
         # tensor with shape [b,c,h,w]
-        images=data['image'].to(device).float()
-        image_names=data['filename']
+        if isinstance(data['image'],(tuple,list)):
+            images=data['image'][0].to(device).float()
+            image_names=data['filename'][1]
+        else:
+            images=data['image'].to(device).float()
+            image_names=data['filename']
         
         # tensor with shape [b,c,h,w]
         tensor_outputs=model.forward(images)

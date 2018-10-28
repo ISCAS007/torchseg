@@ -68,6 +68,10 @@ def get_dataset_generalize_config(config, dataset_name):
         assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
 #        config.txt_path = '/home/yzbx/git/torchseg/dataset/txt'
         config.foreground_class_ids = [i for i in range(21)]
+        config.labels=['background','aeroplane','bicycle','bird','boat',
+                       'bottle','bus','car','cat','chair',
+                       'cow','diningtable','dog','horse','motorbike',
+                       'person','pottedplant','sheep','sofa','train','tvmonitor']
         config.ignore_index = 255
     elif dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
         # train + val + test
@@ -128,6 +132,9 @@ class dataset_generalize(TD.Dataset):
             
             assert len(self.image_files) > 0, 'No files found in %s with %s' % (
                     self.config.root_path, image_txt_file)
+            
+            print("Found %d image files" %
+                  len(self.image_files))
         else:    
             if hasattr(self.config, 'txt_path'):
                 txt_file = os.path.join(config.txt_path, self.imageset_filename)

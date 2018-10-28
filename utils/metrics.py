@@ -51,7 +51,7 @@ class runningScore(object):
 
 # may get different result due the use of exact class number
 # swap trues and preds should get the same miou
-def get_scores(label_preds,label_trues):
+def get_scores(label_trues,label_preds):
     assert label_trues.shape==label_preds.shape,'unmatched trues shape and predicts shape'
     ndim=label_trues.ndim
     shape=label_trues.shape

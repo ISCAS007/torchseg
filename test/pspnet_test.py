@@ -27,63 +27,14 @@ from models.psp_convert import psp_convert
 from models.psp_convert import CONFIG as psp_convert_config
 from utils.augmentor import Augmentations
 from utils.torch_tools import keras_fit
-from utils.benchmark import keras_benchmark
-from utils.config import get_parser
+from utils.benchmark import keras_benchmark,get_loader
+from utils.config import get_parser,get_config
 
 if __name__ == '__main__':
     parser=get_parser()
     args = parser.parse_args()
 
-    config = edict()
-    config.model = edict()
-    config.model.upsample_type = args.upsample_type
-    config.model.auxnet_type = args.auxnet_type
-    config.model.upsample_layer = args.upsample_layer
-    config.model.auxnet_layer = args.auxnet_layer
-    config.model.cross_merge_times=args.cross_merge_times
-    config.model.use_momentum = args.use_momentum
-    config.model.backbone_pretrained = args.backbone_pretrained
-    config.model.use_bn=args.use_bn
-    # use_bn will change the variable in local_bn
-    os.environ['torchseg_use_bn']=str(args.use_bn)
-    
-    config.model.eps = 1e-5
-    config.model.momentum = 0.1
-    config.model.learning_rate = args.learning_rate
-    config.model.optimizer = args.optimizer
-    config.model.use_lr_mult = args.use_lr_mult
-    config.model.changed_lr_mult=args.changed_lr_mult
-    config.model.new_lr_mult=args.new_lr_mult
-    config.model.use_reg = args.use_reg
-    config.model.use_bias=args.use_bias
-#    config.model.l1_reg=args.l1_reg
-    config.model.l2_reg=args.l2_reg
-    config.model.backbone_name = args.backbone_name
-    config.model.backbone_freeze = args.backbone_freeze
-    config.model.layer_preference = 'first'
-    config.model.edge_seg_order=args.edge_seg_order
-
-    config.model.midnet_pool_sizes = [6, 3, 2, 1]
-    config.model.midnet_scale = args.midnet_scale
-    config.model.midnet_name = args.midnet_name
-    
-    config.model.edge_bg_weight=args.edge_bg_weight
-    config.model.edge_base_weight=args.edge_base_weight
-    config.model.edge_power=args.edge_power
-    config.model.aux_base_weight=args.aux_base_weight
-
-    config.dataset = edict()
-    config.dataset.edge_class_num=args.edge_class_num
-    config.dataset.edge_width=args.edge_width
-    config.dataset.edge_with_gray=args.edge_with_gray
-    config.dataset.with_edge=False
-    
-#    if args.dataset_name in ['VOC2012','Cityscapes']:
-#        config.dataset.norm_ways = args.dataset_name.lower()
-#    else:
-#        config.dataset.norm_ways = 'pytorch'
-#    config.dataset.norm_ways = 'pytorch'
-    config.dataset.norm_ways = args.norm_ways
+    config = get_config(args)
     
     if args.test == 'convert':
         input_shape = tuple(
@@ -107,42 +58,17 @@ if __name__ == '__main__':
         normalizations = None
     else:
         normalizations = image_normalizations(config.dataset.norm_ways)
-
-    config.model.input_shape = input_shape
-    config.model.midnet_out_channels = 512
-    config.dataset = get_dataset_generalize_config(
-        config.dataset, args.dataset_name)
-    if config.dataset.ignore_index == 0:
-        config.model.class_number = len(config.dataset.foreground_class_ids)+1
-    else:
-        config.model.class_number = len(config.dataset.foreground_class_ids)
-    config.dataset.resize_shape = input_shape
-    config.dataset.name = args.dataset_name.lower()
-    config.dataset.augmentations_blur = args.augmentations_blur
-    config.dataset.dataset_use_part=args.dataset_use_part
-
-    config.args = edict()
-    config.args.n_epoch = args.n_epoch
-    # for hyperopt use ~/tmp/logs/hyperopt
-    config.args.log_dir = os.path.expanduser('~/tmp/logs/pytorch')
-    config.args.summary_image=args.summary_image
-    config.args.note = args.note
-    config.args.save_model=args.save_model
-    config.args.iou_save_threshold=args.iou_save_threshold
-    # must change batch size here!!!
-    batch_size = args.batch_size
-    config.args.batch_size = batch_size
-
-    if args.augmentation:
+        
+    if config.args.augmentation:
         #        augmentations = Augmentations(p=0.25,use_imgaug=False)
         augmentations = Augmentations(
-            p=0.25, use_imgaug=True, rotate=args.augmentations_rotate)
+            p=0.25, use_imgaug=True, rotate=config.args.augmentations_rotate)
     else:
         augmentations = None
     
-    if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
-        config.dataset.with_edge = True
-        
+    # must change batch size here!!!
+    batch_size = args.batch_size      
+    
     train_dataset = dataset_generalize(
         config.dataset, split='train',
         augmentations=augmentations,
@@ -165,14 +91,6 @@ if __name__ == '__main__':
         drop_last=False, 
         num_workers=8)
     
-    if args.note is None:
-        config.args.note = '_'.join([args.test,
-                                     'bs'+str(batch_size),
-                                     'aug', str(args.augmentation)[0],
-                                     ])
-    else:
-        config.args.note=args.note
-        
     note = config.args.note
     test = args.test
 
@@ -329,8 +247,9 @@ if __name__ == '__main__':
         else:
             assert False,'unknown hyperopt %s'%args.hyperopt
     elif test == 'benchmark':
+        config.dataset.with_path=True
         net = globals()[args.net_name](config)
-        test_loader=None
+        test_loader=get_loader(config,'val')
         keras_benchmark(model=net,
                         test_loader=test_loader,
                         config=config,

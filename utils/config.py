@@ -7,26 +7,130 @@ import yaml
 import os
 import argparse
 from utils.disc_tools import str2bool
+from dataset.dataset_generalize import get_dataset_generalize_config
 
-def get_config():
-    config=edict()
-    config.model=edict()
-    config.model.class_number=20
-    config.model.backbone_name='vgg16'
-    config.model.layer_preference='last'
-    config.model.input_shape=(224,224)
+def get_config(args=None):
+    # for test some function
+    if args is None:
+        config=edict()
+        config.model=edict()
+        config.model.class_number=20
+        config.model.backbone_name='vgg16'
+        config.model.layer_preference='last'
+        config.model.input_shape=(224,224)
+        
+        config.dataset=edict()
+        config.dataset.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+        config.dataset.cityscapes_split=random.choice(['test','val','train'])
+        config.dataset.resize_shape=(224,224)
+        config.dataset.name='cityscapes'
+        
+        config.training=edict()
+        config.training.n_epoch=300
+        config.training.batch_size=4
+        config.training.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
+        config.training.note='default'
+        
+        return config
     
-    config.dataset=edict()
-    config.dataset.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
-    config.dataset.cityscapes_split=random.choice(['test','val','train'])
-    config.dataset.resize_shape=(224,224)
-    config.dataset.name='cityscapes'
+    config = edict()
+    config.model = edict()
+    config.model.upsample_type = args.upsample_type
+    config.model.auxnet_type = args.auxnet_type
+    config.model.upsample_layer = args.upsample_layer
+    config.model.auxnet_layer = args.auxnet_layer
+    config.model.cross_merge_times=args.cross_merge_times
+    config.model.use_momentum = args.use_momentum
+    config.model.backbone_pretrained = args.backbone_pretrained
+    config.model.use_bn=args.use_bn
+    # use_bn will change the variable in local_bn
+    os.environ['torchseg_use_bn']=str(args.use_bn)
     
-    config.training=edict()
-    config.training.n_epoch=300
-    config.training.batch_size=4
-    config.training.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
-    config.training.note='default'
+    config.model.eps = 1e-5
+    config.model.momentum = 0.1
+    config.model.learning_rate = args.learning_rate
+    config.model.optimizer = args.optimizer
+    config.model.use_lr_mult = args.use_lr_mult
+    config.model.changed_lr_mult=args.changed_lr_mult
+    config.model.new_lr_mult=args.new_lr_mult
+    config.model.use_reg = args.use_reg
+    config.model.use_bias=args.use_bias
+#    config.model.l1_reg=args.l1_reg
+    config.model.l2_reg=args.l2_reg
+    config.model.backbone_name = args.backbone_name
+    config.model.backbone_freeze = args.backbone_freeze
+    config.model.layer_preference = 'first'
+    config.model.edge_seg_order=args.edge_seg_order
+
+    config.model.midnet_pool_sizes = [6, 3, 2, 1]
+    config.model.midnet_scale = args.midnet_scale
+    config.model.midnet_name = args.midnet_name
+    
+    config.model.edge_bg_weight=args.edge_bg_weight
+    config.model.edge_base_weight=args.edge_base_weight
+    config.model.edge_power=args.edge_power
+    config.model.aux_base_weight=args.aux_base_weight
+
+    config.dataset = edict()
+    config.dataset.edge_class_num=args.edge_class_num
+    config.dataset.edge_width=args.edge_width
+    config.dataset.edge_with_gray=args.edge_with_gray
+    config.dataset.with_edge=False
+    
+#    if args.dataset_name in ['VOC2012','Cityscapes']:
+#        config.dataset.norm_ways = args.dataset_name.lower()
+#    else:
+#        config.dataset.norm_ways = 'pytorch'
+#    config.dataset.norm_ways = 'pytorch'
+    config.dataset.norm_ways = args.norm_ways
+    
+    if args.input_shape == 0:
+        if args.midnet_name == 'psp':
+            upsample_ratio=args.upsample_layer
+            if args.use_momentum and args.upsample_layer>=3:
+                upsample_ratio=3
+            count_size = max(config.model.midnet_pool_sizes) * \
+                config.model.midnet_scale*2**upsample_ratio
+            input_shape = (count_size, count_size)
+        else:
+            input_shape = (72*8, 72*8)
+    else:
+        input_shape = (args.input_shape, args.input_shape)
+        
+    config.model.input_shape = input_shape
+    config.model.midnet_out_channels = 512
+    config.dataset = get_dataset_generalize_config(
+        config.dataset, args.dataset_name)
+    if config.dataset.ignore_index == 0:
+        config.model.class_number = len(config.dataset.foreground_class_ids)+1
+    else:
+        config.model.class_number = len(config.dataset.foreground_class_ids)
+    config.dataset.resize_shape = input_shape
+    config.dataset.name = args.dataset_name.lower()
+    config.dataset.augmentations_blur = args.augmentations_blur
+    config.dataset.dataset_use_part=args.dataset_use_part
+
+    config.args = edict()
+    config.args.n_epoch = args.n_epoch
+    # for hyperopt use ~/tmp/logs/hyperopt
+    config.args.log_dir = os.path.expanduser('~/tmp/logs/pytorch')
+    config.args.summary_image=args.summary_image
+    config.args.save_model=args.save_model
+    config.args.iou_save_threshold=args.iou_save_threshold
+    config.args.batch_size = args.batch_size
+    config.args.augmentation = args.augmentation
+    config.args.augmentations_rotate=args.augmentations_rotate
+    config.args.net_name=args.net_name
+    if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
+        config.dataset.with_edge = True
+        
+    if args.note is None:
+        config.args.note = '_'.join([args.test,
+                                     'bs'+str(args.batch_size),
+                                     'aug', str(args.augmentation)[0],
+                                     ])
+    else:
+        config.args.note=args.note
     
     return config
 
@@ -321,6 +425,7 @@ def get_hyperparams(key,discrete=False):
             'model.use_bias':('bool',[True,False]),
             'model.momentum':('choices',[0.1,0.3,0.5,0.7,0.9]),
             'model.upsample_layer':('choices',[3,4,5]),
+            'model.midnet_scale':('choices',[8,10])
             }
     
     continuous_hyper_dict={
