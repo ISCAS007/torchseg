@@ -9,6 +9,7 @@ from utils.augmentor import Augmentations
 import numpy as np
 from PIL import Image
 import cv2
+import warnings
 
 def get_loader(config,split):
     if config.dataset.norm_ways is None:
@@ -71,7 +72,13 @@ def voc_color_map(N=256, normalized=False):
     return cmap
 
 def save_pil_image(image,filename,palette):
-    pil_img=Image.fromarray(image,mode='P')
+#    assert image.dtype==np.uint8
+    if image.dtype!=np.uint8:
+        warnings.warn('warning: when save numpy image to pil image, use np.uint8 as dtype')
+        save_image=image.astype(np.uint8)
+    else:
+        save_image=image
+    pil_img=Image.fromarray(save_image,mode='P')
     pil_img.putpalette(palette)
     pil_img.save(filename)
 
@@ -150,6 +157,7 @@ def keras_benchmark(model,test_loader=None,config=None,checkpoint_path=None,pred
             resize_img=cv2.resize(main_output[idx],
                                   dsize=(origin_shape[1],origin_shape[0]),
                                   interpolation=cv2.INTER_NEAREST)
+            assert resize_img.shape[0:2]==origin_img.shape[0:2],'{} vs {}'.format(resize_img.shape,origin_img.shape)
             save_pil_image(resize_img,save_filename,palette)
             print('save image to',save_filename)
         

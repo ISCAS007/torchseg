@@ -248,8 +248,10 @@ if __name__ == '__main__':
             assert False,'unknown hyperopt %s'%args.hyperopt
     elif test == 'benchmark':
         config.dataset.with_path=True
+        config.args.augmentation=False
         net = globals()[args.net_name](config)
-        test_loader=get_loader(config,'val')
+#        test_loader=get_loader(config,'val')
+        test_loader=None
         keras_benchmark(model=net,
                         test_loader=test_loader,
                         config=config,

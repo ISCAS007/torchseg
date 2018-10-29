@@ -72,6 +72,10 @@ def get_dataset_generalize_config(config, dataset_name):
                        'bottle','bus','car','cat','chair',
                        'cow','diningtable','dog','horse','motorbike',
                        'person','pottedplant','sheep','sofa','train','tvmonitor']
+        config.counts=[182014429, 1780580, 758311, 2232247, 1514260, 
+                       1517186, 4375622, 3494749, 6752515, 2861091,
+                       2060925, 3381632, 4344951, 2283739, 2888641, 
+                       11995853, 1670340, 2254463, 3612229, 3984238, 2349235]
         config.ignore_index = 255
     elif dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
         # train + val + test
@@ -82,6 +86,10 @@ def get_dataset_generalize_config(config, dataset_name):
         assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
         config.foreground_class_ids = [
             7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
+        counts=[704950, 285679000, 81211408, 94016248, 83734392, 17800251, 75629728, 2034717218, 335650593, 38978463, 11239214, 1259538419, 36199498, 48447819, 547202, 17860177, 3362825, 67741418, 499872, 11477088, 30426538, 878458410, 63897448, 221828972, 67323103, 7450319, 385670517, 14708028, 12990290, 2493375, 1300575, 12863955, 5448633, 22734421]
+        config.counts=[counts[id] for id in config.foreground_class_ids]
+        names='road,sidewalk,building,wall,fence,pole,traffic light,traffic sign,vegetation,terrain,sky,person,rider,car,truck,bus,train,motorcycle,bicycle'
+        config.names=names.split(',')
         config.ignore_index = 255
     elif dataset_name == 'Cityscapes_Coarse':
         # train + val + train_extra

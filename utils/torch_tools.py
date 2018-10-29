@@ -342,8 +342,23 @@ def get_loss_fn_dict(config):
 
     ignore_index = config.dataset.ignore_index
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if hasattr(config.dataset,'counts') and config.model.use_class_weight:
+        count_sum=1.0*np.sum(config.dataset.counts)
+        weight_raw=[count_sum/count for count in config.dataset.counts]
+        # make the total loss not change!!!
+        weight_sum=np.sum(weight_raw)*config.model.class_number
+        seg_weight_list=[w/weight_sum for w in weight_raw]
+        seg_loss_weight = torch.tensor(
+            data=seg_weight_list, dtype=torch.float32).to(device)
+        
+        print('segmentation class weight is','*'*30)
+        for idx,w in enumerate(seg_weight_list):
+            print(idx,'%0.3f'%w)
+    else:
+        seg_loss_weight=None
+    
     loss_fn_dict = {}
-    loss_fn_dict['seg'] = torch.nn.CrossEntropyLoss(ignore_index=ignore_index)
+    loss_fn_dict['seg'] = torch.nn.CrossEntropyLoss(ignore_index=ignore_index,weight=seg_loss_weight)
     if config.dataset.with_edge:
         if hasattr(config.dataset, 'edge_class_num'):
             edge_class_num = config.dataset.edge_class_num

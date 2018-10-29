@@ -55,6 +55,7 @@ def get_config(args=None):
     config.model.new_lr_mult=args.new_lr_mult
     config.model.use_reg = args.use_reg
     config.model.use_bias=args.use_bias
+    config.model.use_class_weight=args.use_class_weight
 #    config.model.l1_reg=args.l1_reg
     config.model.l2_reg=args.l2_reg
     config.model.backbone_name = args.backbone_name
@@ -192,6 +193,11 @@ def get_parser():
     parser.add_argument('--use_lr_mult',
                         help='use lr mult or not',
                         default=True,
+                        type=str2bool)
+    
+    parser.add_argument('--use_class_weight',
+                        help='use class-wise weight for segmenation or not',
+                        default=False,
                         type=str2bool)
     
     parser.add_argument('--changed_lr_mult',
@@ -425,7 +431,8 @@ def get_hyperparams(key,discrete=False):
             'model.use_bias':('bool',[True,False]),
             'model.momentum':('choices',[0.1,0.3,0.5,0.7,0.9]),
             'model.upsample_layer':('choices',[3,4,5]),
-            'model.midnet_scale':('choices',[8,10])
+            'model.midnet_scale':('choices',[8,10]),
+            'model.use_class_weight':('bool',[True,False]),
             }
     
     continuous_hyper_dict={

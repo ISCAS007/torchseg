@@ -69,6 +69,7 @@ for output_file,label_file in tqdm(zip(val_output_files,val_label_files)):
     
     output_img_pil=Image.open(output_file)
     output_img=np.array(output_img_pil,dtype=np.uint8)
+    assert label_img.shape==output_img.shape
     run_score.update(label_trues=label_img, label_preds=output_img)
 #    run_score.update(label_trues=output_img, label_preds=label_img)
 
