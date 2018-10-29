@@ -346,14 +346,16 @@ def get_loss_fn_dict(config):
         count_sum=1.0*np.sum(config.dataset.counts)
         weight_raw=[count_sum/count for count in config.dataset.counts]
         # make the total loss not change!!!
-        weight_sum=np.sum(weight_raw)*config.model.class_number
-        seg_weight_list=[w/weight_sum for w in weight_raw]
+        weight_sum=np.sum(weight_raw)
+        class_number=len(config.dataset.counts)
+        seg_weight_list=[class_number*w/weight_sum for w in weight_raw]
         seg_loss_weight = torch.tensor(
             data=seg_weight_list, dtype=torch.float32).to(device)
         
         print('segmentation class weight is','*'*30)
         for idx,w in enumerate(seg_weight_list):
             print(idx,'%0.3f'%w)
+        print('total class weight sum is',np.sum(seg_weight_list))
     else:
         seg_loss_weight=None
     
