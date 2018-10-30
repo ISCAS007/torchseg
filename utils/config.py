@@ -117,7 +117,7 @@ def get_config(args=None):
     config.args = edict()
     config.args.n_epoch = args.n_epoch
     # for hyperopt use ~/tmp/logs/hyperopt
-    config.args.log_dir = os.path.expanduser('~/tmp/logs/pytorch')
+    config.args.log_dir = args.log_dir
     config.args.summary_image=args.summary_image
     config.args.save_model=args.save_model
     config.args.iou_save_threshold=args.iou_save_threshold
@@ -421,6 +421,11 @@ def get_parser():
     parser.add_argument('--predict_save_path',
                         help='benchmark result save path',
                         default=None)
+    
+    # log dir
+    parser.add_argument('--log_dir',
+                        help='log_dir for tensorboard',
+                        default=os.path.expanduser('~/tmp/logs/pytorch'))
     return parser
 
 def get_hyperparams(key,discrete=False):

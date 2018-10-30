@@ -104,25 +104,6 @@ class psp_opt():
                     best_call=idx
                 
                 idx+=1
-#        for t in range(self.n_calls):
-#            values=[]
-#            for hyperkey in self.hyperkeys:
-#                hyper_type,hyper_params=get_hyperparams(hyperkey,discrete=True)
-#                if hyper_type=='int':
-#                    value=random.randint(hyper_params[0],hyper_params[1])
-#                elif hyper_type=='float':
-#                    value=random.uniform(hyper_params[0],hyper_params[1])
-#                elif hyper_type in ['bool','choices']:
-#                    value=random.choice(hyper_params)
-#                else:
-#                    assert False,'unknown hyper type %s'%hyper_type
-#        
-#                values.append(value)
-#        
-#            score=fn_loop(values)
-#            if score > best_score:
-#                best_score=score
-#                best_call=t
         
         print('best params is'+'*'*30)
         for k,v in results.items():
