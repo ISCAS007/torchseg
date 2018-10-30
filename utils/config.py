@@ -56,6 +56,7 @@ def get_config(args=None):
     config.model.use_reg = args.use_reg
     config.model.use_bias=args.use_bias
     config.model.use_class_weight=args.use_class_weight
+    config.model.focal_loss_gamma=args.focal_loss_gamma
 #    config.model.l1_reg=args.l1_reg
     config.model.l2_reg=args.l2_reg
     config.model.backbone_name = args.backbone_name
@@ -199,6 +200,11 @@ def get_parser():
                         help='use class-wise weight for segmenation or not',
                         default=False,
                         type=str2bool)
+    
+    parser.add_argument('--focal_loss_gamma',
+                        help='gamma for focal loss, <0 then not use focal loss',
+                        default=-1.0,
+                        type=float)
     
     parser.add_argument('--changed_lr_mult',
                         help='unchanged_lr_mult=1, changed_lr_mult=?',
@@ -433,6 +439,7 @@ def get_hyperparams(key,discrete=False):
             'model.upsample_layer':('choices',[3,4,5]),
             'model.midnet_scale':('choices',[8,10]),
             'model.use_class_weight':('bool',[True,False]),
+            'model.focal_loss_gamma':('choices',[0.5,1.0,2.0])
             }
     
     continuous_hyper_dict={

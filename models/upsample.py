@@ -145,7 +145,7 @@ class upsample_bilinear(TN.Module):
     def forward(self, x, need_upsample_feature=False):
         upsample_feature = x = self.conv_bn_relu(x)
         x = self.conv(x)
-        x = F.upsample(x, size=self.output_shape,
+        x = F.interpolate(x, size=self.output_shape,
                        mode='bilinear', align_corners=True)
 
         if need_upsample_feature:
@@ -191,7 +191,7 @@ class upsample_fcn(TN.Module):
     def forward(self,x,need_upsample_feature=False):
         upsample_feature=x=self.conv_seq(x)
         x = self.conv(x)
-        x = F.upsample(x, size=self.output_shape,
+        x = F.interpolate(x, size=self.output_shape,
                        mode='bilinear', align_corners=True)
 
         if need_upsample_feature:

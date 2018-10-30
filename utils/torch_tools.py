@@ -8,6 +8,7 @@ from tensorboardX import SummaryWriter
 from utils.metrics import get_scores, runningScore
 from utils.disc_tools import save_model_if_necessary
 from dataset.dataset_generalize import image_normalizations
+from utils.focalloss2d import FocalLoss2d
 from tqdm import tqdm, trange
 
 
@@ -360,7 +361,13 @@ def get_loss_fn_dict(config):
         seg_loss_weight=None
     
     loss_fn_dict = {}
-    loss_fn_dict['seg'] = torch.nn.CrossEntropyLoss(ignore_index=ignore_index,weight=seg_loss_weight)
+    if config.model.focal_loss_gamma<0:
+        loss_fn_dict['seg'] = torch.nn.CrossEntropyLoss(ignore_index=ignore_index,weight=seg_loss_weight)
+    else:
+        loss_fn_dict['seg'] = FocalLoss2d(gamma=config.model.focal_loss_gamma,
+                    weight=seg_loss_weight,
+                    ignore_index=ignore_index)
+        
     if config.dataset.with_edge:
         if hasattr(config.dataset, 'edge_class_num'):
             edge_class_num = config.dataset.edge_class_num
