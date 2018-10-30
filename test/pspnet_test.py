@@ -39,20 +39,9 @@ if __name__ == '__main__':
     if args.test == 'convert':
         input_shape = tuple(
             psp_convert_config[args.dataset_name]['input_size'])
-    elif args.input_shape == 0:
-        if args.midnet_name == 'psp':
-            upsample_ratio=args.upsample_layer
-            if args.use_momentum and args.upsample_layer>=3:
-                upsample_ratio=3
-            count_size = max(config.model.midnet_pool_sizes) * \
-                config.model.midnet_scale*2**upsample_ratio
-            input_shape = (count_size, count_size)
-        else:
-            input_shape = (72*8, 72*8)
-    else:
-        input_shape = (args.input_shape, args.input_shape)
-        
-    print('input shape is',input_shape,'*'*30)
+        config.model.input_shape = input_shape
+        config.dataset.resize_shape = input_shape
+        print('convert input shape is',input_shape,'*'*30)
 
     if config.dataset.norm_ways is None:
         normalizations = None

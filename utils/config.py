@@ -98,7 +98,9 @@ def get_config(args=None):
             input_shape = (72*8, 72*8)
     else:
         input_shape = (args.input_shape, args.input_shape)
-        
+    
+    print('convert input shape is',input_shape,'*'*30)
+    
     config.model.input_shape = input_shape
     config.model.midnet_out_channels = 512
     config.dataset = get_dataset_generalize_config(
@@ -423,7 +425,6 @@ def get_parser():
 
 def get_hyperparams(key,discrete=False):
     discrete_hyper_dict={
-            'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),
             'model.l2_reg':('choices',[1e-5,1e-4,1e-3,1e-2,1e-1]),
             'model.use_lr_mult':('choices',[True,False]),
             'model.changed_lr_mult':('choices',[1,2,5,10]),
@@ -437,7 +438,6 @@ def get_hyperparams(key,discrete=False):
             'model.use_bias':('bool',[True,False]),
             'model.momentum':('choices',[0.1,0.3,0.5,0.7,0.9]),
             'model.upsample_layer':('choices',[3,4,5]),
-            'model.midnet_scale':('choices',[8,10]),
             'model.use_class_weight':('bool',[True,False]),
             'model.focal_loss_gamma':('choices',[0.5,1.0,2.0])
             }

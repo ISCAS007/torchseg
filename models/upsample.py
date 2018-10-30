@@ -31,6 +31,22 @@ class local_bn(TN.Module):
             return self.bn(x)
         else:
             return x
+        
+class local_upsample(TN.Module):
+    def __init__(self,size=None,scale_factor=None,mode='nearest',align_corners=None):
+        super().__init__()
+        self.size=size
+        self.scale_factor=scale_factor
+        self.mode=mode
+        self.align_corners=align_corners
+        
+    def forward(self,x):
+        x=F.interpolate(x,size=self.size,
+                        scale_factor=self.scale_factor,
+                        mode=self.mode,
+                        align_corners=self.align_corners)
+        
+        return x
 
 class conv_bn_relu(TN.Module):
     def __init__(self,
@@ -234,7 +250,7 @@ class transform_psp_caffe(TN.Module):
                                                      eps=eps,
                                                      momentum=momentum),
                                       TN.ReLU(),
-                                      TN.Upsample(size=(height, width), mode='bilinear', align_corners=True))
+                                      local_upsample(size=(height, width), mode='bilinear', align_corners=True))
             pool_paths.append(pool_path)
 
         self.pool_paths = TN.ModuleList(pool_paths)
@@ -315,7 +331,7 @@ class transform_psp(TN.Module):
                                                      momentum=momentum),
                                       TN.ReLU(),
                                       TN.Dropout2d(p=0.1),
-                                      TN.Upsample(size=(height, width), mode='bilinear', align_corners=True))
+                                      local_upsample(size=(height, width), mode='bilinear', align_corners=True))
             pool_paths.append(pool_path)
 
         self.pool_paths = TN.ModuleList(pool_paths)
@@ -569,7 +585,7 @@ class transform_aspp(TN.Module):
                                                              eps=eps,
                                                              momentum=momentum),
                                               TN.ReLU(),
-                                              TN.Upsample(size=(h, w),
+                                              local_upsample(size=(h, w),
                                                           mode='bilinear',
                                                           align_corners=True))
 
