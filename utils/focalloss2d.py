@@ -39,7 +39,6 @@ class FocalLoss2d(nn.Module):
                                  ignore_index=self.ignore_index,
                                  reduction='none')
         pt = torch.exp(logpt)
-
         # compute the loss
         loss = -((1-pt)**self.gamma) * logpt
         
