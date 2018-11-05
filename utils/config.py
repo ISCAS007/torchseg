@@ -158,10 +158,9 @@ def load_config(config_file):
     return config
 
 def get_parser():
-    choices = ['edge', 'global', 'augmentor', 'momentum', 'midnet',
-               'backbone', 'dict', 'fractal', 'upsample_type',
-               'pretrained', 'summary', 'naive', 'coarse',
-               'convert','hyperopt','benchmark']
+    choices = ['edge', 'global', 'dict', 'fractal',
+               'summary', 'naive', 'coarse',
+               'convert','hyperopt','benchmark', 'cycle_lr']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",

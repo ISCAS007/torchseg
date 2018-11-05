@@ -96,16 +96,6 @@ if __name__ == '__main__':
         config.args.note = note
         net = psp_global(config)
         keras_fit(net, train_loader, val_loader)
-    elif test == 'backbone':
-        for backbone in ['vgg16', 'vgg19', 'vgg16_bn', 'vgg19_bn']:
-            config.model.backbone_name = backbone
-            config.args.note = '_'.join([args.note,
-                                         'bn'+str(batch_size),
-                                         'aug', str(args.augmentation)[0],
-                                         backbone
-                                         ])
-            net = pspnet(config)
-            keras_fit(net, train_loader, val_loader)
     elif test == 'dict':
         config.args.note = 'dict'
         dict_number = config.model.class_number*5+1
@@ -129,42 +119,6 @@ if __name__ == '__main__':
             fractal_depth), 'fusion', fractal_fusion_type])
         net = psp_fractal(config)
         keras_fit(net, train_loader, val_loader)
-    elif test == 'upsample_type':
-        backbone = 'resnet52'
-        config.model.backbone_name = backbone
-        for upsample_type in ['duc', 'bilinear']:
-            config.model.upsample_type = upsample_type
-            config.args.note = '_'.join([backbone, upsample_type, 'keras_psp'])
-            net = pspnet(config)
-            keras_fit(net, train_loader, val_loader)
-    elif test == 'momentum':
-        backbone = 'vgg19_bn'
-        config.model.backbone_name = backbone
-        config.model.use_momentum = True
-        for momentum in [0.1, 0.3, 0.5, 0.7, 0.9]:
-            config.args.note = '_'.join([note, backbone, 'mo', str(momentum)])
-            net = pspnet(config)
-            keras_fit(net, train_loader, val_loader)
-            break
-    elif test == 'midnet':
-        # midnet will change input shape
-        #        for midnet_name in ['psp','aspp']:
-        #        config.model.midnet_name=midnet_name
-        for backbone in ['vgg19_bn', 'resnet50']:
-            config.model.backbone_name = backbone
-            config.args.note = '_'.join([note, backbone, args.midnet_name])
-            net = pspnet(config)
-            keras_fit(net, train_loader, val_loader)
-    elif test == 'pretrained':
-        midnet_name = 'aspp'
-        backbone = config.model.backbone_name
-        config.model.midnet_name = midnet_name
-        for pretrained in [True, False]:
-            config.model.backbone_pretrained = pretrained
-            config.args.note = '_'.join(
-                [note, 'pretrain', str(pretrained)[0], backbone, midnet_name])
-            net = pspnet(config)
-            keras_fit(net, train_loader, val_loader)
     elif test == 'coarse':
         net = globals()[args.net_name](config)
         for dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
@@ -246,5 +200,13 @@ if __name__ == '__main__':
                         config=config,
                         checkpoint_path=args.checkpoint_path,
                         predict_save_path=args.predict_save_path)
+    elif test == 'cycle_lr':
+        n_epoch=args.n_epoch
+        net = globals()[args.net_name](config)
+        for times in range(3):
+            config.args.n_epoch=n_epoch*2**times
+            config.args.note = note+'_%d'%times
+            assert net.config.args.n_epoch==config.args.n_epoch
+            keras_fit(model=net,train_loader=train_loader,val_loader=val_loader)
     else:
         raise NotImplementedError
