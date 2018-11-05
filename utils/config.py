@@ -443,7 +443,7 @@ def get_hyperparams(key,discrete=False):
             'model.momentum':('choices',[0.1,0.3,0.5,0.7,0.9]),
             'model.upsample_layer':('choices',[3,4,5]),
             'model.use_class_weight':('bool',[True,False]),
-            'model.focal_loss_gamma':('choices',[0.5,1.0,2.0])
+            'model.focal_loss_gamma':('choices',[1.0,2.0,5.0])
             }
     
     continuous_hyper_dict={
