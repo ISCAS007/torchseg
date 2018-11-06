@@ -353,6 +353,8 @@ def get_loss_fn_dict(config):
         seg_loss_weight = torch.tensor(
             data=seg_weight_list, dtype=torch.float32).to(device)
         
+        alpha=config.model.class_weight_alpha
+        seg_loss_weight=seg_loss_weight+(1.0-seg_loss_weight)*alpha
         print('segmentation class weight is','*'*30)
         for idx,w in enumerate(seg_weight_list):
             print(idx,'%0.3f'%w)

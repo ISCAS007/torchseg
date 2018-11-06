@@ -56,6 +56,7 @@ def get_config(args=None):
     config.model.use_reg = args.use_reg
     config.model.use_bias=args.use_bias
     config.model.use_class_weight=args.use_class_weight
+    config.model.class_weight_alpha=args.class_weight_alpha
     config.model.focal_loss_gamma=args.focal_loss_gamma
     config.model.focal_loss_alpha=args.focal_loss_alpha
 #    config.model.l1_reg=args.l1_reg
@@ -203,6 +204,11 @@ def get_parser():
                         default=False,
                         type=str2bool)
     
+    parser.add_argument('--class_weight_alpha',
+                        help='smooth parameter [0,1] for class weight',
+                        default=0.0,
+                        type=float)
+    
     parser.add_argument('--focal_loss_gamma',
                         help='gamma for focal loss, <0 then not use focal loss',
                         default=-1.0,
@@ -215,13 +221,13 @@ def get_parser():
     
     parser.add_argument('--changed_lr_mult',
                         help='unchanged_lr_mult=1, changed_lr_mult=?',
-                        type=int,
-                        default=10)
+                        type=float,
+                        default=10.0)
     
     parser.add_argument('--new_lr_mult',
                         help='unchanged_lr_mult=1, new_lr_mult=?',
-                        type=int,
-                        default=20)
+                        type=float,
+                        default=20.0)
     
     parser.add_argument("--use_reg",
                         help='use l1 and l2 regularizer or not (default False)',
@@ -449,8 +455,9 @@ def get_hyperparams(key,discrete=False):
             'model.momentum':('choices',[0.1,0.3,0.5,0.7,0.9]),
             'model.upsample_layer':('choices',[3,4,5]),
             'model.use_class_weight':('bool',[True,False]),
-            'model.focal_loss_gamma':('choices',[1.0,2.0,5.0])
-            'model.focal_loss_alpha':('choices',[1.0,5.0,10.0])
+            'model.focal_loss_gamma':('choices',[1.0,2.0,5.0]),
+            'model.focal_loss_alpha':('choices',[1.0,5.0,10.0]),
+            'model.class_weight_alpha':('choices',[0.2,0.4,0.6,0.8])
             }
     
     continuous_hyper_dict={
