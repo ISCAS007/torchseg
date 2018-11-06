@@ -57,6 +57,7 @@ def get_config(args=None):
     config.model.use_bias=args.use_bias
     config.model.use_class_weight=args.use_class_weight
     config.model.focal_loss_gamma=args.focal_loss_gamma
+    config.model.focal_loss_alpha=args.focal_loss_alpha
 #    config.model.l1_reg=args.l1_reg
     config.model.l2_reg=args.l2_reg
     config.model.backbone_name = args.backbone_name
@@ -205,6 +206,11 @@ def get_parser():
     parser.add_argument('--focal_loss_gamma',
                         help='gamma for focal loss, <0 then not use focal loss',
                         default=-1.0,
+                        type=float)
+    
+    parser.add_argument('--focal_loss_alpha',
+                        help='scale for focal loss, focal_loss=focal_loss*focal_loss_alpha',
+                        default=1.0,
                         type=float)
     
     parser.add_argument('--changed_lr_mult',
@@ -444,6 +450,7 @@ def get_hyperparams(key,discrete=False):
             'model.upsample_layer':('choices',[3,4,5]),
             'model.use_class_weight':('bool',[True,False]),
             'model.focal_loss_gamma':('choices',[1.0,2.0,5.0])
+            'model.focal_loss_alpha':('choices',[1.0,5.0,10.0])
             }
     
     continuous_hyper_dict={

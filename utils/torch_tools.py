@@ -364,7 +364,8 @@ def get_loss_fn_dict(config):
     if config.model.focal_loss_gamma<0:
         loss_fn_dict['seg'] = torch.nn.CrossEntropyLoss(ignore_index=ignore_index,weight=seg_loss_weight)
     else:
-        loss_fn_dict['seg'] = FocalLoss2d(gamma=config.model.focal_loss_gamma,
+        loss_fn_dict['seg'] = FocalLoss2d(alpha=config.model.focal_loss_alpha,
+                    gamma=config.model.focal_loss_gamma,
                     weight=seg_loss_weight,
                     ignore_index=ignore_index)
         
