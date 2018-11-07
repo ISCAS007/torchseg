@@ -52,7 +52,7 @@ def get_config(args=None):
     os.environ['torchseg_use_bias']=str(args.use_bias)
     
     config.model.eps = 1e-5
-    config.model.momentum = 0.1
+    config.model.momentum = args.momentum
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
     config.model.use_lr_mult = args.use_lr_mult
@@ -374,6 +374,11 @@ def get_parser():
                         help='use mometnum or not?',
                         type=str2bool,
                         default=False)
+    
+    parser.add_argument('--momentum',
+                        help='momentum for batch norm',
+                        type=float,
+                        default=0.1)
 
     parser.add_argument('--input_shape',
                         help='input shape',
@@ -462,7 +467,7 @@ def get_hyperparams(key,discrete=False):
             'model.edge_base_weight':('choices',[0.1,0.2,0.5,1.0]),
             'model.use_bn':('bool',[True,False]),
             'model.use_bias':('bool',[True,False]),
-            'model.momentum':('choices',[0.1,0.3,0.5,0.7,0.9]),
+            'model.momentum':('choices',[0.1,0.05,0.01]),
             'model.upsample_layer':('choices',[3,4,5]),
             'model.use_class_weight':('bool',[True,False]),
             'model.focal_loss_gamma':('choices',[1.0,2.0,5.0]),
