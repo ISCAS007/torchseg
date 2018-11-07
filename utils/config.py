@@ -458,8 +458,8 @@ def get_hyperparams(key,discrete=False):
     discrete_hyper_dict={
             'model.l2_reg':('choices',[1e-5,1e-4,1e-3,1e-2,1e-1]),
             'model.use_lr_mult':('choices',[True,False]),
-            'model.changed_lr_mult':('choices',[1,2,5,10]),
-            'model.new_lr_mult':('choices',[10,20]),
+            'model.changed_lr_mult':('choices',[1,2,5]),
+            'model.new_lr_mult':('choices',[1,5,10]),
             'model.backbone_pretrained':('bool',[True,False]),
             'model.backbone_freeze':('bool',[True,False]),
             'model.learning_rate':('choices',[1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3]),
