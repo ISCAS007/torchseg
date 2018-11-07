@@ -7,17 +7,18 @@ import torch
 import os
 from utils.disc_tools import str2bool
 
+
 class local_bn(TN.Module):
-    def __init__(self,num_features,eps=1e-5,momentum=0.1):
+    def __init__(self, num_features, eps=1e-5, momentum=0.1):
         super().__init__()
-        self.bn=TN.BatchNorm2d(num_features=num_features,
-                             eps=eps,
-                             momentum=momentum,
-                             affine=True)
-        self.use_bn=True
+        self.bn = TN.BatchNorm2d(num_features=num_features,
+                                 eps=eps,
+                                 momentum=momentum,
+                                 affine=True)
+        self.use_bn = True
         if 'torchseg_use_bn' in os.environ.keys():
-            self.use_bn=str2bool(os.environ['torchseg_use_bn'])
-        
+            self.use_bn = str2bool(os.environ['torchseg_use_bn'])
+
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
                 TN.init.kaiming_normal_(
@@ -25,28 +26,46 @@ class local_bn(TN.Module):
             elif isinstance(m, TN.BatchNorm2d):
                 TN.init.constant_(m.weight, 1)
                 TN.init.constant_(m.bias, 0)
-        
-    def forward(self,x):
+
+    def forward(self, x):
         if self.use_bn:
             return self.bn(x)
         else:
             return x
-        
-class local_upsample(TN.Module):
-    def __init__(self,size=None,scale_factor=None,mode='nearest',align_corners=None):
+
+
+class local_dropout2d(TN.Module):
+    def __init__(self, p=0.1):
         super().__init__()
-        self.size=size
-        self.scale_factor=scale_factor
-        self.mode=mode
-        self.align_corners=align_corners
-        
-    def forward(self,x):
-        x=F.interpolate(x,size=self.size,
-                        scale_factor=self.scale_factor,
-                        mode=self.mode,
-                        align_corners=self.align_corners)
-        
+        self.dropout = TN.Dropout2d(p=p)
+        self.use_dropout = True
+
+        if 'torchseg_use_dropout' in os.environ.keys():
+            self.use_dropout = str2bool(os.environ['torchseg_use_dropout'])
+
+    def forward(self, x):
+        if self.use_dropout:
+            return self.dropout(x)
+        else:
+            return x
+
+
+class local_upsample(TN.Module):
+    def __init__(self, size=None, scale_factor=None, mode='nearest', align_corners=None):
+        super().__init__()
+        self.size = size
+        self.scale_factor = scale_factor
+        self.mode = mode
+        self.align_corners = align_corners
+
+    def forward(self, x):
+        x = F.interpolate(x, size=self.size,
+                          scale_factor=self.scale_factor,
+                          mode=self.mode,
+                          align_corners=self.align_corners)
+
         return x
+
 
 class conv_bn_relu(TN.Module):
     def __init__(self,
@@ -62,18 +81,18 @@ class conv_bn_relu(TN.Module):
         upsample_ratio: 2**upsample_layer
         """
         super().__init__()
-
+        bias = str2bool(os.environ['torchseg_use_bias'])
         self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
                                                     out_channels=out_channels,
                                                     kernel_size=kernel_size,
                                                     padding=padding,
                                                     stride=stride,
-                                                    bias=False),
+                                                    bias=bias),
                                           local_bn(num_features=out_channels,
-                                                         eps=eps,
-                                                         momentum=momentum),
+                                                   eps=eps,
+                                                   momentum=momentum),
                                           TN.ReLU(),
-                                          TN.Dropout2d(p=0.1))
+                                          local_dropout2d(p=0.1))
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
                 TN.init.kaiming_normal_(
@@ -95,18 +114,14 @@ class upsample_duc(TN.Module):
         """
         super().__init__()
 
-        self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
-                                                    out_channels=out_channels*upsample_ratio*upsample_ratio,
-                                                    kernel_size=3,
-                                                    padding=1,
-                                                    stride=1,
-                                                    bias=False),
-                                          local_bn(
-            num_features=out_channels*upsample_ratio*upsample_ratio,
-            eps=eps,
-            momentum=momentum),
-            TN.ReLU(),
-            TN.Dropout2d(p=0.1))
+        self.conv_bn_relu = conv_bn_relu(in_channels=in_channels,
+                                         out_channels=out_channels*upsample_ratio*upsample_ratio,
+                                         kernel_size=3,
+                                         padding=1,
+                                         stride=1,
+                                         eps=eps,
+                                         momentum=momentum)
+
         self.duc = TN.PixelShuffle(upsample_ratio)
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
@@ -130,25 +145,21 @@ class upsample_bilinear(TN.Module):
         """
         super().__init__()
         self.output_shape = output_shape
-        self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
-                                                    out_channels=512,
-                                                    kernel_size=3,
-                                                    stride=1,
-                                                    padding=1,
-                                                    bias=False),
-                                          local_bn(
-                                              num_features=512,
-                                              eps=eps,
-                                              momentum=momentum),
-                                          TN.ReLU(),
-                                          TN.Dropout2d(p=0.1))
-
+        self.conv_bn_relu = conv_bn_relu(in_channels=in_channels,
+                                         out_channels=512,
+                                         kernel_size=3,
+                                         stride=1,
+                                         padding=1,
+                                         eps=eps,
+                                         momentum=momentum)
+        
+        bias=str2bool(os.environ['torchseg_use_bias'])
         self.conv = TN.Conv2d(in_channels=512,
                               out_channels=out_channels,
                               kernel_size=1,
                               padding=0,
                               stride=1,
-                              bias=False)
+                              bias=bias)
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
                 TN.init.kaiming_normal_(
@@ -162,40 +173,42 @@ class upsample_bilinear(TN.Module):
         upsample_feature = x = self.conv_bn_relu(x)
         x = self.conv(x)
         x = F.interpolate(x, size=self.output_shape,
-                       mode='bilinear', align_corners=True)
+                          mode='bilinear', align_corners=True)
 
         if need_upsample_feature:
             return upsample_feature, x
         else:
             return x
 
+
 class upsample_fcn(TN.Module):
-    def __init__(self,in_channels,out_channels,output_shape,bias=False):
+    def __init__(self, in_channels, out_channels, output_shape):
         super().__init__()
         self.output_shape = output_shape
-        self.conv_seq= TN.Sequential(TN.Conv2d(in_channels=in_channels,
-                                                    out_channels=4096,
-                                                    kernel_size=7,
-                                                    stride=1,
-                                                    padding=0,
-                                                    bias=bias),
-                                          TN.ReLU(),
-                                          TN.Dropout2d(p=0.5),
-                                          TN.Conv2d(in_channels=4096,
-                                                    out_channels=4096,
-                                                    kernel_size=1,
-                                                    stride=1,
-                                                    padding=0,
-                                                    bias=bias),
-                                          TN.ReLU(),
-                                          TN.Dropout2d(p=0.5)
-                                          )
-        self.conv=TN.Conv2d(in_channels=4096,
-                                          out_channels=out_channels,
-                                          kernel_size=1,
-                                          padding=0,
-                                          stride=1,
-                                          bias=bias)
+        bias=str2bool(os.environ['torchseg_use_bias'])
+        self.conv_seq = TN.Sequential(TN.Conv2d(in_channels=in_channels,
+                                                out_channels=4096,
+                                                kernel_size=7,
+                                                stride=1,
+                                                padding=0,
+                                                bias=bias),
+                                      TN.ReLU(),
+                                      local_dropout2d(p=0.5),
+                                      TN.Conv2d(in_channels=4096,
+                                                out_channels=4096,
+                                                kernel_size=1,
+                                                stride=1,
+                                                padding=0,
+                                                bias=bias),
+                                      TN.ReLU(),
+                                      local_dropout2d(p=0.5)
+                                      )
+        self.conv = TN.Conv2d(in_channels=4096,
+                              out_channels=out_channels,
+                              kernel_size=1,
+                              padding=0,
+                              stride=1,
+                              bias=bias)
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
                 TN.init.kaiming_normal_(
@@ -203,17 +216,18 @@ class upsample_fcn(TN.Module):
             elif isinstance(m, TN.BatchNorm2d):
                 TN.init.constant_(m.weight, 1)
                 TN.init.constant_(m.bias, 0)
-                
-    def forward(self,x,need_upsample_feature=False):
-        upsample_feature=x=self.conv_seq(x)
+
+    def forward(self, x, need_upsample_feature=False):
+        upsample_feature = x = self.conv_seq(x)
         x = self.conv(x)
         x = F.interpolate(x, size=self.output_shape,
-                       mode='bilinear', align_corners=True)
+                          mode='bilinear', align_corners=True)
 
         if need_upsample_feature:
             return upsample_feature, x
         else:
             return x
+
 
 class transform_psp_caffe(TN.Module):
     """x->4x[pool->conv->bn->relu->upsample]->concat
@@ -247,8 +261,8 @@ class transform_psp_caffe(TN.Module):
                                                 padding=0,
                                                 bias=False),
                                       local_bn(num_features=out_c,
-                                                     eps=eps,
-                                                     momentum=momentum),
+                                               eps=eps,
+                                               momentum=momentum),
                                       TN.ReLU(),
                                       local_upsample(size=(height, width), mode='bilinear', align_corners=True))
             pool_paths.append(pool_path)
@@ -316,6 +330,7 @@ class transform_psp(TN.Module):
         self.pool_sizes = pool_sizes
         self.scale = scale
         pool_paths = []
+        bias=str2bool(os.environ['torchseg_use_bias'])
         for pool_size, out_c in zip(pool_sizes, path_out_c_list):
             pool_path = TN.Sequential(TN.AvgPool2d(kernel_size=pool_size*scale,
                                                    stride=pool_size*scale,
@@ -325,12 +340,12 @@ class transform_psp(TN.Module):
                                                 kernel_size=1,
                                                 stride=1,
                                                 padding=0,
-                                                bias=False),
+                                                bias=bias),
                                       local_bn(num_features=out_c,
-                                                     eps=eps,
-                                                     momentum=momentum),
+                                               eps=eps,
+                                               momentum=momentum),
                                       TN.ReLU(),
-                                      TN.Dropout2d(p=0.1),
+                                      local_dropout2d(p=0.1),
                                       local_upsample(size=(height, width), mode='bilinear', align_corners=True))
             pool_paths.append(pool_path)
 
@@ -368,6 +383,7 @@ class transform_global(TN.Module):
         """
         super(transform_global, self).__init__()
         dil_paths = []
+        bias=str2bool(os.environ['torchseg_use_bias'])
         for dilation_size in dilation_sizes:
             # for stride=1, to keep size: 2*padding=dilation*(kernel_size-1)
             seq = TN.Sequential(TN.Conv2d(in_channels=class_number,
@@ -375,13 +391,13 @@ class transform_global(TN.Module):
                                           kernel_size=3,
                                           stride=dilation_size,
                                           padding=dilation_size,
-                                          bias=False),
+                                          bias=bias),
                                 local_bn(
                 num_features=class_number,
                 eps=eps,
                 momentum=momentum),
-                TN.ReLU(inplace=False),
-                TN.Dropout2d(p=0.1))
+                TN.ReLU(),
+                local_dropout2d(p=0.1))
 
             dil_paths.append(seq)
         self.dil_paths = TN.ModuleList(dil_paths)
@@ -389,7 +405,7 @@ class transform_global(TN.Module):
                               out_channels=class_number,
                               kernel_size=1,
                               padding=0,
-                              bias=False)
+                              bias=bias)
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
                 TN.init.kaiming_normal_(
@@ -453,19 +469,20 @@ class transform_fractal(TN.Module):
         fractal_paths = []
         if fusion_type == 'route':
             raise NotImplementedError
-
+        
+        bias=str2bool(os.environ['torchseg_use_bias'])
         if depth == 1:
             path = TN.Sequential(TN.Conv2d(in_channels=in_channels,
                                            out_channels=class_number,
                                            kernel_size=1,
                                            stride=1,
                                            padding=0,
-                                           bias=False),
+                                           bias=bias),
                                  local_bn(
                 num_features=class_number,
                 eps=eps,
                 momentum=momentum),
-                TN.ReLU(inplace=False))
+                TN.ReLU())
             fractal_paths.append(path)
         else:
             for i in range(depth):
@@ -479,10 +496,10 @@ class transform_fractal(TN.Module):
                                                    kernel_size=1,
                                                    stride=1,
                                                    padding=0,
-                                                   bias=False),
+                                                   bias=bias),
                                          local_bn(
                                              num_features=(2**i)*class_number),
-                                         TN.ReLU(inplace=False),
+                                         TN.ReLU(),
                                          transform_fractal((2**i)*class_number, i, class_number, fusion_type))
 
                 fractal_paths.append(path)
@@ -558,6 +575,7 @@ class transform_aspp(TN.Module):
 
         atrous_paths = []
         k_sizes = [1, 3, 3, 3]
+        bias=str2bool(os.environ['torchseg_use_bias'])
         # in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True
         for r, k in zip(atrous_rates, k_sizes):
             path = TN.Sequential(TN.Conv2d(in_channels=in_channels,
@@ -566,11 +584,11 @@ class transform_aspp(TN.Module):
                                            stride=1,
                                            padding=r*(k-1)//2,
                                            dilation=r,
-                                           bias=False
+                                           bias=bias
                                            ),
                                  local_bn(num_features=out_c,
-                                                eps=eps,
-                                                momentum=momentum),
+                                          eps=eps,
+                                          momentum=momentum),
                                  TN.ReLU())
             atrous_paths.append(path)
 
@@ -580,24 +598,24 @@ class transform_aspp(TN.Module):
                                                         kernel_size=1,
                                                         stride=1,
                                                         padding=0,
-                                                        bias=False),
+                                                        bias=bias),
                                               local_bn(num_features=out_c,
-                                                             eps=eps,
-                                                             momentum=momentum),
+                                                       eps=eps,
+                                                       momentum=momentum),
                                               TN.ReLU(),
                                               local_upsample(size=(h, w),
-                                                          mode='bilinear',
-                                                          align_corners=True))
+                                                             mode='bilinear',
+                                                             align_corners=True))
 
         self.final_conv = TN.Sequential(TN.Conv2d(in_channels=out_c*5,
                                                   out_channels=out_c,
                                                   kernel_size=1,
                                                   stride=1,
                                                   padding=0,
-                                                  bias=False),
+                                                  bias=bias),
                                         local_bn(num_features=out_c,
-                                                       eps=eps,
-                                                       momentum=momentum),
+                                                 eps=eps,
+                                                 momentum=momentum),
                                         TN.ReLU())
 
         self.atrous_paths = TN.ModuleList(atrous_paths)
@@ -653,6 +671,14 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
     else:
         momentum = 0.1
 
+    os.environ['torchseg_use_bn'] = str(config.model.use_bn)
+    os.environ['torchseg_use_dropout'] = str(config.model.use_dropout)
+    os.environ['torchseg_use_bias'] = str(config.model.use_bias)
+    
+    print('use_bn',os.environ['torchseg_use_bn'])
+    print('use_dropout',os.environ['torchseg_use_dropout'])
+    print('use_bias',os.environ['torchseg_use_bias'])
+    
     if midnet_name == 'psp':
         #        print('midnet is psp'+'*'*50)
         midnet_pool_sizes = config.model.midnet_pool_sizes
@@ -694,6 +720,10 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
     else:
         momentum = 0.1
 
+    os.environ['torchseg_use_bn'] = str(config.model.use_bn)
+    os.environ['torchseg_use_dropout'] = str(config.model.use_dropout)
+    os.environ['torchseg_use_bias'] = str(config.model.use_bias)
+    
     if upsample_type == 'duc':
         #        print('upsample is duc'+'*'*50)
         r = 2**upsample_layer
@@ -704,11 +734,12 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
         decoder = upsample_bilinear(
             midnet_out_channels, class_number, input_shape[0:2], eps=eps, momentum=momentum)
     elif upsample_type == 'fcn':
-        if hasattr(config.model,'use_bias'):
-            bias=config.model.use_bias
+        if hasattr(config.model, 'use_bias'):
+            bias = config.model.use_bias
         else:
-            bias=False
-        decoder=upsample_fcn(midnet_out_channels,class_number,input_shape[0:2],bias)
+            bias = False
+        decoder = upsample_fcn(midnet_out_channels,
+                               class_number, input_shape[0:2], bias)
     else:
         assert False, 'unknown upsample type %s' % upsample_type
 

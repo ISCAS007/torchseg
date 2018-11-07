@@ -10,6 +10,7 @@ import torchsummary
 import pandas as pd
 import torch
 import json
+import time
 import os
 
 from utils.model_hyperopt import psp_opt
@@ -210,3 +211,10 @@ if __name__ == '__main__':
             keras_fit(model=net,train_loader=train_loader,val_loader=val_loader)
     else:
         raise NotImplementedError
+    
+    cmd_log_file=os.path.join(args.log_dir,'cmd_log.txt')
+    with open(cmd_log_file, "a") as myfile:
+        
+        time_str = time.strftime("%Y-%m-%d  %H-%M-%S", time.localtime())
+        myfile.write(time_str+'\n')
+        myfile.write(" ".join(sys.argv)+'\n')

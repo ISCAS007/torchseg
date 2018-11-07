@@ -43,8 +43,13 @@ def get_config(args=None):
     config.model.use_momentum = args.use_momentum
     config.model.backbone_pretrained = args.backbone_pretrained
     config.model.use_bn=args.use_bn
-    # use_bn will change the variable in local_bn
+    # use_bn,use_dropout will change the variable in local_bn,local_dropout
+    # use_bias will affect the bias in upsample
     os.environ['torchseg_use_bn']=str(args.use_bn)
+    config.model.use_dropout=args.use_dropout
+    os.environ['torchseg_use_dropout']=str(args.use_dropout)
+    config.model.use_bias=args.use_bias
+    os.environ['torchseg_use_bias']=str(args.use_bias)
     
     config.model.eps = 1e-5
     config.model.momentum = 0.1
@@ -54,7 +59,7 @@ def get_config(args=None):
     config.model.changed_lr_mult=args.changed_lr_mult
     config.model.new_lr_mult=args.new_lr_mult
     config.model.use_reg = args.use_reg
-    config.model.use_bias=args.use_bias
+    
     config.model.use_class_weight=args.use_class_weight
     config.model.class_weight_alpha=args.class_weight_alpha
     config.model.focal_loss_gamma=args.focal_loss_gamma
@@ -192,6 +197,11 @@ def get_parser():
     parser.add_argument('--use_bias',
                         help='use bias or not',
                         default=False,
+                        type=str2bool)
+    
+    parser.add_argument('--use_dropout',
+                        help='use dropout or not',
+                        default=True,
                         type=str2bool)
     
     parser.add_argument('--use_lr_mult',
@@ -457,7 +467,8 @@ def get_hyperparams(key,discrete=False):
             'model.use_class_weight':('bool',[True,False]),
             'model.focal_loss_gamma':('choices',[1.0,2.0,5.0]),
             'model.focal_loss_alpha':('choices',[1.0,5.0,10.0]),
-            'model.class_weight_alpha':('choices',[0.2,0.4,0.6,0.8])
+            'model.class_weight_alpha':('choices',[0.2,0.4,0.6,0.8]),
+            'model.use_dropout':('bool',[True,False]),
             }
     
     continuous_hyper_dict={

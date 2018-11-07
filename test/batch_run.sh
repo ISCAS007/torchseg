@@ -52,3 +52,12 @@ do
         --note=norm_ways030
     done
 done
+        
+for batch_size in 8 16 32
+do
+    python test/pspnet_test.py --batch_size=${batch_size} \
+    --backbone_pretrained=True --midnet_scale=5 \
+    --backbone_freeze=False --backbone_name=vgg16 \
+    --upsample_type=bilinear --dataset_use_part=320 \
+    --note=bs${batch_size}
+done
