@@ -227,7 +227,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
         gpu_num = torch.cuda.device_count()
         if gpu_num > 1:
             device_ids = [i for i in range(gpu_num)]
-            model = torch.nn.DataParallel(model, device_ids=device_ids
+            model = torch.nn.DataParallel(model, device_ids=device_ids)
     
     # eval module
     if train_loader is None:
