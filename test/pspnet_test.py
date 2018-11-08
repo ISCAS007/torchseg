@@ -179,7 +179,7 @@ if __name__ == '__main__':
         psp_model=globals()[args.net_name]
         config.args.n_calls=args.hyperopt_calls
         config.args.hyperkey=args.hyperkey
-        hyperopt=psp_opt(psp_model,config,train_loader,val_loader)
+        hyperopt=psp_opt(psp_model,config,train_loader=None,val_loader=None)
         if args.hyperopt=='tpe':
             hyperopt.tpe()
         elif args.hyperopt=='bayes':

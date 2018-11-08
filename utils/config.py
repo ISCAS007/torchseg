@@ -491,6 +491,7 @@ def get_hyperparams(key,discrete=False):
             'model.focal_loss_alpha':('choices',[1.0,5.0,10.0]),
             'model.class_weight_alpha':('choices',[0.1, 0.2, 0.3]),
             'model.use_dropout':('bool',[True,False]),
+            'args.batch_size':('choices',[4,8,16]),
             }
     
     continuous_hyper_dict={
