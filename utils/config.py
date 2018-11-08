@@ -55,6 +55,8 @@ def get_config(args=None):
     config.model.momentum = args.momentum
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
+    config.model.lr_weight_decay=args.lr_weight_decay
+    config.model.lr_momentum=args.lr_momentum
     config.model.use_lr_mult = args.use_lr_mult
     config.model.changed_lr_mult=args.changed_lr_mult
     config.model.new_lr_mult=args.new_lr_mult
@@ -186,22 +188,34 @@ def get_parser():
 
     parser.add_argument("--optimizer",
                         help="optimizer name",
-                        choices=['adam', 'sgd'],
+                        choices=['adam', 'sgd' ,'adamax', 'amsgrad'],
                         default='adam')
+    
+    parser.add_argument('--lr_weight_decay',
+                        help='weight decay for learning rate',
+                        type=float,
+                        default=1e-4)
+    
+    parser.add_argument('--lr_momentum',
+                        help='moemntum for learning rate',
+                        type=float,
+                        default=0.9)
     
     parser.add_argument('--use_bn',
                         help='use batch norm or not',
                         default=True,
                         type=str2bool)
     
+    # 2018/11/08 change default from False to True
     parser.add_argument('--use_bias',
                         help='use bias or not',
-                        default=False,
+                        default=True,
                         type=str2bool)
     
+    # 2018/11/08 change default from True to False
     parser.add_argument('--use_dropout',
                         help='use dropout or not',
-                        default=True,
+                        default=False,
                         type=str2bool)
     
     parser.add_argument('--use_lr_mult',
@@ -271,10 +285,11 @@ def get_parser():
                                  'resnet34', 'resnet50', 'resnet101', 'resnet152'],
                         default='resnet50')
     
+    # 2018/11/08 change default from False to True
     parser.add_argument('--backbone_pretrained',
                         help='when not use momentum, we can use weights pretrained on imagenet',
                         type=str2bool,
-                        default=False)
+                        default=True)
     
     # work for pspnet and psp_edge
     parser.add_argument('--backbone_freeze',
@@ -304,16 +319,18 @@ def get_parser():
                         help='training/validating epoch',
                         type=int,
                         default=100)
-
+    
+    # 2018/11/08 change default from duc to bilinear
     parser.add_argument('--upsample_type',
                         help='bilinear or duc upsample',
                         choices=['duc', 'bilinear','fcn'],
-                        default='duc')
-
+                        default='bilinear')
+    
+    # 2018/11/08 change default from duc to bilinear
     parser.add_argument('--auxnet_type',
                         help='bilinear or duc upsample',
                         choices=['duc', 'bilinear'],
-                        default='duc')
+                        default='bilinear')
 
     parser.add_argument('--upsample_layer',
                         help='layer number for upsample',
@@ -366,12 +383,12 @@ def get_parser():
                         default=False)
     
     parser.add_argument('--cross_merge_times',
-                        help='cross merge times 1,2 or 3?',
+                        help='cross merge times 1,2 or 3? for cross merge net',
                         type=int,
                         default=1)
 
     parser.add_argument('--use_momentum',
-                        help='use mometnum or not?',
+                        help='use mometnum/modified backbone or not?',
                         type=str2bool,
                         default=False)
     
@@ -381,7 +398,7 @@ def get_parser():
                         default=0.1)
 
     parser.add_argument('--input_shape',
-                        help='input shape',
+                        help='input shape, can be auto computer by midnet_scale and upsample_layer + use_momentum',
                         type=int,
                         default=0)
 
@@ -463,7 +480,7 @@ def get_hyperparams(key,discrete=False):
             'model.backbone_pretrained':('bool',[True,False]),
             'model.backbone_freeze':('bool',[True,False]),
             'model.learning_rate':('choices',[1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3]),
-            'model.optimizer':('choices',['sgd','adam']),
+            'model.optimizer':('choices',['adam', 'adamax', 'amsgrad']),
             'model.edge_base_weight':('choices',[0.1,0.2,0.5,1.0]),
             'model.use_bn':('bool',[True,False]),
             'model.use_bias':('bool',[True,False]),
@@ -472,7 +489,7 @@ def get_hyperparams(key,discrete=False):
             'model.use_class_weight':('bool',[True,False]),
             'model.focal_loss_gamma':('choices',[1.0,2.0,5.0]),
             'model.focal_loss_alpha':('choices',[1.0,5.0,10.0]),
-            'model.class_weight_alpha':('choices',[0.2,0.4,0.6,0.8]),
+            'model.class_weight_alpha':('choices',[0.1, 0.2, 0.3]),
             'model.use_dropout':('bool',[True,False]),
             }
     

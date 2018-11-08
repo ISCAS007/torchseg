@@ -7,10 +7,51 @@ import os
 from tensorboardX import SummaryWriter
 from utils.metrics import get_scores, runningScore
 from utils.disc_tools import save_model_if_necessary
-from dataset.dataset_generalize import image_normalizations
+from dataset.dataset_generalize import image_normalizations,dataset_generalize
+from utils.augmentor import Augmentations
+import torch.utils.data as TD
 from utils.focalloss2d import FocalLoss2d
 from tqdm import tqdm, trange
 
+def get_loader(config):
+    if config.dataset.norm_ways is None:
+        normalizations = None
+    else:
+        normalizations = image_normalizations(config.dataset.norm_ways)
+        
+    if config.args.augmentation:
+        #        augmentations = Augmentations(p=0.25,use_imgaug=False)
+        augmentations = Augmentations(
+            p=0.25, use_imgaug=True, rotate=config.args.augmentations_rotate)
+    else:
+        augmentations = None
+    
+    # must change batch size here!!!
+    batch_size = config.args.batch_size      
+    
+    train_dataset = dataset_generalize(
+        config.dataset, split='train',
+        augmentations=augmentations,
+        normalizations=normalizations)
+    train_loader = TD.DataLoader(
+        dataset=train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True,
+        drop_last=True,
+        num_workers=8)
+
+    val_dataset = dataset_generalize(config.dataset, 
+                                     split='val',
+                                     augmentations=None,
+                                     normalizations=normalizations)
+    val_loader = TD.DataLoader(
+        dataset=val_dataset,
+        batch_size=batch_size, 
+        shuffle=True, 
+        drop_last=False, 
+        num_workers=8)
+    
+    return train_loader, val_loader
 
 def add_image(summary_writer, name, image, step):
     """
@@ -110,6 +151,10 @@ def get_optimizer(model, config):
         config.model, 'learning_rate') else 0.0001
     optimizer_str = config.model.optimizer if hasattr(
         config.model, 'optimizer') else 'adam'
+    lr_weight_decay = config.model.lr_weight_decay if hasattr(
+            config.model,'lr_weight_decay') else 0.0001
+    lr_momentum = config.model.lr_momentum if hasattr(
+            config.model,'lr_momentum') else 0.9
 
     if hasattr(model, 'optimizer_params'):
         optimizer_params = model.optimizer_params
@@ -122,10 +167,16 @@ def get_optimizer(model, config):
 
     if optimizer_str == 'adam':
         optimizer = torch.optim.Adam(
-            optimizer_params, lr=init_lr, weight_decay=0.0001)
+            optimizer_params, lr=init_lr, weight_decay=lr_weight_decay, amsgrad=False)
+    elif optimizer_str == 'amsgrad':
+        optimizer = torch.optim.Adam(
+            optimizer_params, lr=init_lr, weight_decay=lr_weight_decay, amsgrad=True)
+    elif optimizer_str == 'adamax':
+        optimizer = torch.optim.Adamax(
+            optimizer_params, lr=init_lr, weight_decay=lr_weight_decay)
     elif optimizer_str == 'sgd':
         optimizer = torch.optim.SGD(
-            optimizer_params, lr=init_lr, momentum=0.9, weight_decay=0.0001)
+            optimizer_params, lr=init_lr, momentum=lr_momentum, weight_decay=lr_weight_decay)
     else:
         assert False, 'unknown optimizer %s' % optimizer_str
 
@@ -173,7 +224,11 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
         if gpu_num > 1:
             device_ids = [i for i in range(gpu_num)]
             model = torch.nn.DataParallel(model, device_ids=device_ids)
-
+    
+    # create loader from config
+    if train_loader is None and val_loader is None:
+        train_loader, val_loader = get_loader(config)
+    
     # eval module
     if train_loader is None:
         config.args.n_epoch = 1
@@ -209,7 +264,11 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
             running_metrics.reset()
             for k, v in metric_fn_dict.items():
                 metric_fn_dict[k].reset()
-
+            
+            grads_dict={}
+            for key_prefix in ['first_grad','last_grad']:
+                for key_suffix in ['mean','max','min']:
+                    grads_dict[key_prefix+'_'+key_suffix]=[]
             tqdm_step = tqdm(loader, desc='steps', leave=False)
             for i, (datas) in enumerate(tqdm_step):
                 # work only for sgd
@@ -266,11 +325,23 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                         losses_dict[k].append(v.data.cpu().numpy())
                     else:
                         losses_dict[k] = [v.data.cpu().numpy()]
-
+                
                 if loader_name == 'train':
                     loss_dict['%s/total_loss' % loader_name].backward()
                     optimizer.step()
-
+                    
+                    grads_dict['first_grad_mean'].append(
+                            optimizer.param_groups[0]['params'][0].grad.mean().data.cpu().numpy())
+                    grads_dict['last_grad_mean'].append(
+                            optimizer.param_groups[-1]['params'][-1].grad.mean().data.cpu().numpy())
+                    grads_dict['first_grad_min'].append(
+                            optimizer.param_groups[0]['params'][0].grad.abs().min().data.cpu().numpy())
+                    grads_dict['last_grad_min'].append(
+                            optimizer.param_groups[-1]['params'][-1].grad.abs().min().data.cpu().numpy())
+                    grads_dict['first_grad_max'].append(
+                            optimizer.param_groups[0]['params'][0].grad.max().data.cpu().numpy())
+                    grads_dict['last_grad_max'].append(
+                            optimizer.param_groups[-1]['params'][-1].grad.max().data.cpu().numpy())
                 # other metric for edge and aux, not run for each epoch to save time
                 running_metrics, metric_fn_dict = update_metric(outputs_dict,
                                                                 targets_dict,
@@ -326,6 +397,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                           lr_dict=lr_dict,
                           image_dict=image_dict,
                           weight_dict=weight_dict,
+                          grads_dict=grads_dict,
                           epoch=epoch)
     writer.close()
     print('total epoch is %d, best iou is' % config.args.n_epoch, best_iou)
@@ -647,7 +719,8 @@ def write_summary(writer,
                   class_iou_dict, 
                   lr_dict, 
                   image_dict,
-                  weight_dict, 
+                  weight_dict,
+                  grads_dict,
                   epoch):
     # losses_dict value is numpy
     for k, v in losses_dict.items():
@@ -673,3 +746,8 @@ def write_summary(writer,
     # summary image
     for k, v in image_dict.items():
         add_image(summary_writer=writer, name=k, image=v, step=epoch)
+        
+    # summary gradients
+    for k, v in grads_dict.items():
+        if len(v) > 0:
+            writer.add_scalar('grad/'+k, np.mean(v), epoch)
