@@ -215,6 +215,10 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
 #        log_dir, "{}_{}_best_model.pkl".format(model.name, config.dataset.name))
     writer = None
     best_iou = 0.0
+    # create loader from config
+    if train_loader is None and val_loader is None:
+        train_loader, val_loader = get_loader(config)
+        
     loaders = [train_loader, val_loader]
     loader_names = ['train', 'val']
 
@@ -223,11 +227,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
         gpu_num = torch.cuda.device_count()
         if gpu_num > 1:
             device_ids = [i for i in range(gpu_num)]
-            model = torch.nn.DataParallel(model, device_ids=device_ids)
-    
-    # create loader from config
-    if train_loader is None and val_loader is None:
-        train_loader, val_loader = get_loader(config)
+            model = torch.nn.DataParallel(model, device_ids=device_ids
     
     # eval module
     if train_loader is None:
