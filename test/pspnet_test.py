@@ -209,6 +209,8 @@ if __name__ == '__main__':
             config.args.note = note+'_%d'%times
             assert net.config.args.n_epoch==config.args.n_epoch
             keras_fit(model=net,train_loader=train_loader,val_loader=val_loader)
+            # only load weight in the first time
+            config.args.checkpoint_path=None
     else:
         raise NotImplementedError
     

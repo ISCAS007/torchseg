@@ -6,12 +6,13 @@ import json
 import os
 from tensorboardX import SummaryWriter
 from utils.metrics import get_scores, runningScore
-from utils.disc_tools import save_model_if_necessary
+from utils.disc_tools import save_model_if_necessary,get_newest_file
 from dataset.dataset_generalize import image_normalizations,dataset_generalize
 from utils.augmentor import Augmentations
 import torch.utils.data as TD
 from utils.focalloss2d import FocalLoss2d
 from tqdm import tqdm, trange
+import glob
 
 def get_loader(config):
     if config.dataset.norm_ways is None:
@@ -182,6 +183,21 @@ def get_optimizer(model, config):
 
     return optimizer
 
+def get_ckpt_path(checkpoint_path):
+    if os.path.isdir(checkpoint_path):
+        log_dir=checkpoint_path
+        ckpt_files=glob.glob(os.path.join(log_dir,'**','model-best-*.pkl'),recursive=True)
+    
+        # use best model first, then use the last model, because the last model will be the newest one if exist.
+        if len(ckpt_files)==0:
+            ckpt_files=glob.glob(os.path.join(log_dir,'**','*.pkl'),recursive=True)
+    
+        assert len(ckpt_files)>0,'no weight file found under %s, \n please specify checkpoint path'%log_dir
+        checkpoint_path=get_newest_file(ckpt_files)
+        print('no checkpoint file given, auto find %s'%checkpoint_path)
+        return checkpoint_path
+    else:
+        return checkpoint_path
 
 def keras_fit(model, train_loader=None, val_loader=None, config=None):
     """
@@ -195,6 +211,15 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
     # support for cpu/gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
+    
+    if config.args.checkpoint_path is not None:
+        ckpt_path=get_ckpt_path(config.args.checkpoint_path)
+        print('load checkpoint file from',ckpt_path)
+        state_dict=torch.load(ckpt_path)
+        if 'model_state' in state_dict.keys():
+            model.load_state_dict(state_dict['model_state'])
+        else:
+            model.load_state_dict(state_dict)
 
 #    if hasattr(model, 'backbone'):
 #        if hasattr(model.backbone, 'model'):
@@ -330,18 +355,21 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                     loss_dict['%s/total_loss' % loader_name].backward()
                     optimizer.step()
                     
-                    grads_dict['first_grad_mean'].append(
-                            optimizer.param_groups[0]['params'][0].grad.mean().data.cpu().numpy())
-                    grads_dict['last_grad_mean'].append(
-                            optimizer.param_groups[-1]['params'][-1].grad.mean().data.cpu().numpy())
-                    grads_dict['first_grad_min'].append(
-                            optimizer.param_groups[0]['params'][0].grad.abs().min().data.cpu().numpy())
-                    grads_dict['last_grad_min'].append(
-                            optimizer.param_groups[-1]['params'][-1].grad.abs().min().data.cpu().numpy())
-                    grads_dict['first_grad_max'].append(
-                            optimizer.param_groups[0]['params'][0].grad.max().data.cpu().numpy())
-                    grads_dict['last_grad_max'].append(
-                            optimizer.param_groups[-1]['params'][-1].grad.max().data.cpu().numpy())
+                    if optimizer.param_groups[0]['params'][0].grad is not None:
+                        grads_dict['first_grad_mean'].append(
+                                optimizer.param_groups[0]['params'][0].grad.mean().data.cpu().numpy())
+                        grads_dict['first_grad_min'].append(
+                                optimizer.param_groups[0]['params'][0].grad.abs().min().data.cpu().numpy())
+                        grads_dict['first_grad_max'].append(
+                                optimizer.param_groups[0]['params'][0].grad.max().data.cpu().numpy())
+                        
+                    if optimizer.param_groups[-1]['params'][-1].grad is not None:
+                        grads_dict['last_grad_mean'].append(
+                                optimizer.param_groups[-1]['params'][-1].grad.mean().data.cpu().numpy())
+                        grads_dict['last_grad_min'].append(
+                                optimizer.param_groups[-1]['params'][-1].grad.abs().min().data.cpu().numpy())
+                        grads_dict['last_grad_max'].append(
+                                optimizer.param_groups[-1]['params'][-1].grad.max().data.cpu().numpy())
                 # other metric for edge and aux, not run for each epoch to save time
                 running_metrics, metric_fn_dict = update_metric(outputs_dict,
                                                                 targets_dict,

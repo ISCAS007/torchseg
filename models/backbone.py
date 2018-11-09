@@ -94,11 +94,13 @@ class backbone(TN.Module):
         
         features=[]
         if self.format=='vgg':
-            assert hasattr(self.layer_depths,str(main_level))
+            layer_num=0
+            assert hasattr(self.layer_depths,str(layer_num))
             for idx,layer in enumerate(self.model.features):
                 x=layer(x)
-                if idx == self.layer_depths[str(main_level)]:
+                if idx == self.layer_depths[str(layer_num)]:
                     features.append(x)
+                    layer_num+=1
         elif self.format=='resnet':
             features.append(x)
             x=self.prefix_net(x)

@@ -134,6 +134,7 @@ def get_config(args=None):
     config.args.augmentation = args.augmentation
     config.args.augmentations_rotate=args.augmentations_rotate
     config.args.net_name=args.net_name
+    config.args.checkpoint_path=args.checkpoint_path
     if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
         config.dataset.with_edge = True
         

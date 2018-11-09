@@ -1,15 +1,8 @@
 # -*- coding: utf-8 -*-
-import torch
 import torch.nn as TN
 from models.backbone import backbone
 from models.upsample import get_midnet, get_suffix_net
-from tensorboardX import SummaryWriter
-from utils.metrics import runningScore
-from utils.torch_tools import get_optimizer
-import numpy as np
-import time
-import os
-
+from utils.disc_tools import get_backbone_optimizer_params
 
 class psp_aux(TN.Module):
     def __init__(self, config):
@@ -19,6 +12,7 @@ class psp_aux(TN.Module):
 
         use_momentum = self.config.model.use_momentum if hasattr(
             self.config.model, 'use_momentum') else False
+        
         self.backbone = backbone(config.model, use_momentum=use_momentum)
         self.upsample_layer = self.config.model.upsample_layer
         self.class_number = self.config.model.class_number
@@ -26,11 +20,16 @@ class psp_aux(TN.Module):
         self.dataset_name = self.config.dataset.name
         self.ignore_index = self.config.dataset.ignore_index
 
-        self.midnet_input_shape = self.backbone.get_output_shape(
-            self.upsample_layer, self.input_shape)
+        
         self.auxnet_layer = self.config.model.auxnet_layer
-        self.auxnet_input_shape = self.backbone.get_output_shape(
-            self.auxnet_layer, self.input_shape)
+        assert self.auxnet_layer >= 3
+        assert self.upsample_layer >= 3
+        assert self.upsample_layer >= self.auxnet_layer
+        assert config.model.use_momentum==True
+        # use modified backbone, the output shape is the same for upsample_layer=[3,4,5]
+        self.auxnet_input_shape = self.backbone.get_output_shape(self.auxnet_layer, self.input_shape)
+        self.midnet_input_shape = self.backbone.get_output_shape(self.upsample_layer, self.input_shape)
+        
         self.midnet_out_channels = 2*self.midnet_input_shape[1]
         self.auxnet_out_channels = self.auxnet_input_shape[1]
 
@@ -46,21 +45,42 @@ class psp_aux(TN.Module):
         self.decoder = get_suffix_net(self.config,
                                       self.midnet_out_channels,
                                       self.class_number)
+        
+        if config.model.use_lr_mult:
+            if use_momentum and config.model.backbone_pretrained and self.upsample_layer >= 4:
+                backbone_optmizer_params = get_backbone_optimizer_params(config.model.backbone_name,
+                                                                         self.backbone.model,
+                                                                         unchanged_lr_mult=1,
+                                                                         changed_lr_mult=config.model.changed_lr_mult,
+                                                                         new_lr_mult=config.model.new_lr_mult)
+            else:
+                backbone_optmizer_params = [{'params': [
+                    p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1}]
 
-        self.optimizer_params = [{'params': [p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1},
-                                 {'params': self.midnet.parameters(), 'lr_mult': 10},
-                                 {'params': self.auxnet.parameters(), 'lr_mult': 20},
-                                 {'params': self.decoder.parameters(), 'lr_mult': 20}]
-
-        print('class number is %d' % self.class_number,
-              'ignore_index is %d' % self.ignore_index, '*'*30)
-
+            self.optimizer_params = backbone_optmizer_params + [{'params': self.midnet.parameters(), 
+                                                                 'lr_mult':config.model.new_lr_mult},
+                                                                 {'params': self.auxnet.parameters(),
+                                                                  'lr_mult':config.model.new_lr_mult},
+                                                                {'params': self.decoder.parameters(), 
+                                                                 'lr_mult': config.model.new_lr_mult}]
+        else:
+            self.optimizer_params = [{'params': [p for p in self.backbone.parameters() if p.requires_grad],
+                                                 'lr_mult': 1},
+                                 {'params': self.midnet.parameters(), 'lr_mult': 1},
+                                 {'params': self.auxnet.parameters(), 'lr_mult': 1},
+                                 {'params': self.decoder.parameters(), 'lr_mult': 1}]
+        
+        if not hasattr(config.model, 'aux_base_weight'):
+            config.model.aux_base_weight = 0.4
+            
     def forward(self, x):
         main, aux = self.backbone.forward_aux(
             x, self.upsample_layer, self.auxnet_layer)
 #        print('main,aux shape is',main.shape,aux.shape)
+        aux = self.auxnet(aux)
+        
         main = self.midnet(main)
         main = self.decoder(main)
-        aux = self.auxnet(aux)
+        
 
         return main, aux
