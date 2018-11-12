@@ -55,6 +55,7 @@ def get_config(args=None):
     config.model.momentum = args.momentum
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
+    config.model.scheduler = args.scheduler
     config.model.lr_weight_decay=args.lr_weight_decay
     config.model.lr_momentum=args.lr_momentum
     config.model.use_lr_mult = args.use_lr_mult
@@ -192,6 +193,10 @@ def get_parser():
                         choices=['adam', 'sgd' ,'adamax', 'amsgrad'],
                         default='adam')
     
+    parser.add_argument("--scheduler",
+                        help="learning rate scheduler, None or plateau",
+                        default=None)
+    
     parser.add_argument('--lr_weight_decay',
                         help='weight decay for learning rate',
                         type=float,
@@ -283,7 +288,8 @@ def get_parser():
     parser.add_argument("--backbone_name",
                         help="backbone name",
                         choices=['vgg16', 'vgg19', 'vgg16_bn', 'vgg19_bn', 'resnet18',
-                                 'resnet34', 'resnet50', 'resnet101', 'resnet152'],
+                                 'resnet34', 'resnet50', 'resnet101', 'resnet152',
+                                 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn'],
                         default='resnet50')
     
     # 2018/11/08 change default from False to True

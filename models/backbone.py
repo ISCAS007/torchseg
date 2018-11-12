@@ -187,16 +187,16 @@ class backbone(TN.Module):
                 
         if self.use_momentum:
             from models.psp_resnet import resnet50,resnet101
-            from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn
+            from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
-            if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn']:
+            if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn']:
                 return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum)
             else:
                 return locals()[self.config.backbone_name](momentum=self.momentum)
         else:
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
-            from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101
+            from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn
             assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             return locals()[self.config.backbone_name](pretrained=pretrained)
     

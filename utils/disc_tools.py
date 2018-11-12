@@ -43,6 +43,10 @@ def changed_or_not(backbone_name,param_name):
             "vgg19":27,
             "vgg16_bn":33,
             "vgg16":23,
+            "vgg13_bn":27,
+            "vgg13":19,
+            "vgg11_bn":21,
+            "vgg11":15,
             }
     
     idx=int(param_name.split('.')[0])
@@ -57,7 +61,7 @@ def get_backbone_optimizer_params(backbone_name,
     unchanged_backbone={'params':[],'lr_mult':unchanged_lr_mult}
     modified_backbone={'params':[],'lr_mult':changed_lr_mult}
     new_backbone={'params':[],'lr_mult':new_lr_mult}
-    if backbone_name in ['vgg16','vgg16_bn','vgg19','vgg19_bn']:
+    if backbone_name in ['vgg16','vgg16_bn','vgg19','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn']:
         for param_name, p in backbone.features.named_parameters():
             if p.requires_grad:
                 changed=changed_or_not(backbone_name,param_name)

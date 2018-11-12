@@ -20,10 +20,8 @@ class pspnet(TN.Module):
 
         self.backbone = backbone(config.model, use_momentum=use_momentum)
 
-        if hasattr(self.config.model, 'backbone_freeze'):
-            if self.config.model.backbone_freeze:
-                #                print('freeze backbone weights'+'*'*30)
-                freeze_layer(self.backbone)
+        if self.config.model.backbone_freeze:
+            freeze_layer(self.backbone)
 
         self.upsample_layer = self.config.model.upsample_layer
         self.class_number = self.config.model.class_number
@@ -48,7 +46,11 @@ class pspnet(TN.Module):
         # for modified module, use middle lr_mult=10
         # for new module, use largest lr_mult=20
         # for resnet, the begin layers is newed and the end layers is changed
-        if config.model.use_lr_mult:
+        if self.config.model.backbone_freeze:
+            self.optimizer_params = [{'params': self.midnet.parameters(),
+                                      'lr_mult': 1},
+                                     {'params': self.decoder.parameters(), 'lr_mult': 1}]
+        elif config.model.use_lr_mult:
             if use_momentum and config.model.backbone_pretrained and self.upsample_layer >= 4:
                 backbone_optmizer_params = get_backbone_optimizer_params(config.model.backbone_name,
                                                                          self.backbone.model,
@@ -66,6 +68,7 @@ class pspnet(TN.Module):
                                      {'params': self.midnet.parameters(),
                                       'lr_mult': 1},
                                      {'params': self.decoder.parameters(), 'lr_mult': 1}]
+            
 
     def forward(self, x):
         feature_map = self.backbone.forward(x, self.upsample_layer)

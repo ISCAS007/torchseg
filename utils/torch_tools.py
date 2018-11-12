@@ -180,8 +180,18 @@ def get_optimizer(model, config):
             optimizer_params, lr=init_lr, momentum=lr_momentum, weight_decay=lr_weight_decay)
     else:
         assert False, 'unknown optimizer %s' % optimizer_str
-
+    
     return optimizer
+
+def get_scheduler(optimizer,config):
+    scheduler=config.model.scheduler if hasattr(config.model,'scheduler') else None
+    if scheduler is not None:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min',
+                                                               threshold=1e-4,
+                                                               patience=3,verbose=True,
+                                                               cooldown=5,min_lr=1e-5)
+    
+    return scheduler
 
 def get_ckpt_path(checkpoint_path):
     if os.path.isdir(checkpoint_path):
@@ -226,6 +236,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
 #            model.backbone.model.to(device)
 
     optimizer = get_optimizer(model, config)
+    scheduler = get_scheduler(optimizer,config)
     init_lr = config.model.learning_rate
 
     loss_fn_dict = get_loss_fn_dict(config)
@@ -296,11 +307,12 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                     grads_dict[key_prefix+'_'+key_suffix]=[]
             tqdm_step = tqdm(loader, desc='steps', leave=False)
             for i, (datas) in enumerate(tqdm_step):
-                # work only for sgd
-                poly_lr_scheduler(optimizer,
-                                  init_lr=init_lr,
-                                  iter=epoch*len(loader)+i,
-                                  max_iter=config.args.n_epoch*len(loader))
+                if scheduler is None:
+                    # work only for sgd
+                    poly_lr_scheduler(optimizer,
+                                      init_lr=init_lr,
+                                      iter=epoch*len(loader)+i,
+                                      max_iter=config.args.n_epoch*len(loader))
 
                 # support for w/o edge
                 if len(datas) == 2:
@@ -385,6 +397,8 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                 running_metrics, metric_fn_dict, summary_all=summary_all, prefix_note=loader_name)
             if loader_name == 'val':
                 val_iou = metric_dict['val/iou']
+                if scheduler is not None:
+                    scheduler.step(val_iou)
                 tqdm.write('epoch %d,curruent val iou is %0.5f' %
                            (epoch, val_iou))
                 if val_iou >= best_iou:
