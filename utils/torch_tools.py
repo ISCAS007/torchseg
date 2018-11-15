@@ -11,6 +11,7 @@ from dataset.dataset_generalize import image_normalizations, dataset_generalize
 from utils.augmentor import Augmentations
 import torch.utils.data as TD
 from utils.focalloss2d import FocalLoss2d
+from utils.poly_plateau import poly_rop
 from tqdm import tqdm, trange
 import glob
 
@@ -145,9 +146,8 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
     tqdm_step = tqdm(loader, desc='steps', leave=False)
     for i, (datas) in enumerate(tqdm_step):
         if loader_name == 'train' and scheduler is None:
-            # work only for sgd
+            # work only for sgd and no other scheduler
             poly_lr_scheduler(optimizer,
-                              init_lr=init_lr,
                               iter=epoch*len(loader)+i,
                               max_iter=config.args.n_epoch*len(loader))
 
@@ -239,7 +239,7 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
     return outputs_dict, targets_dict, running_metrics, metric_fn_dict, grads_dict, losses_dict, loss_weight_dict
 
 
-def poly_lr_scheduler(optimizer, init_lr, iter,
+def poly_lr_scheduler(optimizer, iter,
                       max_iter=100, power=0.9):
     """Polynomial decay of learning rate
         :param init_lr is base learning rate
@@ -250,17 +250,16 @@ def poly_lr_scheduler(optimizer, init_lr, iter,
 
     """
     if type(optimizer) != torch.optim.SGD:
-        return init_lr
+        return 0
 
     if iter > max_iter:
-        return optimizer
+        return 0
 
-    lr = init_lr*(1 - iter/(1.0+max_iter))**power
+    scale = (1 - iter/(1.0+max_iter))**power
     for i, p in enumerate(optimizer.param_groups):
-        lr_mult = p['lr_mult'] if 'lr_mult' in p.keys() else 1.0
-        optimizer.param_groups[i]['lr'] = lr*lr_mult
+        optimizer.param_groups[i]['lr'] *= scale
 
-    return lr
+    return 0
 
 
 def get_optimizer(model, config):
@@ -275,12 +274,14 @@ def get_optimizer(model, config):
 
     if hasattr(model, 'optimizer_params'):
         optimizer_params = model.optimizer_params
-        for i, p in enumerate(optimizer_params):
-            lr_mult = p['lr_mult'] if 'lr_mult' in p.keys() else 1.0
-            optimizer_params[i]['lr'] = init_lr*lr_mult
     else:
         optimizer_params = [
             p for p in model.parameters() if p.requires_grad]
+    
+    # init optimizer learning rate
+    for i, p in enumerate(optimizer_params):
+        lr_mult = p['lr_mult'] if 'lr_mult' in p.keys() else 1.0
+        optimizer_params[i]['lr'] = init_lr*lr_mult
 
     if optimizer_str == 'adam':
         optimizer = torch.optim.Adam(
@@ -303,12 +304,20 @@ def get_optimizer(model, config):
 def get_scheduler(optimizer, config):
     scheduler = config.model.scheduler if hasattr(
         config.model, 'scheduler') else None
-    if scheduler is not None:
+    if scheduler == 'rop':
         # 'max' for acc and miou, 'min' for loss
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max',
                                                                threshold=1e-4,
-                                                               patience=3, verbose=True,
-                                                               cooldown=5, min_lr=1e-5)
+                                                               patience=10, verbose=True,
+                                                               cooldown=0, min_lr=1e-5)
+    elif scheduler == 'poly_rop':
+        # 'max' for acc and miou, 'min' for loss
+        scheduler = poly_rop(poly_max_iter=50, poly_power=0.9, optimizer = optimizer, mode= 'max',
+                                                               threshold=1e-4,
+                                                               patience=10, verbose=True,
+                                                               cooldown=0, min_lr=1e-5)
+    else:
+        assert scheduler is None
 
     return scheduler
 
@@ -359,7 +368,8 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
     scheduler = get_scheduler(optimizer, config)
 
     loss_fn_dict = get_loss_fn_dict(config)
-    metric_fn_dict = get_metric_fn_dict(config)
+    # for different output, generate the metric_fn_dict automaticly.
+    metric_fn_dict = {}
     # output for main output
     running_metrics = runningScore(config.model.class_number)
 
@@ -403,7 +413,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
 
             if loader_name == 'val':
                 # summary metrics every 10 epoch
-                if summary_all or epoch % 10 == 0 or epoch == config.args.n_epoch-1:
+                if summary_all or epoch % 10 == 0 or epoch == config.args.n_epoch-1 or (scheduler is not None):
                     val_log = True
                 else:
                     val_log = False
@@ -448,7 +458,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
             if loader_name == 'val':
                 val_iou = metric_dict['val/iou']
                 
-                # use plateau to schedule learning rate
+                # use rop/poly_rop to schedule learning rate
                 if scheduler is not None:
                     scheduler.step(val_iou)
                 
@@ -569,16 +579,6 @@ def get_loss_fn_dict(config):
             weight=edge_loss_weight, ignore_index=ignore_index)
 
     return loss_fn_dict
-
-
-def get_metric_fn_dict(config):
-    metric_fn_dict = {}
-    metric_fn_dict['seg'] = get_scores
-    if config.dataset.with_edge:
-        metric_fn_dict['edge'] = get_scores
-
-    return metric_fn_dict
-
 
 def get_loss_weight(step, max_step, config=None):
     """
@@ -702,7 +702,12 @@ def update_metric(outputs_dict,
             np_outputs_dict[key] = torch.argmax(
                 value, dim=1).data.cpu().numpy()
             if key not in metric_fn_dict.keys():
-                metric_fn_dict[key] = runningScore(config.model.class_number)
+                if key.startswith(('seg','aux')):
+                    metric_fn_dict[key] = runningScore(config.model.class_number)
+                elif key.startswith('edge'):
+                    metric_fn_dict[key] = runningScore(config.dataset.edge_class_num)
+                else:
+                    assert False, 'unexcepted key %s in outputs_dict' % key
 
         np_targets_dict = {}
         for key, value in targets_dict.items():

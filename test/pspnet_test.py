@@ -50,9 +50,7 @@ if __name__ == '__main__':
         normalizations = image_normalizations(config.dataset.norm_ways)
         
     if config.args.augmentation:
-        #        augmentations = Augmentations(p=0.25,use_imgaug=False)
-        augmentations = Augmentations(
-            p=0.25, use_imgaug=True, rotate=config.args.augmentations_rotate)
+        augmentations = Augmentations(config)
     else:
         augmentations = None
     

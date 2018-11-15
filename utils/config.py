@@ -7,6 +7,7 @@ import yaml
 import os
 import argparse
 from utils.disc_tools import str2bool
+from utils.augmentor import get_default_augmentor_config
 from dataset.dataset_generalize import get_dataset_generalize_config
 
 def get_config(args=None):
@@ -147,6 +148,18 @@ def get_config(args=None):
     else:
         config.args.note=args.note
     
+    default_aug_config=get_default_augmentor_config()
+    config.aug=edict()
+    config.aug=default_aug_config.aug
+    config.aug.use_rotate=config.args.augmentations_rotate
+    config.aug.use_imgaug=True
+    config.aug.keep_crop_ratio=args.keep_crop_ratio
+    if config.aug.keep_crop_ratio is False:
+        config.aug.min_crop_size=config.model.input_shape
+        config.aug.max_crop_size=config.model.input_shape
+        assert min(config.aug.min_crop_size)>0
+        assert min(config.aug.max_crop_size)>0
+            
     return config
 
 def get_share_config(config):
@@ -195,6 +208,7 @@ def get_parser():
     
     parser.add_argument("--scheduler",
                         help="learning rate scheduler, None or plateau",
+                        choices=['rop','poly_rop'],
                         default=None)
     
     parser.add_argument('--lr_weight_decay',
@@ -423,6 +437,11 @@ def get_parser():
                         help='augmentations rotate',
                         type=str2bool,
                         default=True)
+    
+    parser.add_argument('--keep_crop_ratio',
+                       help='when crop the image, keep height:width or not',
+                       type=str2bool,
+                       default=True)
     
     parser.add_argument('--norm_ways',
                         help='normalize image value ways',

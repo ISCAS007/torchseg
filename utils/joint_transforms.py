@@ -82,7 +82,7 @@ class RandomCrop(object):
     def __call__(self, img, mask):
         if self.padding > 0:
             img = ImageOps.expand(img, border=self.padding, fill=0)
-            mask = ImageOps.expand(mask, border=self.padding, fill=0)
+            mask = ImageOps.expand(mask, border=self.padding, fill=255)
         w, h = img.size
         th, tw = self.size
         if w == tw and h == th:

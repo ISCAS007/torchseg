@@ -16,12 +16,12 @@ def lcm_list(l):
     return x
 
 
-def show_images(images,titles=None):
+def show_images(images,titles=None,vmin=None,vmax=None):
     fig, axes = plt.subplots(2, (len(images)+1)//2, figsize=(7, 6), sharex=True, sharey=True)
     ax = axes.ravel()
 
     for i in range(len(images)):
-        ax[i].imshow(images[i])
+        ax[i].imshow(images[i],vmin=vmin,vmax=vmax)
         if titles is None:
             ax[i].set_title("image %d"%i)
         else:

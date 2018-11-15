@@ -16,40 +16,47 @@ from functools import partial
 
 
 class ImageAugmenter:
-    def __init__(self, propability=0.25, use_imgaug=True):
+    def __init__(self, config):
+        propability=config.aug.propability
+        use_imgaug=config.aug.use_imgaug
+        
         self.use_imgaug = use_imgaug
-        sometimes = lambda aug: iaa.Sometimes(propability, aug)
-        blur = iaa.OneOf([
-            iaa.GaussianBlur((0, 3.0)),
-            # blur images with a sigma between 0 and 3.0
-            iaa.AverageBlur(k=(2, 7)),
-            # blur image using local means with kernel sizes between 2 and 7
-            iaa.MedianBlur(k=(3, 11))
-            # blur image using local medians with kernel sizes between 2 and 7
-        ])
-        noise = iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255), per_channel=0.5)
-        # add gaussian noise to images
-        dropout = iaa.Dropout((0.01, 0.1), per_channel=0.5)
-        bright = iaa.Add((-10, 10), per_channel=0.5)
-        # change brightness of images (by -10 to 10 of original value)
-        # randomly remove up to 10% of the pixels
-        self.iaa_seq = iaa.Sequential(
-            [sometimes(blur),
-             sometimes(noise),
-             sometimes(dropout),
-             sometimes(bright)
-             ],
-            random_order=True)
+        
+        # use imgaug to do data augmentation
+        if self.use_imgaug:
+            sometimes = lambda aug: iaa.Sometimes(propability, aug)
+            blur = iaa.OneOf([
+                iaa.GaussianBlur((0, 3.0)),
+                # blur images with a sigma between 0 and 3.0
+                iaa.AverageBlur(k=(2, 7)),
+                # blur image using local means with kernel sizes between 2 and 7
+                iaa.MedianBlur(k=(3, 11))
+                # blur image using local medians with kernel sizes between 2 and 7
+            ])
+            noise = iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255), per_channel=0.5)
+            # add gaussian noise to images
+            dropout = iaa.Dropout((0.01, 0.1), per_channel=0.5)
+            bright = iaa.Add((-10, 10), per_channel=0.5)
+            # change brightness of images (by -10 to 10 of original value)
+            # randomly remove up to 10% of the pixels
+            self.iaa_seq = iaa.Sequential(
+                [sometimes(blur),
+                 sometimes(noise),
+                 sometimes(dropout),
+                 sometimes(bright)
+                 ],
+                random_order=True)
+        else:
+            # use torchvision transform to do data augmentation
+            tt_aug = TT.RandomApply([
+                TT.ColorJitter(brightness=10, contrast=0.05, saturation=0.05, hue=0.01),
+            ], p=propability)
 
-        tt_aug = TT.RandomApply([
-            TT.ColorJitter(brightness=10, contrast=0.05, saturation=0.05, hue=0.01),
-        ], p=propability)
-
-        self.tt_seq = TT.Compose([
-            TT.ToPILImage(),
-            tt_aug,
-            JT.ToNumpy(),
-        ])
+            self.tt_seq = TT.Compose([
+                TT.ToPILImage(),
+                tt_aug,
+                JT.ToNumpy(),
+            ])
 
     def augument_image(self, image):
         if self.use_imgaug:
@@ -57,12 +64,10 @@ class ImageAugmenter:
         else:
             return self.tt_seq(image)
 
-
 class ImageTransformer(object):
-    def __init__(self, config, propability=0.25, use_imgaug=True):
+    def __init__(self, config):
         self.config = config
-        self.p = propability
-        self.use_iaa = use_imgaug
+        self.use_iaa = config.aug.use_imgaug
 
     def transform_image_and_mask_tt(self, image, mask, angle=None, crop_size=None):
         assert self.use_iaa == False
@@ -103,65 +108,81 @@ class ImageTransformer(object):
             np.random.shuffle(order)
             for i in order:
                 image, mask = transforms[i](image, mask)
-
+                assert image is not None
+                assert mask is not None
             return image, mask
 
-    def transform_image_and_mask(self, image, mask, propability=None, config=None):
-        if config is None:
-            config = self.config
-
-        if propability is None:
-            propability = self.p
-
-        if propability == 0:
-            return image, mask
-
-        assert propability >= 0 and propability <= 1, 'propability %0.2f not in [0,1]' % propability
-
-        a = np.random.rand()
-        if hasattr(config, 'rotate') and a < propability:
-            if hasattr(config.rotate, 'angle'):
-                angle = config.rotate.angle
-            elif hasattr(config.rotate, 'max_angle'):
-                a = np.random.rand()
-                angle = a * config.rotate.max_angle
-            else:
-                assert False, 'angle and max_angle shoule have one and only one defined!'
+    def transform_image_and_mask(self, image, mask):
+        config=self.config
+        
+        if config.aug.use_rotate:
+            a = np.random.rand()
+            angle = a * config.aug.rotate_max_angle
         else:
             angle = None
-
-        a = np.random.rand()
+        
+        # image_size = height, width , channel
+        image_size=image.shape
+        # crop_size <= image_size
         crop_size = None
-        if hasattr(config, 'crop') and a < propability:
-            if hasattr(config.crop, 'crop_size'):
-                crop_size = config.crop.crop_size
-            elif hasattr(config.crop, 'crop_ratio'):
-                crop_ratio = config.crop.crop_ratio
-                h, w = mask.shape
-                if type(crop_ratio) == list or type(crop_ratio) == tuple:
-                    ratio_max = max(crop_ratio)
-                    ratio_min = min(crop_ratio)
-                    a = np.random.rand()
-                    th = (ratio_min + (ratio_max - ratio_min) * a) * h
-                    tw = (ratio_min + (ratio_max - ratio_min) * a) * w
-                    crop_size = (int(th), int(tw))
-                else:
-                    crop_size = (int(crop_ratio * h), int(crop_ratio * w))
+        if not config.aug.keep_crop_ratio:
+            # may not keep image height:width ratio
+            # make sure crop size <= image size
+            min_crop_size = config.aug.min_crop_size
+            if not isinstance(min_crop_size,(list,tuple)):
+                min_crop_size=[min_crop_size]*2
+            max_crop_size = config.aug.max_crop_size
+            if not isinstance(max_crop_size,(list,tuple)):
+                max_crop_size=[max_crop_size]*2
+
+            a = np.random.rand()
+            th = (min_crop_size[0] + (max_crop_size[0] - min_crop_size[0]) * a)
+            tw = (min_crop_size[1] + (max_crop_size[1] - min_crop_size[1]) * a)
+            crop_size = (int(th), int(tw))
+            
+            if crop_size[0] <= image_size[0] and crop_size[1] <= image_size[1]:
+                pass
             else:
-                assert False, 'crop size and crop ratio should have one and only one defined!'
+                y=int(image_size[0]*crop_size[1]/float(crop_size[0]))
+                if y<=image_size[1]:
+                    crop_size[1]=y
+                else:
+                    crop_size[0]=int(image_size[1]*crop_size[0]/float(crop_size[1]))
+                    assert crop_size[0]<=image_size[0]
+        else:
+            # keep image height:width ratio
+            # make sure crop size <= image size
+            crop_ratio = config.aug.crop_ratio
+            h, w = mask.shape
+            
+            # use random crop ratio
+            if type(crop_ratio) == list or type(crop_ratio) == tuple:
+                ratio_max = max(crop_ratio)
+                ratio_min = min(crop_ratio)
+                
+                assert ratio_max<=1.0
+                a = np.random.rand()
+                th = (ratio_min + (ratio_max - ratio_min) * a) * h
+                tw = (ratio_min + (ratio_max - ratio_min) * a) * w
+                crop_size = (int(th), int(tw))
+            else:
+                assert crop_ratio<=1.0
+                crop_size = (int(crop_ratio * h), int(crop_ratio * w))
 
         a = np.random.rand()
         hflip = False
-        if hasattr(config, 'horizontal_flip') and a < propability:
-            if config.horizontal_flip:
+        if config.aug.horizontal_flip and a<0.5:
                 hflip = True
 
         a = np.random.rand()
         vflip = False
-        if hasattr(config, 'vertical_flip') and a < propability:
-            if config.vertical_flip:
-                vflip = True
-
+        if config.aug.vertical_flip and a<0.5:
+            vflip = True
+        
+        if config.aug.debug:
+            print('angle is',angle)
+            print('crop_size is',crop_size)
+            
         if self.use_iaa:
             return self.transform_image_and_mask_iaa(image,
                                                      mask,
@@ -253,31 +274,36 @@ class ImageTransformer(object):
         return new_image, new_mask
 
 
-def get_default_augmentor_config(rotate):
+def get_default_augmentor_config():
     config = edict()
-    if rotate:
-        print('use rotate augmentations'+'*'*50)
-        config.rotate = edict()
-        config.rotate.max_angle = 15
-    config.crop = edict()
-    config.crop.crop_ratio = [0.85, 1.0]
-    config.horizontal_flip = True
-    config.vertical_filp = False
-    config.debug = False
+    config.aug=edict()
+    config.aug.propability=0.25
+    config.aug.use_rotate=True
+    config.aug.rotate_max_angle=15
+    
+    config.aug.keep_crop_ratio=True
+    # height:480, width: 480-720
+    config.aug.min_crop_size=480
+    config.aug.max_crop_size=[480,720]
 
+    # height: image height * random(0.85,1.0)
+    # width : image width * random(0.85,1.0)
+    config.aug.crop_ratio = [0.85, 1.0]
+    config.aug.horizontal_flip = True
+    config.aug.vertical_flip = False
+    config.aug.debug = False
+    config.aug.use_imgaug=True
     return config
 
 
 class Augmentations(object):
-    def __init__(self, p=0.25, config=None, use_imgaug=True, rotate=True):
+    def __init__(self, config=None):
         if config is None:
-            config = get_default_augmentor_config(rotate)
+            config = get_default_augmentor_config()
         # augmentation for image
-        self.aug = ImageAugmenter(propability=p, use_imgaug=use_imgaug)
+        self.aug = ImageAugmenter(config=config)
         # augmentation for image and mask
-        self.tran = ImageTransformer(config=config, propability=p, use_imgaug=use_imgaug)
-        # augmentation propability
-        self.p = p
+        self.tran = ImageTransformer(config=config)
 
     def transform(self, image, mask=None):
         if mask is None:
@@ -287,17 +313,8 @@ class Augmentations(object):
 
 
 if __name__ == '__main__':
-    config = edict()
-    config.rotate = edict()
-    config.rotate.angle = 30
-    config.crop = edict()
-    config.crop.crop_size = (100, 100)
-    config.horizontal_flip = True
-    config.vertical_filp = False
-    config.debug = True
-
-    aug = ImageAugmenter()
-    tran = ImageTransformer(config)
+    config = get_default_augmentor_config()
+    aug = Augmentations(config)
     img = cv2.imread('test/image.png', cv2.IMREAD_COLOR)
     mask = cv2.imread('test/mask.png', cv2.IMREAD_GRAYSCALE)
     #    img=np.random.rand(60,80)
@@ -305,10 +322,7 @@ if __name__ == '__main__':
 
     assert img is not None
     assert mask is not None
-    show_images([img, mask])
 
-    aug_img = aug.augument_image(img)
-    tran_img, tran_mask = tran.transform_image_and_mask(img, mask, propability=1)
-
-    imgs = [cv2.resize(img, (224, 224), interpolation=cv2.INTER_NEAREST) for img in [aug_img, tran_img, tran_mask]]
-    show_images(imgs, ['aug', 'tran_img', 'tran_mask'])
+    tran_img, tran_mask = aug.transform(img, mask)
+    imgs = [cv2.resize(img, (224, 224), interpolation=cv2.INTER_NEAREST) for img in [img, mask, tran_img, tran_mask]]
+    show_images(imgs, ['img', 'mask', 'tran_img', 'tran_mask'])
