@@ -11,7 +11,7 @@ from torch.autograd import Variable
 
 class FocalLoss2d(nn.Module):
 
-    def __init__(self, alpha=1.0, gamma=0, weight=None,ignore_index=-100, size_average=True):
+    def __init__(self, alpha=1.0, gamma=0, weight=None,ignore_index=-100, size_average=True, with_grad=True):
         super(FocalLoss2d, self).__init__()
         assert gamma>=0.0 and gamma<=5.0,'gamma in [0,5] is okay, but %0.2f'%gamma
         assert alpha>0.0
@@ -20,6 +20,7 @@ class FocalLoss2d(nn.Module):
         self.weight = weight
         self.size_average = size_average
         self.ignore_index=ignore_index
+        self.with_grad=with_grad
 
     def forward(self, input, target):
         if input.dim()>2:
@@ -40,7 +41,11 @@ class FocalLoss2d(nn.Module):
                                  weight=self.weight, 
                                  ignore_index=self.ignore_index,
                                  reduction='none')
-        pt = torch.exp(logpt)
+        if self.with_grad:
+            pt = torch.exp(logpt)
+        else:
+            with torch.no_grad():
+                pt = torch.exp(logpt)
         # compute the loss
         loss = - self.alpha* ((1-pt)**self.gamma) * logpt
         

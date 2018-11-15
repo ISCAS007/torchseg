@@ -23,9 +23,7 @@ def get_loader(config):
         normalizations = image_normalizations(config.dataset.norm_ways)
 
     if config.args.augmentation:
-        #        augmentations = Augmentations(p=0.25,use_imgaug=False)
-        augmentations = Augmentations(
-            p=0.25, use_imgaug=True, rotate=config.args.augmentations_rotate)
+        augmentations = Augmentations(config)
     else:
         augmentations = None
 
@@ -556,7 +554,8 @@ def get_loss_fn_dict(config):
         loss_fn_dict['seg'] = FocalLoss2d(alpha=config.model.focal_loss_alpha,
                                           gamma=config.model.focal_loss_gamma,
                                           weight=seg_loss_weight,
-                                          ignore_index=ignore_index)
+                                          ignore_index=ignore_index,
+                                          with_grad=config.model.focal_loss_grad)
 
     if config.dataset.with_edge:
         if hasattr(config.dataset, 'edge_class_num'):
