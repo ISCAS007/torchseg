@@ -39,9 +39,12 @@ def get_config(args=None):
     config.model.upsample_type = args.upsample_type
     config.model.auxnet_type = args.auxnet_type
     config.model.upsample_layer = args.upsample_layer
+    config.model.use_momentum = args.use_momentum
+    if config.model.upsample_layer > 3:
+        config.model.use_momentum = args.use_momentum = True
     config.model.auxnet_layer = args.auxnet_layer
     config.model.cross_merge_times=args.cross_merge_times
-    config.model.use_momentum = args.use_momentum
+    
     config.model.backbone_pretrained = args.backbone_pretrained
     config.model.use_bn=args.use_bn
     # use_bn,use_dropout will change the variable in local_bn,local_dropout
@@ -51,6 +54,9 @@ def get_config(args=None):
     os.environ['torchseg_use_dropout']=str(args.use_dropout)
     config.model.use_bias=args.use_bias
     os.environ['torchseg_use_bias']=str(args.use_bias)
+    # when use resnet and use_momentum=True
+    config.model.modify_resnet_head=args.modify_resnet_head
+    os.environ['modify_resnet_head']=str(args.modify_resnet_head)
     
     config.model.eps = 1e-5
     config.model.momentum = args.momentum
@@ -60,6 +66,7 @@ def get_config(args=None):
     config.model.lr_weight_decay=args.lr_weight_decay
     config.model.lr_momentum=args.lr_momentum
     config.model.use_lr_mult = args.use_lr_mult
+    config.model.pre_lr_mult = args.pre_lr_mult
     config.model.changed_lr_mult=args.changed_lr_mult
     config.model.new_lr_mult=args.new_lr_mult
     config.model.use_reg = args.use_reg
@@ -73,6 +80,7 @@ def get_config(args=None):
     config.model.l2_reg=args.l2_reg
     config.model.backbone_name = args.backbone_name
     config.model.backbone_freeze = args.backbone_freeze
+    config.model.freeze_layer = args.freeze_layer
     config.model.layer_preference = 'first'
     config.model.edge_seg_order=args.edge_seg_order
 
@@ -155,11 +163,21 @@ def get_config(args=None):
     config.aug.use_rotate=config.args.augmentations_rotate
     config.aug.use_imgaug=True
     config.aug.keep_crop_ratio=args.keep_crop_ratio
+    # image size != network input size != crop size
     if config.aug.keep_crop_ratio is False:
-        config.aug.min_crop_size=config.model.input_shape
-        config.aug.max_crop_size=config.model.input_shape
-        assert min(config.aug.min_crop_size)>0
-        assert min(config.aug.max_crop_size)>0
+        if args.min_crop_size is None:
+            config.aug.min_crop_size=[2*i for i in config.model.input_shape]
+        if args.max_crop_size is None:
+            config.aug.max_crop_size=config.aug.min_crop_size
+        
+        if not isinstance(config.aug.min_crop_size,(tuple,list)):
+            assert config.aug.min_crop_size>0
+        else:
+            assert min(config.aug.min_crop_size)>0
+        if not isinstance(config.aug.max_crop_size,(tuple,list)):
+            assert config.aug.max_crop_size>0
+        else:
+            assert min(config.aug.max_crop_size)>0
             
     return config
 
@@ -269,6 +287,11 @@ def get_parser():
                        default=True,
                        type=str2bool)
     
+    parser.add_argument('--pre_lr_mult',
+                       help='pretrained layer learning rate',
+                       type=float,
+                       default=1.0)
+    
     parser.add_argument('--changed_lr_mult',
                         help='unchanged_lr_mult=1, changed_lr_mult=?',
                         type=float,
@@ -318,11 +341,20 @@ def get_parser():
                         type=str2bool,
                         default=True)
     
-    # work for pspnet and psp_edge
     parser.add_argument('--backbone_freeze',
                         help='finetune/freeze backbone or not',
                         type=str2bool,
                         default=False)
+    
+    parser.add_argument('--freeze_layer',
+                       help='finetune/freeze the layers in backbone or not',
+                       type=int,
+                       default=0)
+    
+    parser.add_argument('--modify_resnet_head',
+                       help='modify the head of resnet or not, environment variable!!!',
+                       type=str2bool,
+                       default=True)
 
     parser.add_argument('--net_name',
                         help='net name for semantic segmentaion',
@@ -449,6 +481,18 @@ def get_parser():
                        type=str2bool,
                        default=True)
     
+    parser.add_argument('--min_crop_size',
+                       help='min size for crop the image in preprocessing',
+                       type=int,
+                       nargs='*',
+                       default=None)
+    
+    parser.add_argument('--max_crop_size',
+                       help='max size for crop the image in preprocessing',
+                       type=int,
+                       nargs='*',
+                       default=None)
+    
     parser.add_argument('--norm_ways',
                         help='normalize image value ways',
                         choices=['caffe','pytorch','cityscapes','-1,1','0,1'],
@@ -463,10 +507,11 @@ def get_parser():
                         help='key for single hyperopt,split with , eg: model.l2_reg',
                         default='model.l2_reg')
     
+    # change default value from 50 to 3 in 2018/11/16
     parser.add_argument('--hyperopt_calls',
                         help='numbers for hyperopt calls',
                         type=int,
-                        default=50)
+                        default=3)
     
     parser.add_argument('--summary_image',
                         help='summary image or not',
@@ -525,6 +570,8 @@ def get_hyperparams(key,discrete=False):
             'model.class_weight_alpha':('choices',[0.1, 0.2, 0.3]),
             'model.use_dropout':('bool',[True,False]),
             'args.batch_size':('choices',[4,8,16]),
+            'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),
+            'model.freeze_layer':('choices',[0,1,2,3]),
             }
     
     continuous_hyper_dict={

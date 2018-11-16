@@ -37,8 +37,10 @@ class backbone(TN.Module):
                 
                 self.layer1=self.model.layer1
                 self.layer2=self.model.layer2
-                self.layer3=self.model.layer3
-                self.layer4=self.model.layer4
+                if config.upsample_layer>=4:
+                    self.layer3=self.model.layer3
+                if config.upsample_layer>=5:
+                    self.layer4=self.model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
         else:
@@ -55,10 +57,48 @@ class backbone(TN.Module):
                 self.prefix_net = self.model.prefix_net
                 self.layer1=self.model.layer1
                 self.layer2=self.model.layer2
-                self.layer3=self.model.layer3
-                self.layer4=self.model.layer4
+                if config.upsample_layer>=4:
+                    self.layer3=self.model.layer3
+                if config.upsample_layer>=5:
+                    self.layer4=self.model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
+                
+        if self.config.backbone_freeze:
+            for param in self.parameters():
+                param.requrires_grad=False
+        elif not self.config.use_lr_mult:
+            freeze_layer=self.config.freeze_layer
+            if self.format=='vgg':
+                for idx,layer in enumerate(self.model.features):
+                    if idx <= self.layer_depths[str(freeze_layer)]:
+                        if freeze_layer==0:
+                            print(self.layer_depths)
+                            assert False,'freeze layer = 0 will not freeze any layer'
+                        
+                        for param in layer.parameters():
+                            param.requires_grad = False
+            else:
+                if freeze_layer>0:
+                    for param in self.prefix_net.parameters():
+                        param.requires_grad = False
+                if freeze_layer>1:
+                    for param in self.layer1.parameters():
+                        param.requires_grad = False
+                if freeze_layer>2:
+                    for param in self.layer2.parameters():
+                        param.requires_grad = False
+                if freeze_layer>3:
+                    for param in self.layer3.parameters():
+                        param.requires_grad = False
+                if freeze_layer>4:
+                    for param in self.layer4.parameters():
+                        param.requires_grad = False
+        
+        # if modify resnet head worked, train the modified resnet head
+        if config.modify_resnet_head and self.config.use_momentum and self.format=='resnet':
+            for param in self.prefix_net.parameters():
+                param.requires_grad = True
     
     def forward_layers(self,x):
         features=[]

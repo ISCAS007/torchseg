@@ -71,6 +71,7 @@ def get_backbone_optimizer_params(backbone_name,
                     unchanged_backbone['params'].append(p)
         return [unchanged_backbone,modified_backbone]
     elif backbone_name in ['resnet50','resnet101']:
+        modify_resnet_head=str2bool(os.environ['modify_resnet_head'])
         for child_name, child in backbone.named_children():
 #            print(child_name,'*'*10)
             if child_name in ['avgpool','fc']:
@@ -78,11 +79,17 @@ def get_backbone_optimizer_params(backbone_name,
             elif child_name in ['layer3','layer4']:
                 modified_backbone['params']+=[p for p in child.parameters() if p.requires_grad]
             elif child_name == 'prefix_net':
-                new_backbone['params']+=[p for p in child.parameters() if p.requires_grad]
+                if modify_resnet_head:
+                    new_backbone['params']+=[p for p in child.parameters() if p.requires_grad]
+                else:
+                    unchanged_backbone['params']+=[p for p in child.parameters() if p.requires_grad]
             else:
                 unchanged_backbone['params']+=[p for p in child.parameters() if p.requires_grad]
-                
-        return [unchanged_backbone,modified_backbone,new_backbone]
+        
+        if modify_resnet_head:
+            return [unchanged_backbone,modified_backbone,new_backbone]
+        else:
+            return [unchanged_backbone,modified_backbone]
     else:
         assert False,'unknonw backbone name %s'%backbone_name
         

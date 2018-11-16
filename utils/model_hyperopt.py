@@ -33,7 +33,10 @@ class psp_opt():
         self.train_loader=train_loader
         self.val_loader=val_loader
         self.time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
+        # the number of calls for each config
         self.n_calls=config.args.n_calls
+        # the total calls for train and val
+        self.total_calls=0
         self.current_call=0
         self.hyperkeys=config.args.hyperkey.split(',')
         os.makedirs('output',exist_ok=True)
@@ -71,7 +74,7 @@ class psp_opt():
             tasks.to_csv(path_or_buf='output/loop_%s_%s.tab'%(config.args.note,self.time_str),sep='\t')
             score=best_val_miou
             self.current_call+=1
-            print('%s/%s calls, score=%0.3f'%(self.current_call,self.n_calls,score))
+            print('%s/%s calls, score=%0.3f'%(self.current_call,self.total_calls,score))
             return score
         
 #        assert len(self.hyperkey.split(','))==1,'hyperopt=loop can only deal with 1 hyperkey'
@@ -86,15 +89,15 @@ class psp_opt():
             params_domain.append(hyper_params)
             combination_number*=len(hyper_params)
         
-        assert self.n_calls >= combination_number,'n_calls %d must >= combination number %d'%(self.n_calls,combination_number)
-        if self.n_calls//combination_number < 3:
+        self.total_calls=combination_number*self.n_calls
+        if self.n_calls < 3:
             print('*'*50)
             print('warning: for each combination of params, running less than 3 times')
             print('*'*50)
         
         idx=0
         for params in itertools.product(*params_domain):
-            for t in range(self.n_calls//combination_number):
+            for t in range(self.n_calls):
                 print('use hyper params',params)
                 values=[v for v in params]
                 # values will changed in fn_loop

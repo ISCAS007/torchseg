@@ -7,6 +7,9 @@ the detial change can see in get_backbone()
 import torch.nn as nn
 import torchvision
 import torch.utils.model_zoo as model_zoo
+import os
+from utils.disc_tools import str2bool
+import warnings
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -63,17 +66,23 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, psp_mode=True, momentum=0.1,upsample_layer=5):
+    def __init__(self, block, layers, modify_resnet_head=None, momentum=0.1,upsample_layer=5):
         self.inplanes = 64
         self.momentum=momentum
-        self.psp_mode=psp_mode
         super(ResNet, self).__init__()
         
         # for pspnet, the layer1_in_channels=128
         # but from checkpoint, the layer1_in_channels=64, make layer1 unchanged!!!
         self.layer1_in_channels=64
         self.upsample_layer=upsample_layer
-        if psp_mode:
+        # must set the environment variable before!!!
+        if modify_resnet_head is None:
+            warnings.warn('use config from os.environ[modify_resnet_head]')
+            self.modify_resnet_head=str2bool(os.environ['modify_resnet_head'])
+        else:
+            self.modify_resnet_head=modify_resnet_head
+            
+        if self.modify_resnet_head:
             self.prefix_net = nn.Sequential(self.conv_bn_relu(in_channels=3,
                                                               out_channels=64,
                                                               kernel_size=3,
@@ -93,12 +102,14 @@ class ResNet(nn.Module):
                                                          stride=2,
                                                          padding=1))
         else:
-            self.prefix_net = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                                                      bias=False),
-                                            nn.BatchNorm2d(
-                                                64, momentum=momentum),
-                                            nn.ReLU(inplace=True),
-                                            nn.MaxPool2d(kernel_size=3, stride=2, padding=1))
+            self.conv1=nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,bias=False)
+            self.bn1=nn.BatchNorm2d(64, momentum=momentum)
+            self.relu=nn.ReLU(inplace=True)
+            self.maxpool=nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+            self.prefix_net = nn.Sequential(self.conv1,
+                                            self.bn1,
+                                            self.relu,
+                                            self.maxpool)
 
         self.layer1 = self._make_layer(
             block, 64, layers[0], index=1, momentum=momentum)
@@ -130,6 +141,11 @@ class ResNet(nn.Module):
 #                print(k,v.shape)
         # 1. filter out unnecessary keys
         pretrained_dict = {k: v for k, v in state_dict.items() if k in model_dict}
+        
+        if not self.modify_resnet_head:
+            assert 'conv1.weight' in pretrained_dict
+            assert 'bn1.weight' in pretrained_dict
+        
         # 2. overwrite entries in the existing state dict
         model_dict.update(pretrained_dict) 
         # 3. load the new state dict
@@ -160,7 +176,7 @@ class ResNet(nn.Module):
         else:
             assert False, 'unexpected index=%d' % index
 
-        if index == 1 and self.psp_mode:
+        if index == 1 and self.modify_resnet_head:
             in_channels = self.layer1_in_channels
         else:
             in_channels = self.inplanes

@@ -5,7 +5,7 @@ from models.backbone import backbone
 from models.upsample import get_midnet, get_suffix_net
 from utils.torch_tools import freeze_layer
 from utils.disc_tools import get_backbone_optimizer_params
-
+import warnings
 
 class pspnet(TN.Module):
     def __init__(self, config):
@@ -19,9 +19,6 @@ class pspnet(TN.Module):
             use_momentum = False
 
         self.backbone = backbone(config.model, use_momentum=use_momentum)
-
-        if self.config.model.backbone_freeze:
-            freeze_layer(self.backbone)
 
         self.upsample_layer = self.config.model.upsample_layer
         self.class_number = self.config.model.class_number
@@ -54,12 +51,14 @@ class pspnet(TN.Module):
             if use_momentum and config.model.backbone_pretrained and self.upsample_layer >= 4:
                 backbone_optmizer_params = get_backbone_optimizer_params(config.model.backbone_name,
                                                                          self.backbone.model,
-                                                                         unchanged_lr_mult=1,
+                                                                         unchanged_lr_mult=config.model.pre_lr_mult,
                                                                          changed_lr_mult=config.model.changed_lr_mult,
                                                                          new_lr_mult=config.model.new_lr_mult)
+                
             else:
+                warnings.warn('config.model.use_lr_mult is True but not fully wored')
                 backbone_optmizer_params = [{'params': [
-                    p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': 1}]
+                    p for p in self.backbone.parameters() if p.requires_grad], 'lr_mult': config.model.pre_lr_mult}]
 
             self.optimizer_params = backbone_optmizer_params + [{'params': self.midnet.parameters(), 'lr_mult':                      config.model.new_lr_mult},
                                                                 {'params': self.decoder.parameters(), 'lr_mult': config.model.new_lr_mult}]

@@ -255,8 +255,7 @@ def poly_lr_scheduler(optimizer, iter,
 
     scale = (1 - iter/(1.0+max_iter))**power
     for i, p in enumerate(optimizer.param_groups):
-        optimizer.param_groups[i]['lr'] *= scale
-
+        optimizer.param_groups[i]['lr'] = optimizer.param_groups[i]['initial_lr'] * scale
     return 0
 
 
@@ -272,6 +271,8 @@ def get_optimizer(model, config):
 
     if hasattr(model, 'optimizer_params'):
         optimizer_params = model.optimizer_params
+        # clear the params with learning rate = 0
+        # optimizer_params = [p for p in model.optimizer_params if 'lr_mult' not in p.keys() or p['lr_mult']>0]
     else:
         optimizer_params = [
             p for p in model.parameters() if p.requires_grad]
@@ -279,7 +280,7 @@ def get_optimizer(model, config):
     # init optimizer learning rate
     for i, p in enumerate(optimizer_params):
         lr_mult = p['lr_mult'] if 'lr_mult' in p.keys() else 1.0
-        optimizer_params[i]['lr'] = init_lr*lr_mult
+        optimizer_params[i]['initial_lr'] = optimizer_params[i]['lr'] = init_lr*lr_mult
 
     if optimizer_str == 'adam':
         optimizer = torch.optim.Adam(
