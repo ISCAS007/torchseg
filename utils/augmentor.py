@@ -68,6 +68,7 @@ class ImageTransformer(object):
     def __init__(self, config):
         self.config = config
         self.use_iaa = config.aug.use_imgaug
+        self.crop_size_list=None
 
     def transform_image_and_mask_tt(self, image, mask, angle=None, crop_size=None):
         assert self.use_iaa == False
@@ -131,23 +132,48 @@ class ImageTransformer(object):
             min_crop_size = config.aug.min_crop_size
             if not isinstance(min_crop_size,(list,tuple)):
                 min_crop_size=[min_crop_size]*2
+            if len(min_crop_size)==1:
+                min_crop_size=[min_crop_size[0],min_crop_size[0]]
+                
             max_crop_size = config.aug.max_crop_size
             if not isinstance(max_crop_size,(list,tuple)):
                 max_crop_size=[max_crop_size]*2
-
-            a = np.random.rand()
-            th = (min_crop_size[0] + (max_crop_size[0] - min_crop_size[0]) * a)
-            tw = (min_crop_size[1] + (max_crop_size[1] - min_crop_size[1]) * a)
-            crop_size = (int(th), int(tw))
+            if len(max_crop_size)==1:
+                max_crop_size=[max_crop_size[0],max_crop_size[0]]
             
+            crop_size_step=config.aug.crop_size_step
+            if crop_size_step>0:
+                if self.crop_size_list is None:
+                    crop_size_list=[[min_crop_size[0]],
+                                    [min_crop_size[1]]]
+                    for i in range(2):
+                        while crop_size_list[i][-1]+crop_size_step<max_crop_size[i]:
+                            crop_size_list[i].append(crop_size_list[i][-1]+crop_size_step)
+                    self.crop_size_list=crop_size_list
+                
+                assert len(self.crop_size_list)==2
+                crop_size=[random.choice(self.crop_size_list[0]),
+                          random.choice(self.crop_size_list[1])]
+            else:
+                # just like crop_size_step=1
+                a = np.random.rand()
+                th = (min_crop_size[0] + (max_crop_size[0] - min_crop_size[0]) * a)
+                tw = (min_crop_size[1] + (max_crop_size[1] - min_crop_size[1]) * a)
+                crop_size = [int(th), int(tw)]
+            
+            # change crop_size to make sure crop_size* <= image_size
+            # note in deeplabv3_plus, the author padding the image_size with mean+ignore_label
+            # to make sure crop_size <= image_size*
             if crop_size[0] <= image_size[0] and crop_size[1] <= image_size[1]:
                 pass
             else:
                 y=int(image_size[0]*crop_size[1]/float(crop_size[0]))
                 if y<=image_size[1]:
+                    crop_size[0]=image_size[0]
                     crop_size[1]=y
                 else:
                     crop_size[0]=int(image_size[1]*crop_size[0]/float(crop_size[1]))
+                    crop_size[1]=image_size[1]
                     assert crop_size[0]<=image_size[0]
         else:
             # keep image height:width ratio
@@ -250,8 +276,8 @@ class ImageTransformer(object):
     def crop_transform(image, mask, crop_size):
         th, tw = crop_size
         h, w = mask.shape
-        assert h > th, 'crop size (%d,%d) should small than image size (%d,%d)' % (th, tw, h, w)
-        assert w > tw, 'crop size (%d,%d) should small than image size (%d,%d)' % (th, tw, h, w)
+        assert h >= th, 'crop size (%d,%d) should small than image size (%d,%d)' % (th, tw, h, w)
+        assert w >= tw, 'crop size (%d,%d) should small than image size (%d,%d)' % (th, tw, h, w)
 
         x1 = random.randint(0, w - tw)
         y1 = random.randint(0, h - th)

@@ -66,7 +66,7 @@ if __name__ == '__main__':
         batch_size=batch_size, 
         shuffle=True,
         drop_last=True,
-        num_workers=8)
+        num_workers=4)
 
     val_dataset = dataset_generalize(config.dataset, 
                                      split='val',
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         batch_size=batch_size, 
         shuffle=True, 
         drop_last=False, 
-        num_workers=8)
+        num_workers=2)
     
     note = config.args.note
     test = args.test

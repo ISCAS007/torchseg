@@ -67,7 +67,9 @@ class backbone(TN.Module):
         if self.config.backbone_freeze:
             for param in self.parameters():
                 param.requrires_grad=False
-        elif not self.config.use_lr_mult:
+        elif self.config.freeze_layer > 0:
+            assert self.config.use_lr_mult==False,'freeze layer with lr_mult is not implement now!'
+            
             freeze_layer=self.config.freeze_layer
             if self.format=='vgg':
                 for idx,layer in enumerate(self.model.features):

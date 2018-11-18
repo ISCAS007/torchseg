@@ -39,7 +39,7 @@ def get_loader(config):
         batch_size=batch_size,
         shuffle=True,
         drop_last=True,
-        num_workers=8)
+        num_workers=4)
 
     val_dataset = dataset_generalize(config.dataset,
                                      split='val',
@@ -50,7 +50,7 @@ def get_loader(config):
         batch_size=batch_size,
         shuffle=True,
         drop_last=False,
-        num_workers=8)
+        num_workers=2)
 
     return train_loader, val_loader
 
@@ -274,8 +274,7 @@ def get_optimizer(model, config):
         # clear the params with learning rate = 0
         # optimizer_params = [p for p in model.optimizer_params if 'lr_mult' not in p.keys() or p['lr_mult']>0]
     else:
-        optimizer_params = [
-            p for p in model.parameters() if p.requires_grad]
+        optimizer_params = [{'params': [p for p in model.parameters() if p.requires_grad]}]
     
     # init optimizer learning rate
     for i, p in enumerate(optimizer_params):

@@ -163,6 +163,10 @@ def get_config(args=None):
     config.aug.use_rotate=config.args.augmentations_rotate
     config.aug.use_imgaug=True
     config.aug.keep_crop_ratio=args.keep_crop_ratio
+    config.aug.crop_size_step=args.crop_size_step
+    config.aug.min_crop_size=args.min_crop_size
+    config.aug.max_crop_size=args.max_crop_size
+    
     # image size != network input size != crop size
     if config.aug.keep_crop_ratio is False:
         if args.min_crop_size is None:
@@ -178,6 +182,10 @@ def get_config(args=None):
             assert config.aug.max_crop_size>0
         else:
             assert min(config.aug.max_crop_size)>0
+        
+        print('min_crop_size is',config.aug.min_crop_size)
+        print('max_crop_size is',config.aug.max_crop_size)
+        print('crop_size_step is',config.aug.crop_size_step)
             
     return config
 
@@ -257,9 +265,10 @@ def get_parser():
                         default=False,
                         type=str2bool)
     
+    # 2018/11/17 change default value to False
     parser.add_argument('--use_lr_mult',
                         help='use lr mult or not',
-                        default=True,
+                        default=False,
                         type=str2bool)
     
     parser.add_argument('--use_class_weight',
@@ -292,15 +301,17 @@ def get_parser():
                        type=float,
                        default=1.0)
     
+    # 2018/11/17 change default value from 10.0 to 1.0
     parser.add_argument('--changed_lr_mult',
                         help='unchanged_lr_mult=1, changed_lr_mult=?',
                         type=float,
-                        default=10.0)
+                        default=1.0)
     
+    # 2018/11/17 change default value from 20.0 to 1.0
     parser.add_argument('--new_lr_mult',
                         help='unchanged_lr_mult=1, new_lr_mult=?',
                         type=float,
-                        default=20.0)
+                        default=1.0)
     
     parser.add_argument("--use_reg",
                         help='use l1 and l2 regularizer or not (default False)',
@@ -493,6 +504,11 @@ def get_parser():
                        nargs='*',
                        default=None)
     
+    parser.add_argument('--crop_size_step',
+                       help='crop size step for min_crop_size and max_crop_size',
+                       type=int,
+                       default=0)
+    
     parser.add_argument('--norm_ways',
                         help='normalize image value ways',
                         choices=['caffe','pytorch','cityscapes','-1,1','0,1'],
@@ -570,8 +586,10 @@ def get_hyperparams(key,discrete=False):
             'model.class_weight_alpha':('choices',[0.1, 0.2, 0.3]),
             'model.use_dropout':('bool',[True,False]),
             'args.batch_size':('choices',[4,8,16]),
+            'args.augmentation':('bool',[True,False]),
             'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),
-            'model.freeze_layer':('choices',[0,1,2,3]),
+            'model.freeze_layer':('choices',[0,1,2,3,4]),
+            'aug.crop_size_step':('choices',[32,64,128]),
             }
     
     continuous_hyper_dict={
