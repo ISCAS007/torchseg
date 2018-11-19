@@ -12,6 +12,7 @@ from easydict import EasyDict as edict
 from utils.disc_tools import show_images
 from torchvision import transforms as TT
 from utils import joint_transforms as JT
+from dataset.dataset_generalize import image_normalizations
 from functools import partial
 
 
@@ -92,6 +93,8 @@ class ImageTransformer(object):
         transforms = []
 
         if crop_size is not None:
+            if self.config.aug.pad_for_crop:
+                transforms.append(partial(self.padding_transform,padding_image=[123,116,103],padding_image=config.dataset.ignore_index))
             transforms.append(partial(self.crop_transform, crop_size=crop_size))
         if angle is not None:
             transforms.append(partial(self.rotate_transform, rotate_angle=angle))
@@ -106,7 +109,7 @@ class ImageTransformer(object):
             return image, mask
         else:
             order = [i for i in range(n)]
-            np.random.shuffle(order)
+            # np.random.shuffle(order)
             for i in order:
                 image, mask = transforms[i](image, mask)
                 assert image is not None
@@ -299,6 +302,18 @@ class ImageTransformer(object):
         new_mask = cv2.flip(mask, 0)
         return new_image, new_mask
 
+    @staticmethod 
+    def padding_transform(image,mask,crop_size,padding_image=0,padding_mask=0):
+        if image.shape[0] >= crop_size[0] and image.shape[1] >=crop_size[1]:
+            return image,mask 
+        else:
+            new_image=np.zeros(shape=crop_size,dtype=np.uint8)
+            new_image=padding_image
+            new_mask=np.zeros(shape=crop_size,dtype=np.uint8)
+            new_mask=padding_mask 
+            new_image[0:image.shape[0],0:image.shape[1],:]=image 
+            new_mask[0:image.shape[0],0:image.shape[1],:]=mask 
+            return new_image, new_mask
 
 def get_default_augmentor_config():
     config = edict()

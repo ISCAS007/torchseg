@@ -166,6 +166,7 @@ def get_config(args=None):
     config.aug.crop_size_step=args.crop_size_step
     config.aug.min_crop_size=args.min_crop_size
     config.aug.max_crop_size=args.max_crop_size
+    config.aug.pad_for_crop=args.pad_for_crop
     
     # image size != network input size != crop size
     if config.aug.keep_crop_ratio is False:
@@ -508,6 +509,11 @@ def get_parser():
                        help='crop size step for min_crop_size and max_crop_size',
                        type=int,
                        default=0)
+
+    parser.add_argument('--pad_for_crop',
+                        help='padding image and mask for crop or not',
+                        type=str2bool,
+                        default=False)
     
     parser.add_argument('--norm_ways',
                         help='normalize image value ways',
