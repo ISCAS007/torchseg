@@ -94,7 +94,7 @@ class ImageTransformer(object):
 
         if crop_size is not None:
             if self.config.aug.pad_for_crop:
-                transforms.append(partial(self.padding_transform,padding_image=[123,116,103],padding_image=config.dataset.ignore_index))
+                transforms.append(partial(self.padding_transform,padding_image=[123,116,103],padding_mask=config.dataset.ignore_index))
             transforms.append(partial(self.crop_transform, crop_size=crop_size))
         if angle is not None:
             transforms.append(partial(self.rotate_transform, rotate_angle=angle))
