@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from easydict import EasyDict as edict
+import warnings
 
 class backbone(TN.Module):
     def __init__(self,config,use_momentum=False):
@@ -41,7 +42,7 @@ class backbone(TN.Module):
                 if config.upsample_layer>=4:
                     self.layer3=model.layer3
                 if config.upsample_layer>=5:
-                    self.layer4=layer4
+                    self.layer4=model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
         else:
@@ -69,17 +70,15 @@ class backbone(TN.Module):
         if self.config.backbone_freeze:
             for param in self.parameters():
                 param.requrires_grad=False
-        elif self.config.freeze_layer > 0:
-            assert self.config.use_lr_mult==False,'freeze layer with lr_mult is not implement now!'
-            
+        
+        if self.config.freeze_layer > 0:
+            if self.config.backbone_freeze:
+                warnings.warn("it's not good to use freeze layer with backbone_freeze")
+
             freeze_layer=self.config.freeze_layer
             if self.format=='vgg':
                 for idx,layer in enumerate(self.features):
-                    if idx <= self.layer_depths[str(freeze_layer)]:
-                        if freeze_layer==0:
-                            print(self.layer_depths)
-                            assert False,'freeze layer = 0 will not freeze any layer'
-                        
+                    if idx <= self.layer_depths[str(freeze_layer)]:                        
                         for param in layer.parameters():
                             param.requires_grad = False
             else:
@@ -98,6 +97,28 @@ class backbone(TN.Module):
                 if freeze_layer>4:
                     for param in self.layer4.parameters():
                         param.requires_grad = False
+        
+        if self.config.freeze_ratio > 0.0:
+            if self.config.backbone_freeze or self.config.freeze_layer:
+                warnings.warn("it's not good to use freeze ratio with freeze layer or backbone")
+            
+            if self.format=='vgg':
+                freeze_index=len(self.features)*self.config.freeze_ratio    
+                for idx,layer in enumerate(self.features):
+                    if idx < freeze_index:                        
+                        for param in layer.parameters():
+                            param.requires_grad = False
+            else:
+                valid_layer_number=0
+                for name,param in self.named_parameters():
+                    valid_layer_number+=1 
+
+                freeze_index=valid_layer_number*self.config.freeze_ratio
+                
+                for idx,(name,param) in enumerate(self.named_parameters()):
+                    if idx < freeze_index:
+                        print('freeze weight of',name)
+                        param.requires_grad=False
         
         # if modify resnet head worked, train the modified resnet head
         if config.modify_resnet_head and self.config.use_momentum and self.format=='resnet':

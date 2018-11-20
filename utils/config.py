@@ -81,6 +81,7 @@ def get_config(args=None):
     config.model.backbone_name = args.backbone_name
     config.model.backbone_freeze = args.backbone_freeze
     config.model.freeze_layer = args.freeze_layer
+    config.model.freeze_ratio = args.freeze_ratio
     config.model.layer_preference = 'first'
     config.model.edge_seg_order=args.edge_seg_order
 
@@ -235,8 +236,8 @@ def get_parser():
                         default='adam')
     
     parser.add_argument("--scheduler",
-                        help="learning rate scheduler, None or plateau",
-                        choices=['rop','poly_rop'],
+                        help="learning rate scheduler, None or rop, poly_rop, cos_lr",
+                        choices=['rop','poly_rop','cos_lr'],
                         default=None)
     
     parser.add_argument('--lr_weight_decay',
@@ -362,6 +363,11 @@ def get_parser():
                        help='finetune/freeze the layers in backbone or not',
                        type=int,
                        default=0)
+
+    parser.add_argument('--freeze_ratio',
+                        help='finetune/freeze part of layers in backbone',
+                        type=float,
+                        default=0.0)
     
     parser.add_argument('--modify_resnet_head',
                        help='modify the head of resnet or not, environment variable!!!',
