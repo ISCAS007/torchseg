@@ -126,7 +126,8 @@ def freeze_layer(layer):
 
 def train_val(model, optimizer, scheduler, loss_fn_dict,
               metric_fn_dict, running_metrics,
-              loader, config, epoch, summary_all, loader_name):
+              loader, config, epoch, summary_all, loader_name,
+              summary_metric=True):
     init_lr = config.model.learning_rate
     if loader_name == 'train':
         model.train()
@@ -226,14 +227,15 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                 grads_dict['last_grad_max'].append(
                     optimizer.param_groups[-1]['params'][-1].grad.max().data.cpu().numpy())
 
-        # other metric for edge and aux, not run for each epoch to save time
-        running_metrics, metric_fn_dict = update_metric(outputs_dict,
-                                                        targets_dict,
-                                                        running_metrics,
-                                                        metric_fn_dict,
-                                                        config,
-                                                        summary_all=summary_all,
-                                                        prefix_note=loader_name)
+        if summary_metric:
+            # summary_all other metric for edge and aux, not run for each epoch to save time
+            running_metrics, metric_fn_dict = update_metric(outputs_dict,
+                                                            targets_dict,
+                                                            running_metrics,
+                                                            metric_fn_dict,
+                                                            config,
+                                                            summary_all=summary_all,
+                                                            prefix_note=loader_name)
     return outputs_dict, targets_dict, running_metrics, metric_fn_dict, grads_dict, losses_dict, loss_weight_dict
 
 
@@ -304,16 +306,16 @@ def get_scheduler(optimizer, config):
         config.model, 'scheduler') else None
     if scheduler == 'rop':
         # 'max' for acc and miou, 'min' for loss
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max',
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min',
                                                                threshold=1e-4,
                                                                patience=10, verbose=True,
-                                                               cooldown=0, min_lr=1e-5)
+                                                               cooldown=0, min_lr=1e-4)
     elif scheduler == 'poly_rop':
         # 'max' for acc and miou, 'min' for loss
-        scheduler = poly_rop(poly_max_iter=50, poly_power=0.9, optimizer = optimizer, mode= 'max',
+        scheduler = poly_rop(poly_max_iter=50, poly_power=0.9, optimizer = optimizer, mode= 'min',
                                                                threshold=1e-4,
                                                                patience=10, verbose=True,
-                                                               cooldown=0, min_lr=1e-5)
+                                                               cooldown=0, min_lr=1e-4)
     else:
         assert scheduler is None
 
@@ -396,6 +398,10 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
     if train_loader is None:
         config.args.n_epoch = 1
 
+    summary_all_step=max(1,config.args.n_epoch//10)
+    # 1<= summary_metric_step <=10
+    summary_metric_step=max(min(10,config.args.n_epoch//10),1)
+
     tqdm_epoch = trange(config.args.n_epoch, desc='epoches', leave=True)
     for epoch in tqdm_epoch:
         tqdm_epoch.set_postfix(best_iou=best_iou)
@@ -403,20 +409,21 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
             if loader is None:
                 continue
 
-            # summary only 10 image
-            if epoch % (1+config.args.n_epoch//10) == 0:
+            # summary all only 10 times
+            if epoch % summary_all_step == 0:
                 summary_all = True
+                summary_metric = True
             else:
                 summary_all = False
-
-            if loader_name == 'val':
-                # summary metrics every 10 epoch
-                if summary_all or epoch % 10 == 0 or epoch == config.args.n_epoch-1 or (scheduler is not None):
-                    val_log = True
+                if epoch % summary_metric_step == 0 or epoch == config.args.n_epoch-1:
+                    summary_metric=True
                 else:
-                    val_log = False
+                    summary_metric=False
 
-                if not val_log:
+            # summary_all=True ==> summary_metric=True
+            if loader_name == 'val':
+                # val at summary, and val for plateau scheduler
+                if (not summary_metric) and (scheduler is None):
                     continue
 
                 with torch.no_grad():
@@ -433,6 +440,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                         config=config,
                         epoch=epoch,
                         summary_all=summary_all,
+                        summary_metric=summary_metric,
                         loader_name=loader_name)
             else:
                 outputs_dict, targets_dict, \
@@ -448,45 +456,47 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                     config=config,
                     epoch=epoch,
                     summary_all=summary_all,
+                    summary_metric=summary_metric,
                     loader_name=loader_name)
 
             metric_dict, class_iou_dict = get_metric(
                 running_metrics, metric_fn_dict, 
-                summary_all=summary_all, prefix_note=loader_name)
+                summary_all=summary_all, prefix_note=loader_name, summary_metric=summary_metric)
             if loader_name == 'val':
-                val_iou = metric_dict['val/iou']
-                
                 # use rop/poly_rop to schedule learning rate
                 if scheduler is not None:
-                    scheduler.step(val_iou)
+                    total_loss=sum(losses_dict['%s/total_loss' % loader_name])
+                    scheduler.step(total_loss)
                 
-                tqdm.write('epoch %d,curruent val iou is %0.5f' %
-                           (epoch, val_iou))
-                if val_iou >= best_iou:
-                    best_iou = val_iou
+                if summary_metric:
+                    val_iou = metric_dict['val/iou']
+                    tqdm.write('epoch %d,curruent val iou is %0.5f' %
+                            (epoch, val_iou))
+                    if val_iou >= best_iou:
+                        best_iou = val_iou
 
-                    iou_save_threshold = 0.5
-                    if hasattr(config.args, 'iou_save_threshold'):
-                        iou_save_threshold = config.args.iou_save_threshold
+                        iou_save_threshold = 0.5
+                        if hasattr(config.args, 'iou_save_threshold'):
+                            iou_save_threshold = config.args.iou_save_threshold
 
-                    # save the best the model if good enough
-                    if best_iou >= iou_save_threshold:
-                        print('save current best model', '*'*30)
+                        # save the best the model if good enough
+                        if best_iou >= iou_save_threshold:
+                            print('save current best model', '*'*30)
+                            checkpoint_path = os.path.join(
+                                log_dir, 'model-best-%d.pkl' % epoch)
+                            save_model_if_necessary(model, config, checkpoint_path)
+
+                    # save the last model if the best model not good enough
+                    if epoch == config.args.n_epoch-1 and best_iou < iou_save_threshold:
+                        print('save the last model', '*'*30)
                         checkpoint_path = os.path.join(
-                            log_dir, 'model-best-%d.pkl' % epoch)
+                            log_dir, 'model-last-%d.pkl' % epoch)
                         save_model_if_necessary(model, config, checkpoint_path)
 
-                # save the last model if the best model not good enough
-                if epoch == config.args.n_epoch-1 and best_iou < iou_save_threshold:
-                    print('save the last model', '*'*30)
-                    checkpoint_path = os.path.join(
-                        log_dir, 'model-last-%d.pkl' % epoch)
-                    save_model_if_necessary(model, config, checkpoint_path)
-
+            # return valid image when summary_all=True
             image_dict = get_image_dict(
                 outputs_dict, targets_dict, config, 
                 summary_all=summary_all, prefix_note=loader_name)
-            
             
             if writer is None:
                 writer = init_writer(config=config, log_dir=log_dir)
@@ -728,12 +738,15 @@ def update_metric(outputs_dict,
     return running_metrics, metric_fn_dict
 
 
-def get_metric(running_metrics, metric_fn_dict, summary_all=False, prefix_note='train'):
+def get_metric(running_metrics, metric_fn_dict, summary_all=False, prefix_note='train',summary_metric=True):
     """
     running_metrics: main metric
     metric_fn_dict: all metric
     summary_all: use metric_fn_dict or not
     """
+    if not summary_metric:
+        return {},{}
+    
     metric_dict = {}
     score, class_iou = running_metrics.get_scores()
     metric_dict['%s/acc' % prefix_note] = score['Overall Acc: \t']

@@ -553,7 +553,7 @@ def get_parser():
     parser.add_argument('--iou_save_threshold',
                         help='validation iou save threshold',
                         type=float,
-                        default=0.5)
+                        default=0.6)
     
     # benchmark
     parser.add_argument('--checkpoint_path',

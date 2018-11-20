@@ -23,44 +23,46 @@ class backbone(TN.Module):
         
         if use_momentum == False:
             self.use_momentum=False
-            self.model=self.get_model()
+            model=self.get_model()
             if self.config.backbone_name.find('vgg')>=0:
                 self.format='vgg'
+                self.features=model.features
                 self.df=self.get_dataframe()
                 self.layer_depths=self.get_layer_depths()
             elif self.config.backbone_name.find('resnet')>=0:
                 self.format='resnet'
-                self.prefix_net = TN.Sequential(self.model.conv1,
-                                            self.model.bn1,
-                                            self.model.relu,
-                                            self.model.maxpool)
+                self.prefix_net = TN.Sequential(model.conv1,
+                                                model.bn1,
+                                                model.relu,
+                                                model.maxpool)
                 
-                self.layer1=self.model.layer1
-                self.layer2=self.model.layer2
+                self.layer1=model.layer1
+                self.layer2=model.layer2
                 if config.upsample_layer>=4:
-                    self.layer3=self.model.layer3
+                    self.layer3=model.layer3
                 if config.upsample_layer>=5:
-                    self.layer4=self.model.layer4
+                    self.layer4=layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
         else:
             self.use_momentum=True
-            self.model=self.get_model()
+            model=self.get_model()
             if self.config.backbone_name.find('vgg')>=0:
                 self.format='vgg'
+                self.features=model.features
                 self.df=self.get_dataframe()
                 self.layer_depths=self.get_layer_depths()
             elif self.config.backbone_name.find('resnet')>=0:
                 # the output size of resnet layer is different from stand model!
                 # raise NotImplementedError
                 self.format='resnet'
-                self.prefix_net = self.model.prefix_net
-                self.layer1=self.model.layer1
-                self.layer2=self.model.layer2
+                self.prefix_net = model.prefix_net
+                self.layer1=model.layer1
+                self.layer2=model.layer2
                 if config.upsample_layer>=4:
-                    self.layer3=self.model.layer3
+                    self.layer3=model.layer3
                 if config.upsample_layer>=5:
-                    self.layer4=self.model.layer4
+                    self.layer4=model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
                 
@@ -72,7 +74,7 @@ class backbone(TN.Module):
             
             freeze_layer=self.config.freeze_layer
             if self.format=='vgg':
-                for idx,layer in enumerate(self.model.features):
+                for idx,layer in enumerate(self.features):
                     if idx <= self.layer_depths[str(freeze_layer)]:
                         if freeze_layer==0:
                             print(self.layer_depths)
@@ -107,7 +109,7 @@ class backbone(TN.Module):
         if self.format=='vgg':
             layer_num=0
             assert hasattr(self.layer_depths,str(layer_num))
-            for idx,layer in enumerate(self.model.features):
+            for idx,layer in enumerate(self.features):
                 x=layer(x)
                 if idx == self.layer_depths[str(layer_num)]:
                     features.append(x)
@@ -138,7 +140,7 @@ class backbone(TN.Module):
         if self.format=='vgg':
             layer_num=0
             assert hasattr(self.layer_depths,str(layer_num))
-            for idx,layer in enumerate(self.model.features):
+            for idx,layer in enumerate(self.features):
                 x=layer(x)
                 if idx == self.layer_depths[str(layer_num)]:
                     features.append(x)
@@ -165,7 +167,7 @@ class backbone(TN.Module):
         
         if self.format=='vgg':
             assert hasattr(self.layer_depths,str(level))
-            for idx,layer in enumerate(self.model.features):
+            for idx,layer in enumerate(self.features):
                 x=layer(x)
                 if idx == self.layer_depths[str(level)]:
                     return x
@@ -246,7 +248,7 @@ class backbone(TN.Module):
         assert self.format=='vgg','only vgg models have features'
         df=pd.DataFrame(columns=['level','layer_depth','layer_name'])
         level=0
-        for idx,layer in enumerate(self.model.features):
+        for idx,layer in enumerate(self.features):
             name=layer.__class__.__name__
 #            if name in ['ZeroPadding2D','Dropout','Reshape'] or name.find('Pool')>=0:
 #                continue
@@ -288,7 +290,7 @@ class backbone(TN.Module):
     def get_layer_outputs(self,x):
         assert self.format=='vgg','only vgg models have features'
         layer_outputs=[]
-        for idx,layer in enumerate(self.model.features):
+        for idx,layer in enumerate(self.features):
             x=layer(x)
             if idx in self.layer_depths.values():
                 layer_outputs.append(x)
@@ -297,18 +299,21 @@ class backbone(TN.Module):
     
     def show_layers(self):
         if self.format=='vgg':
-            for idx,layer in enumerate(self.model.features):
+            for idx,layer in enumerate(self.features):
                 if idx in self.layer_depths.values():
                     print(idx,layer)
         else:
             print('layer 1 '+'*'*50)
-            print(self.model.layer1)
+            print(self.layer1)
             print('layer 2 '+'*'*50)
-            print(self.model.layer2)
-            print('layer 3 '+'*'*50)
-            print(self.model.layer3)
-            print('layer 4 '+'*'*50)
-            print(self.model.layer4)
+            print(self.layer2)
+            if config.upsample_layer>=4:
+                print('layer 3 '+'*'*50)
+                print(self.layer3)
+            
+            if config.upsample_layer>=5:
+                print('layer 4 '+'*'*50)
+                print(self.layer4)
 
 if __name__ == '__main__':
     config=edict()
