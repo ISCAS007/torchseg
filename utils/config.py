@@ -167,6 +167,7 @@ def get_config(args=None):
     config.aug.crop_size_step=args.crop_size_step
     config.aug.min_crop_size=args.min_crop_size
     config.aug.max_crop_size=args.max_crop_size
+    config.aug.pad_for_crop=args.pad_for_crop
     
     # image size != network input size != crop size
     if config.aug.keep_crop_ratio is False:
@@ -235,8 +236,8 @@ def get_parser():
                         default='adam')
     
     parser.add_argument("--scheduler",
-                        help="learning rate scheduler, None or plateau",
-                        choices=['rop','poly_rop'],
+                        help="learning rate scheduler, None or rop, poly_rop, cos_lr",
+                        choices=['rop','poly_rop','cos_lr'],
                         default=None)
     
     parser.add_argument('--lr_weight_decay',
@@ -364,7 +365,7 @@ def get_parser():
                        default=0)
     
     parser.add_argument('--freeze_ratio',
-                       help='finetune/freeze the layers in backbone or not',
+                       help='finetune/freeze part of the backbone',
                        type=float,
                        default=0.0)
     
@@ -516,6 +517,11 @@ def get_parser():
                        type=int,
                        default=0)
     
+    parser.add_argument('--pad_for_crop',	
+                        help='padding image and mask for crop or not',	
+                        type=str2bool,	
+                        default=False)
+    
     parser.add_argument('--norm_ways',
                         help='normalize image value ways',
                         choices=['caffe','pytorch','cityscapes','-1,1','0,1'],
@@ -554,7 +560,7 @@ def get_parser():
     parser.add_argument('--iou_save_threshold',
                         help='validation iou save threshold',
                         type=float,
-                        default=0.5)
+                        default=0.6)
     
     # benchmark
     parser.add_argument('--checkpoint_path',
