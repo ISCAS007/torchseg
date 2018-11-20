@@ -50,7 +50,7 @@ class pspnet(TN.Module):
         elif config.model.use_lr_mult:
             if use_momentum and config.model.backbone_pretrained and self.upsample_layer >= 4:
                 backbone_optmizer_params = get_backbone_optimizer_params(config.model.backbone_name,
-                                                                         self.backbone.model,
+                                                                         self.backbone,
                                                                          unchanged_lr_mult=config.model.pre_lr_mult,
                                                                          changed_lr_mult=config.model.changed_lr_mult,
                                                                          new_lr_mult=config.model.new_lr_mult)

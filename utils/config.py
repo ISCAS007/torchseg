@@ -81,7 +81,6 @@ def get_config(args=None):
     config.model.backbone_name = args.backbone_name
     config.model.backbone_freeze = args.backbone_freeze
     config.model.freeze_layer = args.freeze_layer
-    config.model.freeze_ratio = args.freeze_ratio
     config.model.layer_preference = 'first'
     config.model.edge_seg_order=args.edge_seg_order
 
@@ -167,7 +166,6 @@ def get_config(args=None):
     config.aug.crop_size_step=args.crop_size_step
     config.aug.min_crop_size=args.min_crop_size
     config.aug.max_crop_size=args.max_crop_size
-    config.aug.pad_for_crop=args.pad_for_crop
     
     # image size != network input size != crop size
     if config.aug.keep_crop_ratio is False:
@@ -236,8 +234,8 @@ def get_parser():
                         default='adam')
     
     parser.add_argument("--scheduler",
-                        help="learning rate scheduler, None or rop, poly_rop, cos_lr",
-                        choices=['rop','poly_rop','cos_lr'],
+                        help="learning rate scheduler, None or plateau",
+                        choices=['rop','poly_rop'],
                         default=None)
     
     parser.add_argument('--lr_weight_decay',
@@ -363,16 +361,12 @@ def get_parser():
                        help='finetune/freeze the layers in backbone or not',
                        type=int,
                        default=0)
-
-    parser.add_argument('--freeze_ratio',
-                        help='finetune/freeze part of layers in backbone',
-                        type=float,
-                        default=0.0)
     
+    # change to False at 2018/11/21
     parser.add_argument('--modify_resnet_head',
                        help='modify the head of resnet or not, environment variable!!!',
                        type=str2bool,
-                       default=True)
+                       default=False)
 
     parser.add_argument('--net_name',
                         help='net name for semantic segmentaion',
@@ -515,11 +509,6 @@ def get_parser():
                        help='crop size step for min_crop_size and max_crop_size',
                        type=int,
                        default=0)
-
-    parser.add_argument('--pad_for_crop',
-                        help='padding image and mask for crop or not',
-                        type=str2bool,
-                        default=False)
     
     parser.add_argument('--norm_ways',
                         help='normalize image value ways',
@@ -559,7 +548,7 @@ def get_parser():
     parser.add_argument('--iou_save_threshold',
                         help='validation iou save threshold',
                         type=float,
-                        default=0.6)
+                        default=0.5)
     
     # benchmark
     parser.add_argument('--checkpoint_path',
@@ -601,6 +590,7 @@ def get_hyperparams(key,discrete=False):
             'args.augmentation':('bool',[True,False]),
             'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),
             'model.freeze_layer':('choices',[0,1,2,3,4]),
+            'model.freeze_ratio':('choices',[0.3,0.5,0.7])
             'aug.crop_size_step':('choices',[32,64,128]),
             }
     
