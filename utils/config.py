@@ -590,7 +590,7 @@ def get_hyperparams(key,discrete=False):
             'args.augmentation':('bool',[True,False]),
             'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),
             'model.freeze_layer':('choices',[0,1,2,3,4]),
-            'model.freeze_ratio':('choices',[0.3,0.5,0.7])
+            'model.freeze_ratio':('choices',[0.3,0.5,0.7]),
             'aug.crop_size_step':('choices',[32,64,128]),
             }
     
