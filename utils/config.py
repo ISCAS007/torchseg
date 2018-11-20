@@ -81,6 +81,7 @@ def get_config(args=None):
     config.model.backbone_name = args.backbone_name
     config.model.backbone_freeze = args.backbone_freeze
     config.model.freeze_layer = args.freeze_layer
+    config.model.freeze_ratio = args.freeze_ratio
     config.model.layer_preference = 'first'
     config.model.edge_seg_order=args.edge_seg_order
 
@@ -361,6 +362,11 @@ def get_parser():
                        help='finetune/freeze the layers in backbone or not',
                        type=int,
                        default=0)
+    
+    parser.add_argument('--freeze_ratio',
+                       help='finetune/freeze the layers in backbone or not',
+                       type=float,
+                       default=0.0)
     
     # change to False at 2018/11/21
     parser.add_argument('--modify_resnet_head',
