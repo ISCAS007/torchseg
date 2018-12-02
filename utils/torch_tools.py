@@ -130,7 +130,6 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
               metric_fn_dict, running_metrics,
               loader, config, epoch, summary_all, loader_name,
               summary_metric=True):
-    init_lr = config.model.learning_rate
     if loader_name == 'train':
         model.train()
     else:

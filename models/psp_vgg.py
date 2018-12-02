@@ -75,7 +75,7 @@ class VGG(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def make_layers(cfg, batch_norm=False,eps=1e-5,momentum=0.1):
+def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1):
     layers = []
     in_channels = 3
     for v in cfg:
@@ -84,8 +84,13 @@ def make_layers(cfg, batch_norm=False,eps=1e-5,momentum=0.1):
         elif v == 'N':
             layers += [NoneLayer()]
         else:
-            
-            if batch_norm:
+            if group_norm:
+                assert not batch_norm,'group norm will overwrite batch_norm'
+                conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=False)
+                layers += [conv2d, 
+                           nn.GroupNorm(num_groups=4,num_channels=v,eps=eps), 
+                           nn.ReLU(inplace=True)]
+            elif batch_norm:
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=False)
                 layers += [conv2d, nn.BatchNorm2d(v,eps=eps,momentum=momentum), nn.ReLU(inplace=True)]
             else:
@@ -181,3 +186,22 @@ def vgg19_bn(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['vgg19_bn']))
     return model
+
+def vgg19_gn(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
+    model = VGG(make_layers(cfg['E'], group_norm=True,eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg19_bn']))
+    return model
+
+def vgg16_gn(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
+    model = VGG(make_layers(cfg['D'], group_norm=True,eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg16_bn']))
+    return model
+
+
+

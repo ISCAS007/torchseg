@@ -252,7 +252,7 @@ class backbone(TN.Module):
                 
         if self.use_momentum:
             from models.psp_resnet import resnet50,resnet101
-            from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn
+            from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn']:

@@ -345,7 +345,8 @@ def get_parser():
                         help="backbone name",
                         choices=['vgg16', 'vgg19', 'vgg16_bn', 'vgg19_bn', 'resnet18',
                                  'resnet34', 'resnet50', 'resnet101', 'resnet152',
-                                 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn'],
+                                 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn',
+                                 'vgg16_gn','vgg19_gn'],
                         default='resnet50')
     
     # 2018/11/08 change default from False to True
