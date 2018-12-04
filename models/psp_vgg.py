@@ -88,7 +88,7 @@ def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1):
                 assert not batch_norm,'group norm will overwrite batch_norm'
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=False)
                 layers += [conv2d, 
-                           nn.GroupNorm(num_groups=4,num_channels=v,eps=eps), 
+                           nn.GroupNorm(num_groups=32,num_channels=v,eps=eps), 
                            nn.ReLU(inplace=True)]
             elif batch_norm:
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=False)
