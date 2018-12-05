@@ -1,5 +1,7 @@
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
+from utils.disc_tools import str2bool
+import os
 
 model_urls = {
     'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
@@ -82,7 +84,15 @@ def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1):
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
         elif v == 'N':
-            layers += [NoneLayer()]
+            if 'use_none_layer' in os.environ.keys():
+                use_none_layer = str2bool(os.environ['use_none_layer'])
+            else:
+                use_none_layer = True
+            
+            if use_none_layer:
+                layers += [NoneLayer()]
+            else:
+                layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
         else:
             if group_norm:
                 assert not batch_norm,'group norm will overwrite batch_norm'

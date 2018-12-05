@@ -791,7 +791,7 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
     
     if upsample_type == 'duc':
         #        print('upsample is duc'+'*'*50)
-        r = 2**3 if config.model.use_momentum else 2**upsample_layer
+        r = 2**3 if config.model.use_none_layer else 2**upsample_layer
         decoder = upsample_duc(midnet_out_channels,
                                class_number, r, eps=eps, momentum=momentum)
     elif upsample_type == 'bilinear':
@@ -799,12 +799,8 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
         decoder = upsample_bilinear(
             midnet_out_channels, class_number, input_shape[0:2], eps=eps, momentum=momentum)
     elif upsample_type == 'fcn':
-        if hasattr(config.model, 'use_bias'):
-            bias = config.model.use_bias
-        else:
-            bias = False
         decoder = upsample_fcn(midnet_out_channels,
-                               class_number, input_shape[0:2], bias)
+                               class_number, input_shape[0:2])
     else:
         assert False, 'unknown upsample type %s' % upsample_type
 

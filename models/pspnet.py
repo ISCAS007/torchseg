@@ -11,14 +11,9 @@ class pspnet(TN.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.name = self.__class__.__name__
-
-        if hasattr(self.config.model, 'use_momentum'):
-            use_momentum = self.config.model.use_momentum
-        else:
-            use_momentum = False
-
-        self.backbone = backbone(config.model, use_momentum=use_momentum)
+        
+        use_none_layer=config.model.use_none_layer
+        self.backbone = backbone(config.model, use_none_layer=use_none_layer)
 
         self.upsample_layer = self.config.model.upsample_layer
         self.class_number = self.config.model.class_number
@@ -48,7 +43,7 @@ class pspnet(TN.Module):
                                       'lr_mult': 1},
                                      {'params': self.decoder.parameters(), 'lr_mult': 1}]
         elif config.model.use_lr_mult:
-            if use_momentum and config.model.backbone_pretrained and self.upsample_layer >= 4:
+            if use_none_layer and config.model.backbone_pretrained and self.upsample_layer >= 4:
                 backbone_optmizer_params = get_backbone_optimizer_params(config.model.backbone_name,
                                                                          self.backbone,
                                                                          unchanged_lr_mult=config.model.pre_lr_mult,

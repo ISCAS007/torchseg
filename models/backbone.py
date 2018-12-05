@@ -9,7 +9,7 @@ from easydict import EasyDict as edict
 import warnings
 
 class backbone(TN.Module):
-    def __init__(self,config,use_momentum=False):
+    def __init__(self,config,use_none_layer=False):
         super().__init__()
         self.config=config
         if hasattr(self.config,'eps'):
@@ -22,8 +22,8 @@ class backbone(TN.Module):
         else:
             self.momentum=0.1
         
-        if use_momentum == False:
-            self.use_momentum=False
+        if use_none_layer == False:
+            self.use_none_layer=False
             model=self.get_model()
             if self.config.backbone_name.find('vgg')>=0:
                 self.format='vgg'
@@ -46,7 +46,7 @@ class backbone(TN.Module):
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
         else:
-            self.use_momentum=True
+            self.use_none_layer=True
             model=self.get_model()
             if self.config.backbone_name.find('vgg')>=0:
                 self.format='vgg'
@@ -121,7 +121,7 @@ class backbone(TN.Module):
                         param.requires_grad=False
         
         # if modify resnet head worked, train the modified resnet head
-        if config.modify_resnet_head and self.config.use_momentum and self.format=='resnet':
+        if config.modify_resnet_head and self.config.use_none_layer and self.format=='resnet':
             for param in self.prefix_net.parameters():
                 param.requires_grad = True
     
@@ -250,7 +250,7 @@ class backbone(TN.Module):
         else:
             pretrained=False
                 
-        if self.use_momentum:
+        if self.use_none_layer:
             from models.psp_resnet import resnet50,resnet101
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name

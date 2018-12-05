@@ -9,11 +9,8 @@ class psp_aux(TN.Module):
         super().__init__()
         self.config = config
         self.name = self.__class__.__name__
-
-        use_momentum = self.config.model.use_momentum if hasattr(
-            self.config.model, 'use_momentum') else False
         
-        self.backbone = backbone(config.model, use_momentum=use_momentum)
+        self.backbone = backbone(config.model, use_none_layer=config.model.use_none_layer)
         self.upsample_layer = self.config.model.upsample_layer
         self.class_number = self.config.model.class_number
         self.input_shape = self.config.model.input_shape
@@ -25,7 +22,7 @@ class psp_aux(TN.Module):
         assert self.auxnet_layer >= 3
         assert self.upsample_layer >= 3
         assert self.upsample_layer >= self.auxnet_layer
-        assert config.model.use_momentum==True
+        assert config.model.use_none_layer==True
         # use modified backbone, the output shape is the same for upsample_layer=[3,4,5]
         self.auxnet_input_shape = self.backbone.get_output_shape(self.auxnet_layer, self.input_shape)
         self.midnet_input_shape = self.backbone.get_output_shape(self.upsample_layer, self.input_shape)
@@ -47,7 +44,7 @@ class psp_aux(TN.Module):
                                       self.class_number)
         
         if config.model.use_lr_mult:
-            if use_momentum and config.model.backbone_pretrained and self.upsample_layer >= 4:
+            if config.model.use_none_layer and config.model.backbone_pretrained and self.upsample_layer >= 4:
                 backbone_optmizer_params = get_backbone_optimizer_params(config.model.backbone_name,
                                                                          self.backbone.model,
                                                                          unchanged_lr_mult=1,

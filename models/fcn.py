@@ -11,12 +11,7 @@ class fcn(TN.Module):
         self.config=config
         self.name=self.__class__.__name__
         
-        if hasattr(self.config.model,'use_momentum'):
-            use_momentum=self.config.model.use_momentum
-        else:
-            use_momentum=False
-        
-        self.backbone=backbone(config.model,use_momentum=use_momentum)
+        self.backbone=backbone(config.model,use_none_layer=config.model.use_none_layer)
         self.upsample_layer = self.config.model.upsample_layer
         self.class_number = self.config.model.class_number
         self.input_shape = self.config.model.input_shape

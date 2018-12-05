@@ -39,9 +39,10 @@ def get_config(args=None):
     config.model.upsample_type = args.upsample_type
     config.model.auxnet_type = args.auxnet_type
     config.model.upsample_layer = args.upsample_layer
-    config.model.use_momentum = args.use_momentum
+    config.model.use_none_layer = args.use_none_layer
     if config.model.upsample_layer > 3:
-        config.model.use_momentum = args.use_momentum = True
+        config.model.use_none_layer = args.use_none_layer = True
+    os.environ['use_none_layer'] = str(config.model.use_none_layer)
     config.model.auxnet_layer = args.auxnet_layer
     config.model.cross_merge_times=args.cross_merge_times
     
@@ -54,7 +55,7 @@ def get_config(args=None):
     os.environ['torchseg_use_dropout']=str(args.use_dropout)
     config.model.use_bias=args.use_bias
     os.environ['torchseg_use_bias']=str(args.use_bias)
-    # when use resnet and use_momentum=True
+    # when use resnet and use_none_layer=True
     config.model.modify_resnet_head=args.modify_resnet_head
     os.environ['modify_resnet_head']=str(args.modify_resnet_head)
     
@@ -110,7 +111,7 @@ def get_config(args=None):
     if args.input_shape == 0:
         if args.midnet_name == 'psp':
             upsample_ratio=args.upsample_layer
-            if args.use_momentum and args.upsample_layer>=3:
+            if args.use_none_layer and args.upsample_layer>=3:
                 upsample_ratio=3
             count_size = max(config.model.midnet_pool_sizes) * \
                 config.model.midnet_scale*2**upsample_ratio
@@ -467,8 +468,8 @@ def get_parser():
                         type=int,
                         default=1)
 
-    parser.add_argument('--use_momentum',
-                        help='use mometnum/modified backbone or not?',
+    parser.add_argument('--use_none_layer',
+                        help='use none layer to replace maxpool in backbone or not?',
                         type=str2bool,
                         default=False)
     
@@ -478,7 +479,7 @@ def get_parser():
                         default=0.1)
 
     parser.add_argument('--input_shape',
-                        help='input shape, can be auto computer by midnet_scale and upsample_layer + use_momentum',
+                        help='input shape, can be auto computer by midnet_scale and upsample_layer + use_none_layer',
                         type=int,
                         default=0)
 
@@ -600,7 +601,7 @@ def get_hyperparams(key,discrete=False):
             'model.focal_loss_grad':('bool',[True,False]),
             'model.class_weight_alpha':('choices',[0.1, 0.2, 0.3]),
             'model.use_dropout':('bool',[True,False]),
-            'model.upsample_type':('choices',['duc','bilinear','fcn']),
+            'model.upsample_type':('choices',['fcn','duc','bilinear']),
             'args.batch_size':('choices',[4,8,16]),
             'args.augmentation':('bool',[True,False]),
             'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),

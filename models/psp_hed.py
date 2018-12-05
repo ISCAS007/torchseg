@@ -12,13 +12,9 @@ class psp_hed(TN.Module):
         super().__init__()
         self.config = config
         self.name = self.__class__.__name__
-
-        if hasattr(self.config.model, 'use_momentum'):
-            use_momentum = self.config.model.use_momentum
-        else:
-            use_momentum = False
-
-        self.backbone = backbone(config.model, use_momentum=use_momentum)
+        
+        use_none_layer=config.model.use_none_layer
+        self.backbone = backbone(config.model, use_none_layer=use_none_layer)
         
         if hasattr(self.config.model,'backbone_freeze'):
             if self.config.model.backbone_freeze:
