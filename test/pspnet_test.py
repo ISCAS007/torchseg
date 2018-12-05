@@ -26,6 +26,7 @@ from models.merge_seg import merge_seg
 from models.cross_merge import cross_merge
 from models.psp_convert import psp_convert
 from models.psp_convert import CONFIG as psp_convert_config
+from models.motionnet import motionnet
 from utils.augmentor import Augmentations
 from utils.torch_tools import keras_fit
 from utils.benchmark import keras_benchmark,get_loader

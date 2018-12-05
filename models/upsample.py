@@ -153,6 +153,7 @@ class upsample_bilinear(TN.Module):
                                          eps=eps,
                                          momentum=momentum)
         
+        # for single stream network, the last conv not need bias?
         bias=str2bool(os.environ['torchseg_use_bias'])
         self.conv = TN.Conv2d(in_channels=512,
                               out_channels=out_channels,
@@ -641,6 +642,70 @@ class transform_aspp(TN.Module):
         y = self.final_conv(y)
         return y
 
+class transform_segnet(TN.Module):
+    """
+    segnet or unet as midnet
+    """
+    def __init__(self,backbone,config):
+        super().__init__()
+        self.config=config
+        self.layers=[]
+        in_c=out_c=0
+        for idx in range(6):
+            if idx<self.config.model.upsample_layer:
+                self.layers.append(None)
+            elif idx==5:
+                in_c=out_c=backbone.get_feature_map_channel(idx)
+                print('idx,in_c,out_c',idx,in_c,out_c)
+                layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
+                                                 out_channels=out_c,
+                                                 kernel_size=3,
+                                                 stride=1,
+                                                 padding=1),
+                                    conv_bn_relu(in_channels=out_c,
+                                                 out_channels=out_c,
+                                                 kernel_size=1,
+                                                 stride=1,
+                                                 padding=0)
+                                    )
+                self.layers.append(layer)
+            else:
+                in_c=backbone.get_feature_map_channel(idx+1)
+                out_c=backbone.get_feature_map_channel(idx)
+                print('idx,in_c,out_c',idx,in_c,out_c)
+                
+                layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
+                                    conv_bn_relu(in_channels=in_c,
+                                                 out_channels=out_c,
+                                                 kernel_size=3,
+                                                 stride=1,
+                                                 padding=1),
+                                    conv_bn_relu(in_channels=out_c,
+                                                 out_channels=out_c,
+                                                 kernel_size=1,
+                                                 stride=1,
+                                                 padding=0)
+                                    )
+                self.layers.append(layer)
+            
+        self.modele_layers=TN.ModuleList([layer for layer in self.layers if layer is not None])
+        
+    def forward(self,x):
+        assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
+        assert len(x)==6
+        
+#        for idx in range(6):
+#            print(idx,x[idx].shape)
+        for idx in range(5,self.config.model.upsample_layer-1,-1):
+            if idx==5:
+                feature=x[idx]
+                feature=self.layers[idx](feature)
+            else:
+                #print(self.layers[idx],feature.shape,x[idx].shape)
+                feature=self.layers[idx](feature)
+                feature+=x[idx]
+                
+        return feature
 
 class GlobalAvgPool2d(TN.Module):
     """ Global Average pooling over last two spatial dimensions. """

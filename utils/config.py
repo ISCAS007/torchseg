@@ -381,7 +381,8 @@ def get_parser():
                         choices=['pspnet', 'psp_edge', 'psp_global',
                                  'psp_fractal', 'psp_dict', 'psp_aux',
                                  'fcn', 'fcn8s', 'fcn16s', 'fcn32s',
-                                 'merge_seg','cross_merge', 'psp_hed'],
+                                 'merge_seg','cross_merge', 'psp_hed',
+                                 'motionnet'],
                         default='pspnet')
 
     parser.add_argument('--midnet_scale',
@@ -599,6 +600,7 @@ def get_hyperparams(key,discrete=False):
             'model.focal_loss_grad':('bool',[True,False]),
             'model.class_weight_alpha':('choices',[0.1, 0.2, 0.3]),
             'model.use_dropout':('bool',[True,False]),
+            'model.upsample_type':('choices',['duc','bilinear','fcn']),
             'args.batch_size':('choices',[4,8,16]),
             'args.augmentation':('bool',[True,False]),
             'dataset.norm_ways':('choices',['caffe','pytorch','cityscapes','-1,1','0,1']),
