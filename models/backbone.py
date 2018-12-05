@@ -262,6 +262,7 @@ class backbone(TN.Module):
         else:
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn
+            from models.psp_vgg import vgg16_gn,vgg19_gn
             assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             return locals()[self.config.backbone_name](pretrained=pretrained)
     
