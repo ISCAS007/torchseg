@@ -11,6 +11,7 @@ class pspnet(TN.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
+        self.name=self.__class__.__name__
         
         use_none_layer=config.model.use_none_layer
         self.backbone = backbone(config.model, use_none_layer=use_none_layer)
