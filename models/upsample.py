@@ -656,7 +656,7 @@ class transform_segnet(TN.Module):
                 self.layers.append(None)
             elif idx==5:
                 in_c=out_c=backbone.get_feature_map_channel(idx)
-                print('idx,in_c,out_c',idx,in_c,out_c)
+#                print('idx,in_c,out_c',idx,in_c,out_c)
                 layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
                                                  out_channels=out_c,
                                                  kernel_size=3,
@@ -672,19 +672,31 @@ class transform_segnet(TN.Module):
             else:
                 in_c=backbone.get_feature_map_channel(idx+1)
                 out_c=backbone.get_feature_map_channel(idx)
-                print('idx,in_c,out_c',idx,in_c,out_c)
+#                print('idx,in_c,out_c',idx,in_c,out_c)
                 
-                layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
-                                    conv_bn_relu(in_channels=in_c,
-                                                 out_channels=out_c,
-                                                 kernel_size=3,
-                                                 stride=1,
-                                                 padding=1),
-                                    conv_bn_relu(in_channels=out_c,
-                                                 out_channels=out_c,
-                                                 kernel_size=1,
-                                                 stride=1,
-                                                 padding=0)
+                if self.config.model.use_none_layer:
+                    layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=3,
+                                                     stride=1,
+                                                     padding=1),
+                                        conv_bn_relu(in_channels=out_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=1,
+                                                     stride=1,
+                                                     padding=0))
+                else:
+                    layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
+                                        conv_bn_relu(in_channels=in_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=3,
+                                                     stride=1,
+                                                     padding=1),
+                                        conv_bn_relu(in_channels=out_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=1,
+                                                     stride=1,
+                                                     padding=0)
                                     )
                 self.layers.append(layer)
             
@@ -703,6 +715,7 @@ class transform_segnet(TN.Module):
             else:
                 #print(self.layers[idx],feature.shape,x[idx].shape)
                 feature=self.layers[idx](feature)
+#                print(idx,feature.shape,x[idx].shape)
                 feature+=x[idx]
                 
         return feature

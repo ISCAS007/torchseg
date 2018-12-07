@@ -43,6 +43,7 @@ def get_config(args=None):
     if config.model.upsample_layer > 3:
         config.model.use_none_layer = args.use_none_layer = True
     os.environ['use_none_layer'] = str(config.model.use_none_layer)
+    
     config.model.auxnet_layer = args.auxnet_layer
     config.model.cross_merge_times=args.cross_merge_times
     
@@ -109,7 +110,12 @@ def get_config(args=None):
     config.dataset.norm_ways = args.norm_ways
     
     if args.input_shape == 0:
-        if args.midnet_name == 'psp':
+        if args.net_name == 'motionnet':
+            upsample_ratio=3
+            count_size = max(config.model.midnet_pool_sizes) * \
+                config.model.midnet_scale*2**upsample_ratio
+            input_shape = (count_size, count_size)
+        elif args.midnet_name == 'psp':
             upsample_ratio=args.upsample_layer
             if args.use_none_layer and args.upsample_layer>=3:
                 upsample_ratio=3
@@ -503,18 +509,21 @@ def get_parser():
                        type=str2bool,
                        default=True)
     
+    # work when keep_crop_ratio=False
     parser.add_argument('--min_crop_size',
                        help='min size for crop the image in preprocessing',
                        type=int,
                        nargs='*',
                        default=None)
     
+    # work when keep_crop_ratio=False
     parser.add_argument('--max_crop_size',
                        help='max size for crop the image in preprocessing',
                        type=int,
                        nargs='*',
                        default=None)
     
+    # work when keep_crop_ratio=False
     parser.add_argument('--crop_size_step',
                        help='crop size step for min_crop_size and max_crop_size',
                        type=int,

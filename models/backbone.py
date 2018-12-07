@@ -251,6 +251,7 @@ class backbone(TN.Module):
             pretrained=False
                 
         if self.use_none_layer:
+            print('use none layer'+'*'*30)
             from models.psp_resnet import resnet50,resnet101
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name

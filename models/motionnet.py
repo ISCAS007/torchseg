@@ -11,7 +11,7 @@ class motionnet(TN.Module):
         self.name=self.__class__.__name__
         
         print('warnniing: use_none_layer is false for motionnet')
-        self.backbone=backbone(config.model,use_none_layer=False)
+        self.backbone=backbone(config.model,use_none_layer=config.model.use_none_layer)
         
         self.upsample_type = self.config.model.upsample_type
         self.upsample_layer = self.config.model.upsample_layer

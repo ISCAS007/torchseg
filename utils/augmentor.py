@@ -137,11 +137,11 @@ class ImageTransformer(object):
             if not isinstance(min_crop_size,(list,tuple)):
                 min_crop_size=[min_crop_size]*2
             if len(min_crop_size)==1:
-                min_crop_size=[min_crop_size[0],min_crop_size[0]]
+                min_crop_size=min_crop_size*2
                 
             max_crop_size = config.aug.max_crop_size
             if not isinstance(max_crop_size,(list,tuple)):
-                max_crop_size=[max_crop_size]*2
+                max_crop_size=max_crop_size*2
             if len(max_crop_size)==1:
                 max_crop_size=[max_crop_size[0],max_crop_size[0]]
             
