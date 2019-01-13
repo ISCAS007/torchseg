@@ -344,6 +344,13 @@ def get_ckpt_path(checkpoint_path):
     else:
         return checkpoint_path
 
+def load_ckpt(model,ckpt_path):
+    state_dict = torch.load(ckpt_path)
+    if 'model_state' in state_dict.keys():
+        model.load_state_dict(state_dict['model_state'])
+    else:
+        model.load_state_dict(state_dict)
+    return model
 
 def keras_fit(model, train_loader=None, val_loader=None, config=None):
     """
@@ -411,7 +418,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
         for loader, loader_name in zip(loaders, loader_names):
             if loader is None:
                 continue
-
+        
             # summary all only 10 times
             if epoch % summary_all_step == 0:
                 summary_all = True

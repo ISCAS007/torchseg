@@ -39,9 +39,9 @@ class backbone(TN.Module):
                 
                 self.layer1=model.layer1
                 self.layer2=model.layer2
-                if config.upsample_layer>=4:
+                if config.upsample_layer>=4 or config.net_name=='motionnet':
                     self.layer3=model.layer3
-                if config.upsample_layer>=5:
+                if config.upsample_layer>=5 or config.net_name=='motionnet':
                     self.layer4=model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
@@ -60,9 +60,9 @@ class backbone(TN.Module):
                 self.prefix_net = model.prefix_net
                 self.layer1=model.layer1
                 self.layer2=model.layer2
-                if config.upsample_layer>=4:
+                if config.upsample_layer>=4 or config.net_name=='motionnet':
                     self.layer3=model.layer3
-                if config.upsample_layer>=5:
+                if config.upsample_layer>=5 or config.net_name=='motionnet':
                     self.layer4=model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name

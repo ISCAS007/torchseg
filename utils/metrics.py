@@ -3,7 +3,7 @@
 
 import numpy as np
 from utils import eval_segm
-
+        
 class runningScore(object):
 
     def __init__(self, n_classes):
