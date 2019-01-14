@@ -114,9 +114,9 @@ for epoch in range(config['epoch']):
             
             if config['net_name']=='motion_stn':
                 if config['stn_object']=='features':
-                    stn_loss_value=stn_loss(outputs['features'],labels.float())
+                    stn_loss_value=stn_loss(outputs['features'],labels.float(),outputs['pose'])
                 elif config['stn_object']=='images':
-                    stn_loss_value=stn_loss(outputs['stn_images'],labels.float())
+                    stn_loss_value=stn_loss(outputs['stn_images'],labels.float(),outputs['pose'])
                 else:
                     assert False,'unknown stn object %s'%config['stn_object']
                 

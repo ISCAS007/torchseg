@@ -185,10 +185,14 @@ class motion_net(nn.Module):
         return {'masks':[exp_mask1,exp_mask2,exp_mask3,exp_mask4],
                 'features':features}
         
-def stn_loss(features,motion):
+def stn_loss(features,motion,pose):
     n=len(features)
     total_loss=0
     for i in range(n-1):
+        theta=pose[:,i,:].view(-1,2,3)
+        grid=F.affine_grid(theta,features[i+1].size())
+        pose_mask=F.grid_sample(torch.ones_like(features[i+1]),grid)
+            
         loss=F.l1_loss(features[0],features[i+1],reduction='none')
-        total_loss+=torch.mean(loss*(1-motion))
+        total_loss+=torch.mean(loss*(1-motion)*pose_mask)
     return total_loss
