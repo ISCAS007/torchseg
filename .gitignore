@@ -116,3 +116,5 @@ test/results
 hyperopt_hyperopt_2018-09-17___19-54-10.tab
 *.tab
 output
+notebooks/processed
+notebooks/raw

@@ -8,6 +8,8 @@ from dataset.dataset_generalize import image_normalizations
 import os
 import torch
 import time
+import argparse
+from utils.disc_tools import str2bool
 
 class Metric_Acc():
     def __init__(self):
@@ -46,21 +48,58 @@ class Metric_Mean():
     def reset(self):
         self.total=0
         self.count=0
-        
+
+def get_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--net_name",
+                        help="network name",
+                        choices=['motion_stn','motion_net'],
+                        default='motion_stn')
+    parser.add_argument("--save_model",
+                        help="save model or not",
+                        type=str2bool,
+                        default=True)
+    parser.add_argument("--stn_loss_weight",
+                        help="stn loss weight (1.0)",
+                        type=float,
+                        default=1.0)
+    parser.add_argument("--motion_loss_weight",
+                        help="motion mask loss weight (1.0)",
+                        type=float,
+                        default=1.0)
+    parser.add_argument('--pose_mask_reg',
+                        help='regular weight for pose mask (1.0)',
+                        type=float,
+                        default=1.0)
+    parser.add_argument("--stn_object",
+                        help="use feature or images to compute stn loss",
+                        choices=['images','features'],
+                        default='images')
+    parser.add_argument("--note",
+                        help="note for model",
+                        default='000')
+    
+    return parser
+    
+parser=get_parser()
+args = parser.parse_args()
+
 config={}
 config['dataset']='FBMS'
-config['net_name']='motion_stn'
+config['net_name']=args.net_name
 config['train_path']='/media/sdb/CVDataset/ObjectSegmentation/FBMS/Trainingset'
 config['val_path']='/media/sdb/CVDataset/ObjectSegmentation/FBMS/Testset'
 config['frame_gap']=5
 config['log_dir']=os.path.expanduser('~/tmp/logs')
 config['epoch']=30
 config['init_lr']=1e-4
-config['stn_loss_weight']=0.01
+config['stn_loss_weight']=args.stn_loss_weight
+config['motion_loss_weight']=args.motion_loss_weight
+config['pose_mask_reg']=args.pose_mask_reg
 # features or images
-config['stn_object']='images'
-config['note']='images'
-config['save_model']=True
+config['stn_object']=args.stn_object
+config['note']=args.note
+config['save_model']=args.save_model
 
 normer=image_normalizations(ways='-1,1')
 dataset_loaders={}
@@ -114,13 +153,13 @@ for epoch in range(config['epoch']):
             
             if config['net_name']=='motion_stn':
                 if config['stn_object']=='features':
-                    stn_loss_value=stn_loss(outputs['features'],labels.float(),outputs['pose'])
+                    stn_loss_value=stn_loss(outputs['features'],labels.float(),outputs['pose'],config['pose_mask_reg'])
                 elif config['stn_object']=='images':
-                    stn_loss_value=stn_loss(outputs['stn_images'],labels.float(),outputs['pose'])
+                    stn_loss_value=stn_loss(outputs['stn_images'],labels.float(),outputs['pose'],config['pose_mask_reg'])
                 else:
                     assert False,'unknown stn object %s'%config['stn_object']
                 
-                total_loss_value=mask_loss_value+stn_loss_value*config['stn_loss_weight']
+                total_loss_value=mask_loss_value*config['motion_loss_weight']+stn_loss_value*config['stn_loss_weight']
             else:
                 stn_loss_value=torch.tensor(0.0)
                 total_loss_value=mask_loss_value

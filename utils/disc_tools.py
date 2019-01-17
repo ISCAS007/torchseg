@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import math
 import os
@@ -28,7 +29,22 @@ def show_images(images,titles=None,vmin=None,vmax=None):
             ax[i].set_title(titles[i])
 
     plt.show()
-    
+
+def show_tensor_list(images_tensor,title,normer=None):
+    for idx,t in enumerate(images_tensor):
+        batch_images=t.data.cpu().numpy()
+        batch_images=batch_images.transpose((0,2,3,1))
+
+        print(idx,np.mean(batch_images),np.std(batch_images),np.max(batch_images),np.min(batch_images))
+        if normer is not None:
+            batch_images=normer.backward(batch_images).astype(np.uint8)
+        else:
+            batch_images=np.clip(batch_images,a_min=0,a_max=1)
+            
+        image_list=np.split(batch_images,4)
+        image_list=[np.squeeze(img) for img in image_list]
+        show_images(image_list,[title[idx] for img in image_list])
+        
 def str2bool(s):
     if s.lower() in ['t','true','y','yes','1']:
         return True
