@@ -3,6 +3,7 @@
 from dataset.fbms_dataset import fbms_dataset
 import torch.utils.data as td
 from models.motion_stn import motion_stn, stn_loss, motion_net
+from models.motion_fcn import motion_fcn,motion_fcn_stn
 from utils.torch_tools import init_writer
 from dataset.dataset_generalize import image_normalizations
 import os

@@ -10,6 +10,9 @@ import warnings
 
 class backbone(TN.Module):
     def __init__(self,config,use_none_layer=False):
+        """
+        use_none_layer: use NoneLayer to replace MaxPool in backbone
+        """
         super().__init__()
         self.config=config
         if hasattr(self.config,'eps'):
