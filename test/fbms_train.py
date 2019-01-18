@@ -3,7 +3,7 @@
 from dataset.fbms_dataset import fbms_dataset
 import torch.utils.data as td
 from models.motion_stn import motion_stn, stn_loss, motion_net
-from models.motion_fcn import motion_fcn,motion_fcn_stn
+from models.motionseg.motion_fcn import motion_fcn,motion_fcn_stn
 from utils.torch_tools import init_writer
 from dataset.dataset_generalize import image_normalizations
 import os
@@ -54,8 +54,29 @@ def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--net_name",
                         help="network name",
-                        choices=['motion_stn','motion_net'],
+                        choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn'],
                         default='motion_stn')
+    
+    backbone_names=['vgg'+str(number) for number in [11,13,16,19]]
+    backbone_names+=[s+'_bn' for s in backbone_names]
+    backbone_names+=['resnet50','resnet101']
+    parser.add_argument('--backbone_name',
+                        help='backbone for motion_fcn and motion_fcn_stn',
+                        choices=backbone_names,
+                        default='vgg16')
+    
+    parser.add_argument('--upsample_layer',
+                        help='upsample_layer for motion_fcn',
+                        choices=[3,4,5],
+                        type=int,
+                        default=3)
+    
+    parser.add_argument('--freeze_layer',
+                        help='freeze layer for motion_fcn',
+                        choices=[0,1,2,3],
+                        type=int,
+                        default=1)
+    
     parser.add_argument("--save_model",
                         help="save model or not",
                         type=str2bool,
@@ -91,7 +112,7 @@ config['net_name']=args.net_name
 config['train_path']='/media/sdb/CVDataset/ObjectSegmentation/FBMS/Trainingset'
 config['val_path']='/media/sdb/CVDataset/ObjectSegmentation/FBMS/Testset'
 config['frame_gap']=5
-config['log_dir']=os.path.expanduser('~/tmp/logs')
+config['log_dir']=os.path.expanduser('~/tmp/logs/motion')
 config['epoch']=30
 config['init_lr']=1e-4
 config['stn_loss_weight']=args.stn_loss_weight
@@ -101,6 +122,9 @@ config['pose_mask_reg']=args.pose_mask_reg
 config['stn_object']=args.stn_object
 config['note']=args.note
 config['save_model']=args.save_model
+config['backbone_name']=args.backbone_name
+config['upsample_layer']=args.upsample_layer
+config['freeze_layer']=args.freeze_layer
 
 normer=image_normalizations(ways='-1,1')
 dataset_loaders={}
@@ -116,7 +140,13 @@ checkpoint_path = os.path.join(log_dir, 'model-last-%d.pkl' % config['epoch'])
 
 writer=init_writer(config,log_dir)
 
-model=globals()[config['net_name']]()
+if config['net_name'] in ['motion_stn','motion_net']:
+    model=globals()[config['net_name']]() 
+else:
+    model=globals()[config['net_name']](config)
+
+seg_loss_fn=torch.nn.BCELoss()
+
 # support for cpu/gpu
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model.to(device)
@@ -130,7 +160,6 @@ metric_stn_loss=Metric_Mean()
 metric_mask_loss=Metric_Mean()
 metric_total_loss=Metric_Mean()
 
-seg_loss_fn=torch.nn.BCELoss()
 for epoch in range(config['epoch']):
     for split in ['train','val']:
         if split=='train':

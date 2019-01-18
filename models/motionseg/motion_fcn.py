@@ -18,17 +18,17 @@ class motion_fcn(nn.Module):
     def __init__(self,config):
         super().__init__()
         
-        self.input_shape=[224,224]
-        
         backbone_config=edict()
+        backbone_config.input_shape=self.input_shape=[224,224]
         backbone_config.backbone_name=config['backbone_name']
         backbone_config.upsample_layer=self.upsample_layer=config['upsample_layer']
         backbone_config.net_name='fcn'
         backbone_config.backbone_freeze=False
-        backbone_config.freeze_layer=3
+        backbone_config.freeze_layer=config['freeze_layer']
         backbone_config.freeze_ratio=0.0
         backbone_config.modify_resnet_head=False
         backbone_config.use_none_layer=True
+        backbone_config.layer_preference='last'
         self.backbone=backbone(backbone_config,use_none_layer=True)
         
         
@@ -36,19 +36,21 @@ class motion_fcn(nn.Module):
         backbone_config.use_bn=False
         backbone_config.use_dropout=False
         backbone_config.use_bias=True
+        backbone_config.upsample_type='bilinear'
         decoder_config.model=backbone_config
         
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=2*self.midnet_input_shape[1]
+        self.class_number=1
         self.decoder=get_suffix_net(decoder_config,
                                     self.midnet_out_channels,
                                     self.class_number)
         
     def forward(self,imgs):
-        features=[self.backbone(img) for img in imgs]
+        features=[self.backbone(img,self.upsample_layer) for img in imgs]
         x=torch.cat(features,dim=1)
         x=self.decoder(x)
-        
+        x=torch.sigmoid(x)
         return {'masks':[x]}
     
 class stn(nn.Module):
@@ -104,7 +106,7 @@ class motion_fcn_stn(nn.Module):
     def __init__(self,config):
         super().__init__()
         self.stn=stn(config)
-        self.motion_net=motion_fcn(config)
+        self.motion_fcn=motion_fcn(config)
         
     def forward(self,imgs):
         results=self.stn(imgs)
