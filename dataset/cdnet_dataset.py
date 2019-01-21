@@ -31,17 +31,10 @@ class cdnet_dataset(td.Dataset):
         current_path = os.path.join(root_path, category, sub_category)
         if data_type == 'input' or data_type == 'in' or data_type == 'x':
             current_path = os.path.join(current_path, 'input', 'in%06d.jpg' % frame_num)
-            if not os.path.exists(current_path):
-                print('error for path not exist', current_path)
-                sys.exit(-1)
         elif data_type == 'groundtruth' or data_type == 'gt' or data_type == 'y':
             current_path = os.path.join(current_path, 'groundtruth', 'gt%06d.png' % frame_num)
-            if not os.path.exists(current_path):
-                print('error for path not exist', current_path)
-                sys.exit(-1)
         else:
-            print('error for data type')
-            sys.exit(-1)
+            assert False,'unknown data_type %s'%data_type
 
         return current_path
     
@@ -65,9 +58,9 @@ class cdnet_dataset(td.Dataset):
                 aux_img_path=self.get_image_path(root_path,category,sub_category,'in',frame_number+frame_gap)
         
             
-        assert os.path.exists(main_img_path),'path not exists %s'%main_img_path
-        assert os.path.exists(aux_img_path),'path not exists %s'%aux_img_path
-        assert os.path.exists(gt_img_path),'path not exists %s'%gt_img_path
+        assert os.path.exists(main_img_path),'main path not exists %s'%main_img_path
+        assert os.path.exists(aux_img_path),'aux path not exists %s'%aux_img_path
+        assert os.path.exists(gt_img_path),'gt path not exists %s'%gt_img_path
         
         return (main_img_path,aux_img_path,gt_img_path)
     

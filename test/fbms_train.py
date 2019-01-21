@@ -162,7 +162,7 @@ if config['net_name'] in ['motion_stn','motion_net']:
 else:
     model=globals()[config['net_name']](config)
 
-seg_loss_fn=torch.nn.BCELoss()
+seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
 
 # support for cpu/gpu
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -196,7 +196,7 @@ for epoch in range(config['epoch']):
                 optimizer.zero_grad()
                 
             outputs=model.forward(images)
-            mask_loss_value=seg_loss_fn(outputs['masks'][0],labels.float())
+            mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(labels,dim=1))
             
             if config['net_name']=='motion_stn':
                 if config['stn_object']=='features':

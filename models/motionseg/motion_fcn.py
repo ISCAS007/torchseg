@@ -41,7 +41,7 @@ class motion_fcn(nn.Module):
         
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=2*self.midnet_input_shape[1]
-        self.class_number=1
+        self.class_number=2
         self.decoder=get_suffix_net(decoder_config,
                                     self.midnet_out_channels,
                                     self.class_number)
@@ -50,7 +50,7 @@ class motion_fcn(nn.Module):
         features=[self.backbone(img,self.upsample_layer) for img in imgs]
         x=torch.cat(features,dim=1)
         x=self.decoder(x)
-        x=torch.sigmoid(x)
+        #x=torch.sigmoid(x)
         return {'masks':[x]}
     
 class stn(nn.Module):

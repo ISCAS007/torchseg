@@ -58,10 +58,10 @@ class motion_stn(nn.Module):
             self.upconv2 = upconv(upconv_planes[2], upconv_planes[3])
             self.upconv1 = upconv(upconv_planes[3], upconv_planes[4])
 
-            self.predict_mask4 = nn.Conv2d(upconv_planes[1], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask3 = nn.Conv2d(upconv_planes[2], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask2 = nn.Conv2d(upconv_planes[3], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask1 = nn.Conv2d(upconv_planes[4], self.nb_ref_imgs, kernel_size=3, padding=1)
+            self.predict_mask4 = nn.Conv2d(upconv_planes[1], 2, kernel_size=3, padding=1)
+            self.predict_mask3 = nn.Conv2d(upconv_planes[2], 2, kernel_size=3, padding=1)
+            self.predict_mask2 = nn.Conv2d(upconv_planes[3], 2, kernel_size=3, padding=1)
+            self.predict_mask1 = nn.Conv2d(upconv_planes[4], 2, kernel_size=3, padding=1)
             
         self.init_weights()
 
@@ -101,10 +101,10 @@ class motion_stn(nn.Module):
             out_upconv2 = self.upconv2(out_upconv3)
             out_upconv1 = self.upconv1(out_upconv2)[:, :, 0:h, 0:w]
 
-            exp_mask4 = torch.sigmoid(self.predict_mask4(out_upconv4))
-            exp_mask3 = torch.sigmoid(self.predict_mask3(out_upconv3))
-            exp_mask2 = torch.sigmoid(self.predict_mask2(out_upconv2))
-            exp_mask1 = torch.sigmoid(self.predict_mask1(out_upconv1))
+            exp_mask4 = self.predict_mask4(out_upconv4)
+            exp_mask3 = self.predict_mask3(out_upconv3)
+            exp_mask2 = self.predict_mask2(out_upconv2)
+            exp_mask1 = self.predict_mask1(out_upconv1)
         else:
             exp_mask4 = None
             exp_mask3 = None
@@ -150,10 +150,10 @@ class motion_net(nn.Module):
             self.upconv2 = upconv(upconv_planes[2], upconv_planes[3])
             self.upconv1 = upconv(upconv_planes[3], upconv_planes[4])
 
-            self.predict_mask4 = nn.Conv2d(upconv_planes[1], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask3 = nn.Conv2d(upconv_planes[2], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask2 = nn.Conv2d(upconv_planes[3], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask1 = nn.Conv2d(upconv_planes[4], self.nb_ref_imgs, kernel_size=3, padding=1)
+            self.predict_mask4 = nn.Conv2d(upconv_planes[1], 2, kernel_size=3, padding=1)
+            self.predict_mask3 = nn.Conv2d(upconv_planes[2], 2, kernel_size=3, padding=1)
+            self.predict_mask2 = nn.Conv2d(upconv_planes[3], 2, kernel_size=3, padding=1)
+            self.predict_mask1 = nn.Conv2d(upconv_planes[4], 2, kernel_size=3, padding=1)
 
     def init_weights(self):
         for m in self.modules():
@@ -174,10 +174,10 @@ class motion_net(nn.Module):
             out_upconv2 = self.upconv2(out_upconv3)
             out_upconv1 = self.upconv1(out_upconv2)[:, :, 0:h, 0:w]
 
-            exp_mask4 = torch.sigmoid(self.predict_mask4(out_upconv4))
-            exp_mask3 = torch.sigmoid(self.predict_mask3(out_upconv3))
-            exp_mask2 = torch.sigmoid(self.predict_mask2(out_upconv2))
-            exp_mask1 = torch.sigmoid(self.predict_mask1(out_upconv1))
+            exp_mask4 = self.predict_mask4(out_upconv4)
+            exp_mask3 = self.predict_mask3(out_upconv3)
+            exp_mask2 = self.predict_mask2(out_upconv2)
+            exp_mask1 = self.predict_mask1(out_upconv1)
         else:
             exp_mask4 = None
             exp_mask3 = None
