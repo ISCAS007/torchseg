@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from dataset.fbms_dataset import fbms_dataset
+from dataset.cdnet_dataset import cdnet_dataset
 import torch.utils.data as td
 from models.motion_stn import motion_stn, stn_loss, motion_net
 from models.motionseg.motion_fcn import motion_fcn,motion_fcn_stn
@@ -57,6 +58,11 @@ def get_parser():
                         choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn'],
                         default='motion_stn')
     
+    parser.add_argument('--dataset',
+                        help='dataset name (FBMS)',
+                        choices=['FBMS','cdnet2014'],
+                        default='FBMS')
+    
     backbone_names=['vgg'+str(number) for number in [11,13,16,19]]
     backbone_names+=[s+'_bn' for s in backbone_names]
     backbone_names+=['resnet50','resnet101']
@@ -107,10 +113,17 @@ parser=get_parser()
 args = parser.parse_args()
 
 config={}
-config['dataset']='FBMS'
+config['dataset']=args.dataset
 config['net_name']=args.net_name
-config['train_path']='/media/sdb/CVDataset/ObjectSegmentation/FBMS/Trainingset'
-config['val_path']='/media/sdb/CVDataset/ObjectSegmentation/FBMS/Testset'
+
+if args.dataset=='FBMS':
+    config['train_path']='/media/sdb/CVDataset/ObjectSegmentation/FBMS/Trainingset'
+    config['test_path']=config['val_path']='/media/sdb/CVDataset/ObjectSegmentation/FBMS/Testset'
+elif args.dataset=='cdnet2014':
+    config['root_path']='/media/sdb/CVDataset/dataset2014/dataset'
+else:
+    assert False
+    
 config['frame_gap']=5
 config['log_dir']=os.path.expanduser('~/tmp/logs/motion')
 config['epoch']=30
@@ -129,7 +142,11 @@ config['freeze_layer']=args.freeze_layer
 normer=image_normalizations(ways='-1,1')
 dataset_loaders={}
 for split in ['train','val']:
-    xxx_dataset=fbms_dataset(config,split,normalizations=normer)
+    if args.dataset=='FBMS':
+        xxx_dataset=fbms_dataset(config,split,normalizations=normer)
+    else:
+        xxx_dataset=cdnet_dataset(config,split,normalizations=normer)
+    
     xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=4,shuffle=True,drop_last=False,num_workers=2)
     dataset_loaders[split]=xxx_loader
 
