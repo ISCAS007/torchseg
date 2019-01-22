@@ -13,9 +13,11 @@ class fbms_dataset(td.Dataset):
         self.split=split
         self.normalizations=normalizations
         if split=='train':
-            self.gt_files=glob.glob(os.path.join(self.config['train_path'],'*','GroundTruth','*.png'),recursive=True)
+            self.gt_files=glob.glob(os.path.join(self.config['train_path'],'*','GroundTruth','*.png'),recursive=True) + \
+                glob.glob(os.path.join(self.config['train_path'],'*','GroundTruth','*.pgm'),recursive=True)
         else:
-            self.gt_files=glob.glob(os.path.join(self.config['val_path'],'*','GroundTruth','*.png'),recursive=True)
+            self.gt_files=glob.glob(os.path.join(self.config['val_path'],'*','GroundTruth','*.png'),recursive=True) + \
+                glob.glob(os.path.join(self.config['val_path'],'*','GroundTruth','*.pgm'),recursive=True)
             
         print('%s dataset size %d'%(split,len(self.gt_files)))
         
