@@ -117,10 +117,10 @@ config['dataset']=args.dataset
 config['net_name']=args.net_name
 
 if args.dataset=='FBMS':
-    config['train_path']='/media/sdb/CVDataset/ObjectSegmentation/FBMS/Trainingset'
-    config['test_path']=config['val_path']='/media/sdb/CVDataset/ObjectSegmentation/FBMS/Testset'
+    config['train_path']='dataset/FBMS/Trainingset'
+    config['test_path']=config['val_path']='dataset/FBMS/Testset'
 elif args.dataset=='cdnet2014':
-    config['root_path']='/media/sdb/CVDataset/dataset2014/dataset'
+    config['root_path']='dataset/cdnet2014'
 else:
     assert False
     
