@@ -16,6 +16,8 @@ class fbms_dataset(td.Dataset):
             self.gt_files=glob.glob(os.path.join(self.config['train_path'],'*','GroundTruth','*.png'),recursive=True)
         else:
             self.gt_files=glob.glob(os.path.join(self.config['val_path'],'*','GroundTruth','*.png'),recursive=True)
+            
+        print('%s dataset size %d'%(split,len(self.gt_files)))
         
     def __len__(self):
         return len(self.gt_files)
