@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import math
@@ -18,6 +17,7 @@ def lcm_list(l):
 
 
 def show_images(images,titles=None,vmin=None,vmax=None):
+    import matplotlib.pyplot as plt
     fig, axes = plt.subplots(2, (len(images)+1)//2, figsize=(7, 6), sharex=True, sharey=True)
     ax = axes.ravel()
 
