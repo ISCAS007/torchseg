@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 import torch
 import torch.nn as nn
 from models.backbone import backbone
@@ -34,6 +35,7 @@ def dict2edict(config):
     backbone_config.upsample_type='bilinear'
     decoder_config.model=backbone_config
     
+    os.environ['torchseg_use_bias']=str(backbone_config.use_bias)
     return decoder_config
         
 class motion_fcn(nn.Module):

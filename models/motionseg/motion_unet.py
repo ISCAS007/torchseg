@@ -15,7 +15,8 @@ class motion_unet(nn.Module):
         
         self.midnet=transform_segnet(self.backbone,decoder_config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
-        self.decoder=get_suffix_net(config,
+        self.class_number=2
+        self.decoder=get_suffix_net(decoder_config,
                                     self.midnet_out_channels,
                                     self.class_number)
         
@@ -25,7 +26,7 @@ class motion_unet(nn.Module):
         feature_transform=self.midnet.forward(main,aux)
         y=self.decoder(feature_transform)
         
-        return {'masks',[y]}
+        return {'masks':[y]}
     
 class motion_unet_stn(nn.Module):
     def __init__(self,config):
