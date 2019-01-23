@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import torch
 import torch.nn as nn
 from models.backbone import backbone
 from models.upsample import get_suffix_net, transform_segnet
-from easydict import EasyDict as edict
 from models.motionseg.motion_fcn import stn,dict2edict
 
 class motion_unet(nn.Module):

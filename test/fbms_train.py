@@ -5,6 +5,7 @@ from dataset.cdnet_dataset import cdnet_dataset
 import torch.utils.data as td
 from models.motion_stn import motion_stn, stn_loss, motion_net
 from models.motionseg.motion_fcn import motion_fcn,motion_fcn_stn
+from models.motionseg.motion_unet import motion_unet,motion_unet_stn
 from utils.torch_tools import init_writer
 from dataset.dataset_generalize import image_normalizations
 import os
@@ -55,7 +56,8 @@ def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--net_name",
                         help="network name",
-                        choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn'],
+                        choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn',
+                                 'motion_unet','motion_unet_stn'],
                         default='motion_stn')
     
     parser.add_argument('--dataset',
@@ -198,7 +200,8 @@ for epoch in range(config['epoch']):
             outputs=model.forward(images)
             mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(labels,dim=1))
             
-            if config['net_name']=='motion_stn':
+            # config['net_name'].find('stn')>=0
+            if config['net_name'] in ['motion_stn','motion_fcn_stn','motion_unet_stn']:
                 if config['stn_object']=='features':
                     stn_loss_value=stn_loss(outputs['features'],labels.float(),outputs['pose'],config['pose_mask_reg'])
                 elif config['stn_object']=='images':
