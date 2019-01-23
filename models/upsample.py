@@ -719,6 +719,21 @@ class transform_segnet(TN.Module):
                 feature+=x[idx]
                 
         return feature
+    
+    def forward(self,main,aux):
+        for x in [main,aux]:
+            assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
+            assert len(x)==6
+        
+        for idx in range(5,self.config.model.upsample_layer-1,-1):
+            if idx==5:
+                feature=main[idx]+aux[idx]
+                feature=self.layers[idx](feature)
+            else:
+                feature=self.layers[idx](feature)
+                feature+=main[idx]+aux[idx]
+                
+        return feature
 
 class GlobalAvgPool2d(TN.Module):
     """ Global Average pooling over last two spatial dimensions. """

@@ -13,31 +13,38 @@ def conv(in_planes, out_planes, kernel_size=3):
         nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, padding=(kernel_size-1)//2, stride=2),
         nn.ReLU(inplace=True)
     )
+
+def dict2edict(config):
+    backbone_config=edict()
+    backbone_config.input_shape=[224,224]
+    backbone_config.backbone_name=config['backbone_name']
+    backbone_config.upsample_layer=config['upsample_layer']
+    backbone_config.net_name='fcn'
+    backbone_config.backbone_freeze=False
+    backbone_config.freeze_layer=config['freeze_layer']
+    backbone_config.freeze_ratio=0.0
+    backbone_config.modify_resnet_head=False
+    backbone_config.use_none_layer=True
+    backbone_config.layer_preference='last'
     
+    decoder_config=edict()
+    backbone_config.use_bn=False
+    backbone_config.use_dropout=False
+    backbone_config.use_bias=True
+    backbone_config.upsample_type='bilinear'
+    decoder_config.model=backbone_config
+    
+    return decoder_config
+        
 class motion_fcn(nn.Module):
     def __init__(self,config):
         super().__init__()
         
-        backbone_config=edict()
-        backbone_config.input_shape=self.input_shape=[224,224]
-        backbone_config.backbone_name=config['backbone_name']
-        backbone_config.upsample_layer=self.upsample_layer=config['upsample_layer']
-        backbone_config.net_name='fcn'
-        backbone_config.backbone_freeze=False
-        backbone_config.freeze_layer=config['freeze_layer']
-        backbone_config.freeze_ratio=0.0
-        backbone_config.modify_resnet_head=False
-        backbone_config.use_none_layer=True
-        backbone_config.layer_preference='last'
-        self.backbone=backbone(backbone_config,use_none_layer=True)
         
-        
-        decoder_config=edict()
-        backbone_config.use_bn=False
-        backbone_config.use_dropout=False
-        backbone_config.use_bias=True
-        backbone_config.upsample_type='bilinear'
-        decoder_config.model=backbone_config
+        decoder_config=dict2edict(config)
+        self.input_shape=decoder_config.model.input_shape
+        self.upsample_layer=config['upsample_layer']
+        self.backbone=backbone(decoder_config.model,use_none_layer=True)
         
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=2*self.midnet_input_shape[1]
