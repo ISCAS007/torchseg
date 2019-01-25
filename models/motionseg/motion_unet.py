@@ -36,7 +36,7 @@ class motion_unet_stn(nn.Module):
         
     def forward(self,imgs):
         results=self.stn(imgs)
-        masks=self.motion_fcn(results['stn_images'])
+        masks=self.motion_unet(results['stn_images'])
         results['masks']=masks['masks']
         
         return results
