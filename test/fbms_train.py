@@ -20,7 +20,11 @@ class Metric_Acc():
         self.count=0
         
     def update(self,predicts,labels):
-        pred=torch.ge(predicts,0.5).to(device).long()
+        # print(labels.shape,predicts.shape)
+        if labels.shape != predicts.shape:
+            pred=torch.argmax(predicts,dim=1,keepdim=True)
+        else:
+            pred=torch.ge(predicts,0.5).to(device).long()
         result=(pred==labels).to(torch.float)
         self.tp+=torch.sum(result)
         count=1
