@@ -14,6 +14,12 @@ class cdnet_dataset(td.Dataset):
         self.normalizations=normalizations
         
         self.img_path_pairs=self.get_img_path_pairs(self.config['root_path'])
+        if self.config['use_part_number'] > 0:
+            n=len(self.img_path_pairs)
+            l=[i for i in range(n)]
+            random.shuffle(l)
+            part_pairs=[self.img_path_pairs[x] for x in l[0:n]]
+            self.img_path_pairs=part_pairs
         
     def __len__(self):
         return len(self.img_path_pairs)
