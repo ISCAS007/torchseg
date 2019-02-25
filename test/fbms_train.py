@@ -89,6 +89,11 @@ def get_parser():
                         type=int,
                         default=1)
     
+    parser.add_argument('--use_part_number',
+                        help='the dataset size, 0 for total dataset',
+                        type=int,
+                        default=0)
+    
     parser.add_argument("--save_model",
                         help="save model or not",
                         type=str2bool,
@@ -120,8 +125,7 @@ args = parser.parse_args()
 
 config={}
 config['dataset']=args.dataset
-# use part of dataset or not
-config['use_part_number']=0
+config['use_part_number']=args.use_part_number
 config['net_name']=args.net_name
 
 if args.dataset=='FBMS':

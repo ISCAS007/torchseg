@@ -18,8 +18,9 @@ class cdnet_dataset(td.Dataset):
             n=len(self.img_path_pairs)
             l=[i for i in range(n)]
             random.shuffle(l)
-            part_pairs=[self.img_path_pairs[x] for x in l[0:n]]
+            part_pairs=[self.img_path_pairs[x] for x in l[0:self.config['use_part_number']]]
             self.img_path_pairs=part_pairs
+            print('total dataset image %d, use %d'%(n,self.config['use_part_number']))
         
     def __len__(self):
         return len(self.img_path_pairs)
