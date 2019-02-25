@@ -718,7 +718,9 @@ class transform_segnet(TN.Module):
                                                     stride=1,
                                                     padding=0))
             
-        self.modele_layers=TN.ModuleList([layer for layer in self.layers if layer is not None])
+        self.model_layers=TN.ModuleList([layer for layer in self.layers if layer is not None])
+        if self.config.model.merge_type=='concat':
+            self.merge_layers=TN.ModuleList([layer for layer in self.concat_layers if layer is not None])
         
     def forward(self,x):
         assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
