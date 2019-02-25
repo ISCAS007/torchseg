@@ -650,10 +650,16 @@ class transform_segnet(TN.Module):
         super().__init__()
         self.config=config
         self.layers=[]
+        
+        self.concat_layers=[]
+        if not hasattr(self.config.model,'merge_type'):
+            self.config.model.merge_type='mean'
+            
         in_c=out_c=0
         for idx in range(6):
             if idx<self.config.model.upsample_layer:
                 self.layers.append(None)
+                self.concat_layers.append(None)
             elif idx==5:
                 in_c=out_c=backbone.get_feature_map_channel(idx)
 #                print('idx,in_c,out_c',idx,in_c,out_c)
@@ -669,6 +675,12 @@ class transform_segnet(TN.Module):
                                                  padding=0)
                                     )
                 self.layers.append(layer)
+                if self.config.model.merge_type=='concat':
+                    self.concat_layers.append(conv_bn_relu(in_channels=in_c*2,
+                                                    out_channels=out_c,
+                                                    kernel_size=1,
+                                                    stride=1,
+                                                    padding=0))
             else:
                 in_c=backbone.get_feature_map_channel(idx+1)
                 out_c=backbone.get_feature_map_channel(idx)
@@ -699,6 +711,12 @@ class transform_segnet(TN.Module):
                                                      padding=0)
                                     )
                 self.layers.append(layer)
+                if self.config.model.merge_type=='concat':
+                    self.concat_layers.append(conv_bn_relu(in_channels=in_c*3,
+                                                    out_channels=out_c,
+                                                    kernel_size=1,
+                                                    stride=1,
+                                                    padding=0))
             
         self.modele_layers=TN.ModuleList([layer for layer in self.layers if layer is not None])
         
@@ -727,11 +745,19 @@ class transform_segnet(TN.Module):
         
         for idx in range(5,self.config.model.upsample_layer-1,-1):
             if idx==5:
-                feature=main[idx]+aux[idx]
+                if self.config.model.merge_type=='concat':
+                    feature=torch.cat([main[idx],aux[idx]],dim=1)
+                    feature=self.concat_layers[idx](feature)
+                else:
+                    feature=main[idx]+aux[idx]
                 feature=self.layers[idx](feature)
             else:
                 feature=self.layers[idx](feature)
-                feature+=main[idx]+aux[idx]
+                if self.config.model.merge_type=='concat':
+                    feature=torch.cat([feature,main[idx],aux[idx]],dim=1)
+                    feature=self.concat_layers[idx](feature)
+                else:
+                    feature+=main[idx]+aux[idx]
                 
         return feature
 

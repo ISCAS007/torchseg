@@ -9,6 +9,7 @@ class motion_unet(nn.Module):
     def __init__(self,config):
         super().__init__()
         decoder_config=dict2edict(config)
+        decoder_config.model.merge_type='concat'
         self.input_shape=decoder_config.model.input_shape
         self.upsample_layer=config['upsample_layer']
         self.backbone=backbone(decoder_config.model,use_none_layer=True)
