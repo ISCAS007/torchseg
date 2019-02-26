@@ -78,11 +78,11 @@ class Metric_Mean():
         self.count=0
         
     def update(self,value):
-        self.total+=value
+        self.total+=value.to(torch.float32)
         self.count+=1
         
     def get_mean(self):
-        return self.total/self.count
+        return self.total/self.count.type_as(self.total)
     
     def reset(self):
         self.total=0
