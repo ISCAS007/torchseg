@@ -653,7 +653,9 @@ class transform_segnet(TN.Module):
         
         self.concat_layers=[]
         if not hasattr(self.config.model,'merge_type'):
-            self.config.model.merge_type='mean'
+            self.merge_type='mean'
+        else:
+            self.merge_type=self.config.model.merge_type
             
         in_c=out_c=0
         for idx in range(6):
@@ -675,12 +677,14 @@ class transform_segnet(TN.Module):
                                                  padding=0)
                                     )
                 self.layers.append(layer)
-                if self.config.model.merge_type=='concat':
+                if self.merge_type=='concat':
                     self.concat_layers.append(conv_bn_relu(in_channels=in_c*2,
                                                     out_channels=out_c,
                                                     kernel_size=1,
                                                     stride=1,
                                                     padding=0))
+                else:
+                    assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
             else:
                 in_c=backbone.get_feature_map_channel(idx+1)
                 out_c=backbone.get_feature_map_channel(idx)
@@ -711,16 +715,20 @@ class transform_segnet(TN.Module):
                                                      padding=0)
                                     )
                 self.layers.append(layer)
-                if self.config.model.merge_type=='concat':
+                if self.merge_type=='concat':
                     self.concat_layers.append(conv_bn_relu(in_channels=in_c*3,
                                                     out_channels=out_c,
                                                     kernel_size=1,
                                                     stride=1,
                                                     padding=0))
+                else:
+                    assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
             
         self.model_layers=TN.ModuleList([layer for layer in self.layers if layer is not None])
-        if self.config.model.merge_type=='concat':
+        if self.merge_type=='concat':
             self.merge_layers=TN.ModuleList([layer for layer in self.concat_layers if layer is not None])
+        else:
+            assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
         
     def forward(self,x):
         assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
@@ -747,18 +755,20 @@ class transform_segnet(TN.Module):
         
         for idx in range(5,self.config.model.upsample_layer-1,-1):
             if idx==5:
-                if self.config.model.merge_type=='concat':
+                if self.merge_type=='concat':
                     feature=torch.cat([main[idx],aux[idx]],dim=1)
                     feature=self.concat_layers[idx](feature)
                 else:
+                    assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
                     feature=main[idx]+aux[idx]
                 feature=self.layers[idx](feature)
             else:
                 feature=self.layers[idx](feature)
-                if self.config.model.merge_type=='concat':
+                if self.merge_type=='concat':
                     feature=torch.cat([feature,main[idx],aux[idx]],dim=1)
                     feature=self.concat_layers[idx](feature)
                 else:
+                    assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
                     feature+=main[idx]+aux[idx]
                 
         return feature
