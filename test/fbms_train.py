@@ -26,10 +26,10 @@ class Metric_Acc():
     def update(self,predicts,labels):
         # print(labels.shape,predicts.shape)
         if labels.shape != predicts.shape:
-            pred=torch.argmax(predicts,dim=1,keepdim=True).numpy()
+            pred=torch.argmax(predicts,dim=1,keepdim=True).data.cpu().numpy()
         else:
             #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            pred=(predicts>0.5).numpy()
+            pred=(predicts>0.5).data.cpu().numpy()
         label=labels.numpy()
         
         self.tp+=np.sum(np.logical_and(pred==1,label==1))
