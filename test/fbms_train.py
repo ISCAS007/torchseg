@@ -18,11 +18,12 @@ from utils.disc_tools import str2bool
 class Metric_Acc():
     def __init__(self):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.tp=torch.tensor(0,dtype=torch.float,device=device)
-        self.fp=torch.tensor(0,dtype=torch.float,device=device)
-        self.tn=torch.tensor(0,dtype=torch.float,device=device)
-        self.fn=torch.tensor(0,dtype=torch.float,device=device)
-        self.count=torch.tensor(0,dtype=torch.float,device=device)
+        self.dtype=torch.int64
+        self.tp=torch.tensor(0,dtype=self.dtype,device=device)
+        self.fp=torch.tensor(0,dtype=self.dtype,device=device)
+        self.tn=torch.tensor(0,dtype=self.dtype,device=device)
+        self.fn=torch.tensor(0,dtype=self.dtype,device=device)
+        self.count=torch.tensor(0,dtype=self.dtype,device=device)
         
     def update(self,predicts,labels):
         # print(labels.shape,predicts.shape)
@@ -32,12 +33,12 @@ class Metric_Acc():
             #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             pred=(predicts>0.5).type_as(labels)
         
-        self.tp+=torch.sum(((pred==1) & (labels==1)).to(torch.float))
-        self.fp+=torch.sum(((pred==1) & (labels==0)).to(torch.float))
-        self.tn+=torch.sum(((pred==0) & (labels==0)).to(torch.float))
-        self.fn+=torch.sum(((pred==0) & (labels==1)).to(torch.float))
+        self.tp+=torch.sum(((pred==1) & (labels==1)).to(self.dtype))
+        self.fp+=torch.sum(((pred==1) & (labels==0)).to(self.dtype))
+        self.tn+=torch.sum(((pred==0) & (labels==0)).to(self.dtype))
+        self.fn+=torch.sum(((pred==0) & (labels==1)).to(self.dtype))
             
-        self.count+=torch.sum(((labels<=1)).to(torch.float))
+        self.count+=torch.sum(((labels<=1)).to(self.dtype))
         
         assert self.tp+self.fp+self.tn+self.fn==self.count, \
         'tp={}; fp={}; tn={}; fn={}; count={} \n pred {}, labels {}'.format(self.tp,
@@ -45,13 +46,13 @@ class Metric_Acc():
         
     
     def get_acc(self):
-        return (self.tp+self.tn)/(self.count+1e-5)
+        return (self.tp+self.tn).to(torch.float)/(self.count+1e-5).to(torch.float)
     
     def get_precision(self):
-        return self.tp/(self.tp+self.fp+1e-5)
+        return self.tp.to(torch.float)/(self.tp+self.fp+1e-5).to(torch.float)
     
     def get_recall(self):
-        return self.tp/(self.tp+self.fn+1e-5)
+        return self.tp.to(torch.float)/(self.tp+self.fn+1e-5).to(torch.float)
     
     def get_fmeasure(self):
         p=self.get_precision()
@@ -60,11 +61,11 @@ class Metric_Acc():
     
     def reset(self):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.tp=torch.tensor(0,dtype=torch.float,device=device)
-        self.fp=torch.tensor(0,dtype=torch.float,device=device)
-        self.tn=torch.tensor(0,dtype=torch.float,device=device)
-        self.fn=torch.tensor(0,dtype=torch.float,device=device)
-        self.count=torch.tensor(0,dtype=torch.float,device=device)
+        self.tp=torch.tensor(0,dtype=self.dtype,device=device)
+        self.fp=torch.tensor(0,dtype=self.dtype,device=device)
+        self.tn=torch.tensor(0,dtype=self.dtype,device=device)
+        self.fn=torch.tensor(0,dtype=self.dtype,device=device)
+        self.count=torch.tensor(0,dtype=self.dtype,device=device)
 
 class Metric_Mean():
     def __init__(self):
