@@ -17,11 +17,12 @@ from utils.disc_tools import str2bool
 
 class Metric_Acc():
     def __init__(self):
-        self.tp=torch.tensor(0,dtype=torch.float)
-        self.fp=torch.tensor(0,dtype=torch.float)
-        self.tn=torch.tensor(0,dtype=torch.float)
-        self.fn=torch.tensor(0,dtype=torch.float)
-        self.count=torch.tensor(0,dtype=torch.float)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.tp=torch.tensor(0,dtype=torch.float,device=device)
+        self.fp=torch.tensor(0,dtype=torch.float,device=device)
+        self.tn=torch.tensor(0,dtype=torch.float,device=device)
+        self.fn=torch.tensor(0,dtype=torch.float,device=device)
+        self.count=torch.tensor(0,dtype=torch.float,device=device)
         
     def update(self,predicts,labels):
         # print(labels.shape,predicts.shape)
@@ -58,11 +59,12 @@ class Metric_Acc():
         return 2*p*r/(p+r+1e-5)
     
     def reset(self):
-        self.tp=torch.tensor(0,dtype=torch.float)
-        self.fp=torch.tensor(0,dtype=torch.float)
-        self.tn=torch.tensor(0,dtype=torch.float)
-        self.fn=torch.tensor(0,dtype=torch.float)
-        self.count=torch.tensor(0,dtype=torch.float)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.tp=torch.tensor(0,dtype=torch.float,device=device)
+        self.fp=torch.tensor(0,dtype=torch.float,device=device)
+        self.tn=torch.tensor(0,dtype=torch.float,device=device)
+        self.fn=torch.tensor(0,dtype=torch.float,device=device)
+        self.count=torch.tensor(0,dtype=torch.float,device=device)
 
 class Metric_Mean():
     def __init__(self):
