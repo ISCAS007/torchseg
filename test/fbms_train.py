@@ -17,6 +17,9 @@ from utils.disc_tools import str2bool
 class Metric_Acc():
     def __init__(self):
         self.tp=0
+        self.fp=0
+        self.tn=0
+        self.fn=0
         self.count=0
         
     def update(self,predicts,labels):
@@ -25,16 +28,29 @@ class Metric_Acc():
             pred=torch.argmax(predicts,dim=1,keepdim=True)
         else:
             pred=torch.ge(predicts,0.5).to(device).long()
-        result=(pred==labels).to(torch.float)
-        self.tp+=torch.sum(result)
-        count=1
-        for s in result.shape:
-            count*=s
+        self.tp+=torch.sum((pred*labels==1).to(torch.float))
+        self.fp+=torch.sum((pred-labels==1).to(torch.float))
+        self.tn+=torch.sum((pred+labels==0).to(torch.float))
+        self.fn+=torch.sum((labels-pred==1).to(torch.float))
             
-        self.count+=count
+        self.count+=torch.sum((labels!=255).to(torch.float))
         
+        assert self.tp+self.fp+self.tn+self.fn==self.count,'tp=%d, fp=%d, tn=%d, fn=%d, count=%d'%(self.tp,self.fp,self.tn,self.fn,self.count)
+        
+    
     def get_acc(self):
-        return self.tp/self.count
+        return (self.tp+self.tn)/self.count
+    
+    def get_precision(self):
+        return self.tp/(self.tp+self.fp+1e-5)
+    
+    def get_recall(self):
+        return self.tp/(self.tp+self.fn+1e-5)
+    
+    def get_fmeasure(self):
+        p=self.get_precision()
+        r=self.get_recall()
+        return 2*p*r/(p+r+1e-5)
     
     def reset(self):
         self.tp=0
@@ -237,10 +253,16 @@ for epoch in range(config['epoch']):
                 total_loss_value.backward()
                 optimizer.step()
         acc=metric_acc.get_acc()
+        precision=metric_acc.get_precision()
+        recall=metric_acc.get_recall()
+        fmeasure=metric_acc.get_fmeasure()
         mean_stn_loss=metric_stn_loss.get_mean()
         mean_mask_loss=metric_mask_loss.get_mean()
         mean_total_loss=metric_total_loss.get_mean()
         writer.add_scalar(split+'/acc',acc,epoch)
+        writer.add_scalar(split+'/precision',precision,epoch)
+        writer.add_scalar(split+'/recall',recall,epoch)
+        writer.add_scalar(split+'/fmeasure',fmeasure,epoch)
         writer.add_scalar(split+'/stn_loss',mean_stn_loss,epoch)
         writer.add_scalar(split+'/mask_loss',mean_mask_loss,epoch)
         writer.add_scalar(split+'/total_loss',mean_total_loss,epoch)
