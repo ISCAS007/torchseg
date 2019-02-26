@@ -94,6 +94,11 @@ def get_parser():
                         type=int,
                         default=0)
     
+    parser.add_argument('--ignore_outOfRoi',
+                        help='padding for out of roi or not, false for padding',
+                        type=str2bool,
+                        default=True)
+    
     parser.add_argument("--save_model",
                         help="save model or not",
                         type=str2bool,
@@ -126,6 +131,7 @@ args = parser.parse_args()
 config={}
 config['dataset']=args.dataset
 config['use_part_number']=args.use_part_number
+config['ignore_outOfRoi']=args.ignore_outOfRoi
 config['net_name']=args.net_name
 
 if args.dataset=='FBMS':

@@ -12,7 +12,7 @@ class cdnet_dataset(td.Dataset):
         self.config=config
         self.split=split
         self.normalizations=normalizations
-        
+        self.ignore_outOfRoi=self.config['ignore_outOfRoi']
         self.img_path_pairs=self.get_img_path_pairs(self.config['root_path'])
         if self.split in ['train','val']:
             if self.config['use_part_number'] > 0:
@@ -162,6 +162,11 @@ class cdnet_dataset(td.Dataset):
         resize_frame_images=[cv2.resize(img,(224,224),interpolation=cv2.INTER_LINEAR) for img in frame_images]
         resize_gt_image=cv2.resize(gt_image,(224,224),interpolation=cv2.INTER_NEAREST)
         
+        # padding for out of roi
+        if self.ignore_outOfRoi is False:
+            random_pixel=np.random.randint(low=0,high=256,size=(3,))
+            for img in resize_frame_images:
+                img[resize_gt_image==85]=random_pixel
         # normalize image
         if self.normalizations is not None:
             resize_frame_images = [self.normalizations.forward(img) for img in resize_frame_images]
@@ -172,7 +177,10 @@ class cdnet_dataset(td.Dataset):
         
         # for groundtruth image: outside roi=85,unknown=170,motion=255,hard shadow=50,static=0
         labels=np.zeros_like(resize_gt_image)
-        labels[resize_gt_image==85]=255
+        if self.ignore_outOfRoi is False:
+            labels[resize_gt_image==85]=0
+        else:
+            labels[resize_gt_image==85]=255
         labels[resize_gt_image==170]=1
         labels[resize_gt_image==255]=1
         labels=labels.astype(np.uint8)
