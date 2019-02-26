@@ -12,6 +12,7 @@ import os
 import torch
 import time
 import argparse
+import numpy as np
 from utils.disc_tools import str2bool
 
 class Metric_Acc():
@@ -25,17 +26,18 @@ class Metric_Acc():
     def update(self,predicts,labels):
         # print(labels.shape,predicts.shape)
         if labels.shape != predicts.shape:
-            pred=torch.argmax(predicts,dim=1,keepdim=True).type_as(labels)
+            pred=torch.argmax(predicts,dim=1,keepdim=True).numpy()
         else:
             #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            pred=(predicts>0.5).type_as(labels)
-        self.tp+=torch.sum((pred+labels==2))
-        self.fp+=torch.sum((pred-labels==1))
-        # 1+255==0 for torch.uint8
-        self.tn+=torch.sum((pred+pred+labels==0))
-        self.fn+=torch.sum((labels-pred==1))
+            pred=(predicts>0.5).numpy()
+        label=labels.numpy()
+        
+        self.tp+=np.sum(np.logical_and(pred==1,label==1))
+        self.fp+=np.sum(np.logical_and(pred==1,label==0))
+        self.tn+=np.sum(np.logical_and(pred==0,label==0))
+        self.fn+=np.sum(np.logical_and(pred==0,label==1))
             
-        self.count+=torch.sum((labels<255))
+        self.count+=np.sum((label<=1))
         
         assert self.tp+self.fp+self.tn+self.fn==self.count, \
         'tp={}; fp={}; tn={}; fn={}; count={} \n pred {}, labels {}'.format(self.tp,
