@@ -17,27 +17,26 @@ from utils.disc_tools import str2bool
 
 class Metric_Acc():
     def __init__(self):
-        self.tp=0.0
-        self.fp=0.0
-        self.tn=0.0
-        self.fn=0.0
-        self.count=0.0
+        self.tp=torch.tensor(0,dtype=torch.float)
+        self.fp=torch.tensor(0,dtype=torch.float)
+        self.tn=torch.tensor(0,dtype=torch.float)
+        self.fn=torch.tensor(0,dtype=torch.float)
+        self.count=torch.tensor(0,dtype=torch.float)
         
     def update(self,predicts,labels):
         # print(labels.shape,predicts.shape)
         if labels.shape != predicts.shape:
-            pred=torch.argmax(predicts,dim=1,keepdim=True).data.cpu().numpy()
+            pred=torch.argmax(predicts,dim=1,keepdim=True).type_as(labels)
         else:
             #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            pred=(predicts>0.5).data.cpu().numpy()
-        label=labels.data.cpu().numpy()
+            pred=(predicts>0.5).type_as(labels)
         
-        self.tp+=np.sum(np.logical_and(pred==1,label==1))
-        self.fp+=np.sum(np.logical_and(pred==1,label==0))
-        self.tn+=np.sum(np.logical_and(pred==0,label==0))
-        self.fn+=np.sum(np.logical_and(pred==0,label==1))
+        self.tp+=torch.sum(((pred==1) & (labels==1)).to(torch.float))
+        self.fp+=torch.sum(((pred==1) & (labels==0)).to(torch.float))
+        self.tn+=torch.sum(((pred==0) & (labels==0)).to(torch.float))
+        self.fn+=torch.sum(((pred==0) & (labels==1)).to(torch.float))
             
-        self.count+=np.sum((label<=1))
+        self.count+=torch.sum(((labels<=1)).to(torch.float))
         
         assert self.tp+self.fp+self.tn+self.fn==self.count, \
         'tp={}; fp={}; tn={}; fn={}; count={} \n pred {}, labels {}'.format(self.tp,
@@ -45,7 +44,7 @@ class Metric_Acc():
         
     
     def get_acc(self):
-        return (self.tp+self.tn)/self.count
+        return (self.tp+self.tn)/(self.count+1e-5)
     
     def get_precision(self):
         return self.tp/(self.tp+self.fp+1e-5)
@@ -59,8 +58,11 @@ class Metric_Acc():
         return 2*p*r/(p+r+1e-5)
     
     def reset(self):
-        self.tp=0
-        self.count=0
+        self.tp=torch.tensor(0,dtype=torch.float)
+        self.fp=torch.tensor(0,dtype=torch.float)
+        self.tn=torch.tensor(0,dtype=torch.float)
+        self.fn=torch.tensor(0,dtype=torch.float)
+        self.count=torch.tensor(0,dtype=torch.float)
 
 class Metric_Mean():
     def __init__(self):
