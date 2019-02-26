@@ -30,7 +30,7 @@ class Metric_Acc():
         else:
             #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             pred=(predicts>0.5).data.cpu().numpy()
-        label=labels.numpy()
+        label=labels.data.cpu().numpy()
         
         self.tp+=np.sum(np.logical_and(pred==1,label==1))
         self.fp+=np.sum(np.logical_and(pred==1,label==0))
