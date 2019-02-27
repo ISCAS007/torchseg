@@ -690,7 +690,7 @@ class transform_segnet(TN.Module):
                 out_c=backbone.get_feature_map_channel(idx)
 #                print('idx,in_c,out_c',idx,in_c,out_c)
                 
-                if self.config.model.use_none_layer:
+                if self.config.model.use_none_layer and idx>3:
                     layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,

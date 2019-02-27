@@ -8,10 +8,11 @@ import cv2
 import sys
 
 class cdnet_dataset(td.Dataset):
-    def __init__(self,config,split='train',normalizations=None):
+    def __init__(self,config,split='train',normalizations=None, augmentations=None):
         self.config=config
         self.split=split
         self.normalizations=normalizations
+        self.augmentations=augmentations
         self.ignore_outOfRoi=self.config['ignore_outOfRoi']
         self.img_path_pairs=self.get_img_path_pairs(self.config['root_path'])
         if self.split in ['train','val']:
@@ -157,6 +158,10 @@ class cdnet_dataset(td.Dataset):
         
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_img_path,aux_img_path]]
         gt_image=cv2.imread(gt_img_path,cv2.IMREAD_GRAYSCALE)
+        
+        # augmentation dataset
+        if self.split=='train' and self.augmentations is not None:
+            frame_images=[self.augmentations.transform(img) for img in frame_images]
         
         # resize image
         resize_frame_images=[cv2.resize(img,(224,224),interpolation=cv2.INTER_LINEAR) for img in frame_images]

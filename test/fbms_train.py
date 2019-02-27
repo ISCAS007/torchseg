@@ -8,6 +8,7 @@ from models.motionseg.motion_fcn import motion_fcn,motion_fcn_stn
 from models.motionseg.motion_unet import motion_unet,motion_unet_stn
 from utils.torch_tools import init_writer
 from dataset.dataset_generalize import image_normalizations
+from utils.augmentor import Augmentations
 import os
 import torch
 import time
@@ -111,7 +112,7 @@ def get_parser():
     
     parser.add_argument('--upsample_layer',
                         help='upsample_layer for motion_fcn',
-                        choices=[3,4,5],
+                        choices=[1,2,3,4,5],
                         type=int,
                         default=3)
     
@@ -191,6 +192,7 @@ if __name__ == '__main__':
     config['freeze_layer']=args.freeze_layer
     
     normer=image_normalizations(ways='-1,1')
+    augmentations = Augmentations()
     dataset_loaders={}
     for split in ['train','val']:
         if args.dataset=='FBMS':
