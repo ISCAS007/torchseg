@@ -22,6 +22,16 @@ class motion_backbone(TN.Module):
         
         assert self.deconv_layer > self.decoder_layer,'deconv %d must > decoder %d'%(self.decon_layer,self.decoder_layer)
         
+        if hasattr(self.config,'eps'):
+            self.eps=self.config.eps
+        else:
+            self.eps=1e-5
+        
+        if hasattr(self.config,'momentum'):
+            self.momentum=self.config.momentum
+        else:
+            self.momentum=0.1
+            
         if use_none_layer == False:
             model=self.get_model()
             if self.config.backbone_name.find('vgg')>=0:
