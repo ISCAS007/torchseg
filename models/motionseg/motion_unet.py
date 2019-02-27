@@ -2,7 +2,7 @@
 
 import torch.nn as nn
 from models.motionseg.motion_backbone import motion_backbone,transform_motionnet
-from models.upsample import get_suffix_net, transform_segnet
+from models.upsample import get_suffix_net
 from models.motionseg.motion_fcn import stn,dict2edict
 
 class motion_unet(nn.Module):

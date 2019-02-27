@@ -325,17 +325,29 @@ class transform_motionnet(TN.Module):
             elif idx==self.deconv_layer:
                 in_c=out_c=backbone.get_feature_map_channel(idx)
 #                print('idx,in_c,out_c',idx,in_c,out_c)
-                layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
-                                                 out_channels=out_c,
-                                                 kernel_size=3,
-                                                 stride=1,
-                                                 padding=1),
-                                    conv_bn_relu(in_channels=out_c,
-                                                 out_channels=out_c,
-                                                 kernel_size=1,
-                                                 stride=1,
-                                                 padding=0)
-                                    )
+                if self.use_none_layer and idx>3:
+                    layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=3,
+                                                     stride=1,
+                                                     padding=1),
+                                        conv_bn_relu(in_channels=out_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=1,
+                                                     stride=1,
+                                                     padding=0))
+                else:
+                    layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
+                                        conv_bn_relu(in_channels=in_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=3,
+                                                     stride=1,
+                                                     padding=1),
+                                        conv_bn_relu(in_channels=out_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=1,
+                                                     stride=1,
+                                                     padding=0))
                 self.layers.append(layer)
                 if self.merge_type=='concat':
                     self.concat_layers.append(conv_bn_relu(in_channels=2*out_c,
