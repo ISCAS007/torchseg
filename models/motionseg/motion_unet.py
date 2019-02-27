@@ -12,7 +12,7 @@ class motion_unet(nn.Module):
         decoder_config.model.merge_type='concat'
         self.input_shape=decoder_config.model.input_shape
         self.upsample_layer=config['upsample_layer']
-        self.backbone=motion_backbone(decoder_config.model,use_none_layer=True)
+        self.backbone=motion_backbone(decoder_config.model,use_none_layer=config['use_none_layer'])
         
         self.midnet=transform_motionnet(self.backbone,decoder_config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)

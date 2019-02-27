@@ -110,6 +110,11 @@ def get_parser():
                         choices=backbone_names,
                         default='vgg16')
     
+    parser.add_argument('--batch_size',
+                        help='batch size for experiment',
+                        type=int,
+                        default=4)
+    
     parser.add_argument('--upsample_layer',
                         help='upsample_layer for motion_fcn',
                         choices=[1,2,3,4,5],
@@ -213,7 +218,7 @@ if __name__ == '__main__':
         else:
             xxx_dataset=cdnet_dataset(config,split,normalizations=normer)
         
-        xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=4,shuffle=True,drop_last=False,num_workers=2)
+        xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=args.batch_size,shuffle=True,drop_last=False,num_workers=2)
         dataset_loaders[split]=xxx_loader
     
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
