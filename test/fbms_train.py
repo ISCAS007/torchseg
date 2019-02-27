@@ -123,7 +123,7 @@ def get_parser():
     
     parser.add_argument('--freeze_layer',
                         help='freeze layer for motion_fcn',
-                        choices=[0,1,2,3],
+                        choices=[0,1,2,3,4,5],
                         type=int,
                         default=1)
     

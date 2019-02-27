@@ -330,24 +330,14 @@ class transform_motionnet(TN.Module):
                                                      out_channels=out_c,
                                                      kernel_size=3,
                                                      stride=1,
-                                                     padding=1),
-                                        conv_bn_relu(in_channels=out_c,
-                                                     out_channels=out_c,
-                                                     kernel_size=1,
-                                                     stride=1,
-                                                     padding=0))
+                                                     padding=1))
                 else:
                     layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
                                         conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,
                                                      stride=1,
-                                                     padding=1),
-                                        conv_bn_relu(in_channels=out_c,
-                                                     out_channels=out_c,
-                                                     kernel_size=1,
-                                                     stride=1,
-                                                     padding=0))
+                                                     padding=1))
                 self.layers.append(layer)
                 if self.merge_type=='concat':
                     self.concat_layers.append(conv_bn_relu(in_channels=2*out_c,
@@ -367,24 +357,14 @@ class transform_motionnet(TN.Module):
                                                      out_channels=out_c,
                                                      kernel_size=3,
                                                      stride=1,
-                                                     padding=1),
-                                        conv_bn_relu(in_channels=out_c,
-                                                     out_channels=out_c,
-                                                     kernel_size=1,
-                                                     stride=1,
-                                                     padding=0))
+                                                     padding=1))
                 else:
                     layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
                                         conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,
                                                      stride=1,
-                                                     padding=1),
-                                        conv_bn_relu(in_channels=out_c,
-                                                     out_channels=out_c,
-                                                     kernel_size=1,
-                                                     stride=1,
-                                                     padding=0)
+                                                     padding=1)
                                     )
                 self.layers.append(layer)
                 if self.merge_type=='concat':
