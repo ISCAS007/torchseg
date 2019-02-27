@@ -20,6 +20,8 @@ def dict2edict(config):
     backbone_config.input_shape=[224,224]
     backbone_config.backbone_name=config['backbone_name']
     backbone_config.upsample_layer=config['upsample_layer']
+    backbone_config.deconv_layer=config['deconv_layer']
+    backbone_config.use_none_layer=config['use_none_layer']
     backbone_config.net_name='fcn'
     backbone_config.backbone_freeze=False
     backbone_config.freeze_layer=config['freeze_layer']

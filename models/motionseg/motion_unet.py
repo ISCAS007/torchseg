@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import torch.nn as nn
-from models.backbone import backbone
+from models.motionseg.motion_backbone import motion_backbone,transform_motionnet
 from models.upsample import get_suffix_net, transform_segnet
 from models.motionseg.motion_fcn import stn,dict2edict
 
@@ -12,9 +12,9 @@ class motion_unet(nn.Module):
         decoder_config.model.merge_type='concat'
         self.input_shape=decoder_config.model.input_shape
         self.upsample_layer=config['upsample_layer']
-        self.backbone=backbone(decoder_config.model,use_none_layer=True)
+        self.backbone=motion_backbone(decoder_config.model,use_none_layer=True)
         
-        self.midnet=transform_segnet(self.backbone,decoder_config)
+        self.midnet=transform_motionnet(self.backbone,decoder_config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
         self.class_number=2
         self.decoder=get_suffix_net(decoder_config,

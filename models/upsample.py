@@ -678,8 +678,8 @@ class transform_segnet(TN.Module):
                                     )
                 self.layers.append(layer)
                 if self.merge_type=='concat':
-                    self.concat_layers.append(conv_bn_relu(in_channels=in_c*2,
-                                                    out_channels=out_c,
+                    self.concat_layers.append(conv_bn_relu(in_channels=2*out_c,
+                                                    out_channels=in_c,
                                                     kernel_size=1,
                                                     stride=1,
                                                     padding=0))
@@ -716,8 +716,8 @@ class transform_segnet(TN.Module):
                                     )
                 self.layers.append(layer)
                 if self.merge_type=='concat':
-                    self.concat_layers.append(conv_bn_relu(in_channels=in_c*3,
-                                                    out_channels=out_c,
+                    self.concat_layers.append(conv_bn_relu(in_channels=in_c+2*out_c,
+                                                    out_channels=in_c,
                                                     kernel_size=1,
                                                     stride=1,
                                                     padding=0))

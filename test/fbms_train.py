@@ -122,10 +122,21 @@ def get_parser():
                         type=int,
                         default=1)
     
+    parser.add_argument('--deconv_layer',
+                        help='deconv layer for motion_unet',
+                        choices=[1,2,3,4,5],
+                        type=int,
+                        default=5)
+    
     parser.add_argument('--use_part_number',
                         help='the dataset size, 0 for total dataset',
                         type=int,
                         default=0)
+    
+    parser.add_argument('--use_none_layer',
+                        help='use nono layer to replace maxpool2d or not',
+                        type=str2bool,
+                        default=False)
     
     parser.add_argument('--ignore_outOfRoi',
                         help='padding for out of roi or not, false for padding',
@@ -190,6 +201,8 @@ if __name__ == '__main__':
     config['backbone_name']=args.backbone_name
     config['upsample_layer']=args.upsample_layer
     config['freeze_layer']=args.freeze_layer
+    config['use_none_layer']=args.use_none_layer
+    config['deconv_layer']=args.deconv_layer
     
     normer=image_normalizations(ways='-1,1')
     augmentations = Augmentations()
