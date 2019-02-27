@@ -763,13 +763,14 @@ class transform_segnet(TN.Module):
                     feature=main[idx]+aux[idx]
                 feature=self.layers[idx](feature)
             else:
-                feature=self.layers[idx](feature)
                 if self.merge_type=='concat':
                     feature=torch.cat([feature,main[idx],aux[idx]],dim=1)
                     feature=self.concat_layers[idx](feature)
                 else:
                     assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
                     feature+=main[idx]+aux[idx]
+                    
+                feature=self.layers[idx](feature)
                 
         return feature
 
