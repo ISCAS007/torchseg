@@ -7,4 +7,4 @@
 ## model
 - motion_fcn
 - motion_unet
-![motion_unet](models/motion_unet.png)
+![motion_unet](motion_unet.png)
