@@ -15,6 +15,8 @@ import time
 import argparse
 import numpy as np
 from utils.disc_tools import str2bool
+import torchsummary
+import sys
 
 class Metric_Acc():
     def __init__(self):
@@ -91,6 +93,12 @@ class Metric_Mean():
 
 def get_parser():
     parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--app',
+                        help='application name',
+                        choices=['train','summary'],
+                        default='train')
+    
     parser.add_argument("--net_name",
                         help="network name",
                         choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn',
@@ -182,7 +190,7 @@ def get_parser():
 if __name__ == '__main__':
     parser=get_parser()
     args = parser.parse_args()
-    
+        
     config={}
     config['dataset']=args.dataset
     config['use_part_number']=args.use_part_number
@@ -214,6 +222,19 @@ if __name__ == '__main__':
     config['use_none_layer']=args.use_none_layer
     config['deconv_layer']=args.deconv_layer
     
+    if config['net_name'] in ['motion_stn','motion_net']:
+        model=globals()[config['net_name']]() 
+    else:
+        model=globals()[config['net_name']](config)
+    
+    # support for cpu/gpu
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    
+    if args.app=='summary':
+        torchsummary.summary(model, ((3, 224, 224),(3, 224, 224)))
+        sys.exit(0)
+        
     normer=image_normalizations(ways='-1,1')
     augmentations = Augmentations()
     dataset_loaders={}
@@ -233,16 +254,7 @@ if __name__ == '__main__':
     
     writer=init_writer(config,log_dir)
     
-    if config['net_name'] in ['motion_stn','motion_net']:
-        model=globals()[config['net_name']]() 
-    else:
-        model=globals()[config['net_name']](config)
-    
     seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
-    
-    # support for cpu/gpu
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.to(device)
     
     optimizer_params = [{'params': [p for p in model.parameters() if p.requires_grad]}]
     optimizer = torch.optim.Adam(

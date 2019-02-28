@@ -6,9 +6,46 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from easydict import EasyDict as edict
-from models.upsample import conv_bn_relu
 import warnings
 
+class conv_bn_relu(TN.Module):
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size=1,
+                 padding=0,
+                 stride=1,
+                 eps=1e-5,
+                 momentum=0.1,
+                 inplace=False):
+        """
+        out_channels: class number
+        upsample_ratio: 2**upsample_layer
+        """
+        super().__init__()
+        bias = False
+        self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
+                                                    out_channels=out_channels,
+                                                    kernel_size=kernel_size,
+                                                    padding=padding,
+                                                    stride=stride,
+                                                    bias=bias),
+                                          TN.BatchNorm2d(num_features=out_channels,
+                                                   eps=eps,
+                                                   momentum=momentum),
+                                          TN.ReLU(inplace=inplace))
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        x = self.conv_bn_relu(x)
+        return x
+    
 class motion_backbone(TN.Module):
     def __init__(self,config,use_none_layer=False):
         """
