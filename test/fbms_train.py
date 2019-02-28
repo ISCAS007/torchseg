@@ -115,6 +115,11 @@ def get_parser():
                         type=int,
                         default=4)
     
+    parser.add_argument('--epoch',
+                        help='epoch for experiment',
+                        type=int,
+                        default=100)
+    
     parser.add_argument('--upsample_layer',
                         help='upsample_layer for motion_fcn',
                         choices=[1,2,3,4,5],
@@ -194,7 +199,7 @@ if __name__ == '__main__':
         
     config['frame_gap']=5
     config['log_dir']=os.path.expanduser('~/tmp/logs/motion')
-    config['epoch']=30
+    config['epoch']=args.epoch
     config['init_lr']=1e-4
     config['stn_loss_weight']=args.stn_loss_weight
     config['motion_loss_weight']=args.motion_loss_weight
