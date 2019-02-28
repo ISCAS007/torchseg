@@ -75,7 +75,8 @@ class conv_bn_relu(TN.Module):
                  padding=0,
                  stride=1,
                  eps=1e-5,
-                 momentum=0.1):
+                 momentum=0.1,
+                 inplace=False):
         """
         out_channels: class number
         upsample_ratio: 2**upsample_layer
@@ -91,7 +92,7 @@ class conv_bn_relu(TN.Module):
                                           local_bn(num_features=out_channels,
                                                    eps=eps,
                                                    momentum=momentum),
-                                          TN.ReLU(),
+                                          TN.ReLU(inplace=inplace),
                                           local_dropout2d(p=0.1))
         for m in self.modules():
             if isinstance(m, TN.Conv2d):

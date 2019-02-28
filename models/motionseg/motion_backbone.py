@@ -316,7 +316,8 @@ class transform_motionnet(TN.Module):
             self.merge_type='mean'
         else:
             self.merge_type=self.config.model.merge_type
-            
+        
+        inplace=True
         in_c=out_c=0
         for idx in range(self.deconv_layer+1):
             if idx<self.decoder_layer:
@@ -330,21 +331,24 @@ class transform_motionnet(TN.Module):
                                                      out_channels=out_c,
                                                      kernel_size=3,
                                                      stride=1,
-                                                     padding=1))
+                                                     padding=1,
+                                                     inplace=inplace))
                 else:
                     layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
                                         conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,
                                                      stride=1,
-                                                     padding=1))
+                                                     padding=1,
+                                                     inplace=inplace))
                 self.layers.append(layer)
                 if self.merge_type=='concat':
                     self.concat_layers.append(conv_bn_relu(in_channels=2*out_c,
                                                     out_channels=in_c,
                                                     kernel_size=1,
                                                     stride=1,
-                                                    padding=0))
+                                                    padding=0,
+                                                    inplace=inplace))
                 else:
                     assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
             else:
@@ -357,14 +361,16 @@ class transform_motionnet(TN.Module):
                                                      out_channels=out_c,
                                                      kernel_size=3,
                                                      stride=1,
-                                                     padding=1))
+                                                     padding=1,
+                                                     inplace=inplace))
                 else:
                     layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
                                         conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,
                                                      stride=1,
-                                                     padding=1)
+                                                     padding=1,
+                                                     inplace=inplace)
                                     )
                 self.layers.append(layer)
                 if self.merge_type=='concat':
@@ -372,7 +378,8 @@ class transform_motionnet(TN.Module):
                                                     out_channels=in_c,
                                                     kernel_size=1,
                                                     stride=1,
-                                                    padding=0))
+                                                    padding=0,
+                                                    inplace=inplace))
                 else:
                     assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
             
