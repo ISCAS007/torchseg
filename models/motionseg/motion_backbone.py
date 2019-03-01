@@ -181,6 +181,9 @@ class motion_backbone(TN.Module):
         return features
         
     def forward(self,x,level):
+        if level==0:
+            return x
+        
         assert level in [1,2,3,4,5],'feature level %d not in range(0,5)'%level
         
         if self.format=='vgg':
