@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
-import torchvision as TV
+import torch.nn.functional as F
 import torch.nn as TN
 import numpy as np
 import torch
@@ -451,7 +451,36 @@ class transform_motionnet(TN.Module):
                 
                 feature=self.layers[idx](feature)
         return feature
-    
+
+class upsample_bilinear(TN.Module):
+    def __init__(self, in_channels, out_channels, output_shape, eps=1e-5, momentum=0.1):
+        """
+        out_channels: class number
+        """
+        super().__init__()
+        self.output_shape = output_shape
+        self.conv = TN.Conv2d(in_channels=in_channels,
+                              out_channels=out_channels,
+                              kernel_size=1,
+                              padding=0,
+                              stride=1,
+                              bias=False)
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+
+    # TODO upsampel feature is self.conv_bn_relu(x) or self.conv(x)
+    def forward(self, x):
+        x = self.conv(x)
+        x = F.interpolate(x, size=self.output_shape,
+                          mode='bilinear', align_corners=True)
+
+        return x
+        
 if __name__ == '__main__':
     config=edict()
     config.backbone_name='resnet152'

@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import torch.nn as nn
-from models.motionseg.motion_backbone import motion_backbone,transform_motionnet
-from models.upsample import get_suffix_net
+from models.motionseg.motion_backbone import motion_backbone,transform_motionnet,motionnet_upsample_bilinear
 from models.motionseg.motion_fcn import stn,dict2edict
 
 class motion_unet(nn.Module):
@@ -17,9 +16,10 @@ class motion_unet(nn.Module):
         self.midnet=transform_motionnet(self.backbone,decoder_config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
         self.class_number=2
-        self.decoder=get_suffix_net(decoder_config,
-                                    self.midnet_out_channels,
-                                    self.class_number)
+        
+        self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
+                                                     out_channels=self.class_number,
+                                                     output_shape=self.input_shape[0:2])
         
     def forward(self,imgs):
         features=[self.backbone.forward_layers(img) for img in imgs]
