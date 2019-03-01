@@ -452,7 +452,7 @@ class transform_motionnet(TN.Module):
                 feature=self.layers[idx](feature)
         return feature
 
-class upsample_bilinear(TN.Module):
+class motionnet_upsample_bilinear(TN.Module):
     def __init__(self, in_channels, out_channels, output_shape, eps=1e-5, momentum=0.1):
         """
         out_channels: class number
