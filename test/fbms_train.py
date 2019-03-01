@@ -130,7 +130,7 @@ def get_parser():
     
     parser.add_argument('--upsample_layer',
                         help='upsample_layer for motion_fcn',
-                        choices=[1,2,3,4,5],
+                        choices=[0,1,2,3,4,5],
                         type=int,
                         default=3)
     
