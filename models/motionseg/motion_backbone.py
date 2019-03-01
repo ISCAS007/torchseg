@@ -180,12 +180,7 @@ class motion_backbone(TN.Module):
         
         return features
         
-    def forward(self,x,level):
-        if level==0:
-            return x
-        
-        assert level in [1,2,3,4,5],'feature level %d not in range(0,5)'%level
-        
+    def forward(self,x,level):        
         if self.format=='vgg':
             assert hasattr(self.layer_depths,str(level))
             for idx,layer in enumerate(self.features):
@@ -404,14 +399,21 @@ class transform_motionnet(TN.Module):
                                                      padding=1,
                                                      inplace=inplace))
                 else:
-                    layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
+                    if idx>0:
+                        layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
                                         conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,
                                                      stride=1,
                                                      padding=1,
-                                                     inplace=inplace)
-                                    )
+                                                     inplace=inplace))
+                    else:
+                        layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=3,
+                                                     stride=1,
+                                                     padding=1,
+                                                     inplace=inplace))
                 self.layers.append(layer)
                 if self.merge_type=='concat':
                     self.concat_layers.append(conv_bn_relu(in_channels=in_c+2*out_c,
@@ -488,10 +490,15 @@ if __name__ == '__main__':
     config=edict()
     config.backbone_name='resnet152'
     config.layer_preference='first'
+    config.upsample_layer=1
+    config.deconv_layer=5
+    config.freeze_layer=1
+    config.backbone_freeze=False
+    config.modify_resnet_head=False
     
-    for name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','resnet18','resnet34','resnet50','resnet101','resnet152']:
+    for name in ['vgg11','vgg16','vgg19_bn','resnet50']:
         print(name+'*'*50)
         config.backbone_name=name
         bb=motion_backbone(config)
         bb.show_layers()
-        break
+        print(bb.get_layer_shapes([224,224]))

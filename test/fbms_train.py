@@ -103,12 +103,12 @@ def get_parser():
                         help="network name",
                         choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn',
                                  'motion_unet','motion_unet_stn'],
-                        default='motion_stn')
+                        default='motion_unet')
     
     parser.add_argument('--dataset',
                         help='dataset name (FBMS)',
                         choices=['FBMS','cdnet2014'],
-                        default='FBMS')
+                        default='cdnet2014')
     
     backbone_names=['vgg'+str(number) for number in [11,13,16,19]]
     backbone_names+=[s+'_bn' for s in backbone_names]
@@ -132,7 +132,7 @@ def get_parser():
                         help='upsample_layer for motion_fcn',
                         choices=[0,1,2,3,4,5],
                         type=int,
-                        default=3)
+                        default=0)
     
     parser.add_argument('--freeze_layer',
                         help='freeze layer for motion_fcn',
@@ -149,7 +149,7 @@ def get_parser():
     parser.add_argument('--use_part_number',
                         help='the dataset size, 0 for total dataset',
                         type=int,
-                        default=0)
+                        default=1000)
     
     parser.add_argument('--use_none_layer',
                         help='use nono layer to replace maxpool2d or not',
