@@ -24,10 +24,10 @@ def dict2edict(config):
     backbone_config.use_none_layer=config['use_none_layer']
     backbone_config.net_name=config['net_name']
     backbone_config.backbone_freeze=False
+    backbone_config.backbone_pretrained=True
     backbone_config.freeze_layer=config['freeze_layer']
     backbone_config.freeze_ratio=0.0
     backbone_config.modify_resnet_head=False
-    backbone_config.use_none_layer=config['use_none_layer']
     backbone_config.layer_preference='last'
     
     decoder_config=edict()

@@ -243,6 +243,7 @@ class motion_backbone(TN.Module):
         if hasattr(self.config,'backbone_pretrained'):
             pretrained=self.config.backbone_pretrained
         else:
+            print('warning: backbone is not pretrained!!!')
             pretrained=False
                 
         if self.use_none_layer:
