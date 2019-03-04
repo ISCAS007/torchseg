@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from models.backbone import backbone
 from models.upsample import get_suffix_net
+from models.motionseg.motion_backbone import motion_backbone,motionnet_upsample_bilinear
 from easydict import EasyDict as edict
 from torch.nn.init import xavier_uniform_, zeros_
 import torch.nn.functional as F
@@ -16,39 +17,21 @@ def conv(in_planes, out_planes, kernel_size=3):
     )
 
 def dict2edict(config):
-    backbone_config=edict()
-    backbone_config.input_shape=[224,224]
-    backbone_config.backbone_name=config['backbone_name']
-    backbone_config.upsample_layer=config['upsample_layer']
-    backbone_config.deconv_layer=config['deconv_layer']
-    backbone_config.use_none_layer=config['use_none_layer']
-    backbone_config.net_name=config['net_name']
-    backbone_config.backbone_freeze=False
-    backbone_config.backbone_pretrained=True
-    backbone_config.freeze_layer=config['freeze_layer']
-    backbone_config.freeze_ratio=0.0
-    backbone_config.modify_resnet_head=False
-    backbone_config.layer_preference='last'
-    
+    """
+    use semantic segmentation layer function
+    """    
     decoder_config=edict()
-    backbone_config.use_bn=False
-    backbone_config.use_dropout=False
-    backbone_config.use_bias=True
-    backbone_config.upsample_type='bilinear'
-    decoder_config.model=backbone_config
-    
-    os.environ['torchseg_use_bias']=str(backbone_config.use_bias)
+    decoder_config.model=config
+    os.environ['torchseg_use_bias']=str(config.use_bias)
     return decoder_config
         
 class motion_fcn(nn.Module):
     def __init__(self,config):
         super().__init__()
-        
-        
         decoder_config=dict2edict(config)
-        self.input_shape=decoder_config.model.input_shape
+        self.input_shape=config.input_shape
         self.upsample_layer=config['upsample_layer']
-        self.backbone=backbone(decoder_config.model,use_none_layer=True)
+        self.backbone=backbone(config,use_none_layer=config.use_none_layer)
         
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=2*self.midnet_input_shape[1]
@@ -56,6 +39,27 @@ class motion_fcn(nn.Module):
         self.decoder=get_suffix_net(decoder_config,
                                     self.midnet_out_channels,
                                     self.class_number)
+        
+    def forward(self,imgs):
+        features=[self.backbone(img,self.upsample_layer) for img in imgs]
+        x=torch.cat(features,dim=1)
+        x=self.decoder(x)
+        #x=torch.sigmoid(x)
+        return {'masks':[x]}
+    
+class motion_fcn2(nn.Module):
+    def __init__(self,config):
+        super().__init__()
+        self.input_shape=config.input_shape
+        self.upsample_layer=config['upsample_layer']
+        self.backbone=motion_backbone(config,use_none_layer=config['use_none_layer'])
+        
+        self.midnet_out_channels=2*self.backbone.get_feature_map_channel(self.upsample_layer)
+        self.class_number=2
+        
+        self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
+                                                     out_channels=self.class_number,
+                                                     output_shape=self.input_shape[0:2])
         
     def forward(self,imgs):
         features=[self.backbone(img,self.upsample_layer) for img in imgs]

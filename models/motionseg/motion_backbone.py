@@ -54,11 +54,17 @@ class motion_backbone(TN.Module):
         super().__init__()
         self.config=config
         self.use_none_layer=use_none_layer
-        self.decoder_layer=self.config.upsample_layer
+        self.upsample_layer=self.config.upsample_layer
         self.deconv_layer=self.config.deconv_layer
         
-        assert self.deconv_layer > self.decoder_layer,'deconv %d must > decoder %d'%(self.decon_layer,self.decoder_layer)
-        
+        if config.net_name.find('unet')>=0 or config.net_name.find('sparse')>=0:
+            assert self.deconv_layer > self.upsample_layer,'deconv %d must > decoder %d'%(self.decon_layer,self.upsample_layer)
+        elif config.net_name.find('fcn')>=0:
+            self.deconv_layer = self.upsample_layer
+        else:
+            print('unknown net name {} for max extracted layer index'.format(config.net_name))
+            assert self.deconv_layer > self.upsample_layer
+    
         if hasattr(self.config,'eps'):
             self.eps=self.config.eps
         else:
@@ -341,22 +347,20 @@ class transform_motionnet(TN.Module):
     def __init__(self,backbone,config):
         super().__init__()
         self.config=config
-        self.use_none_layer=self.config.model.use_none_layer
-        self.decoder_layer=self.config.model.upsample_layer
-        self.deconv_layer=self.config.model.deconv_layer
+        self.use_none_layer=self.config.use_none_layer
+        self.upsample_layer=self.config.upsample_layer
+        self.deconv_layer=self.config.deconv_layer
+        self.merge_type=self.config.merge_type
         
         self.layers=[]
         
         self.concat_layers=[]
-        if not hasattr(self.config.model,'merge_type'):
-            self.merge_type='mean'
-        else:
-            self.merge_type=self.config.model.merge_type
+        
         
         inplace=True
         in_c=out_c=0
         for idx in range(self.deconv_layer+1):
-            if idx<self.decoder_layer:
+            if idx<self.upsample_layer:
                 self.layers.append(None)
                 self.concat_layers.append(None)
             elif idx==self.deconv_layer:
@@ -437,7 +441,7 @@ class transform_motionnet(TN.Module):
             assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
             assert len(x)==6
         
-        for idx in range(self.deconv_layer,self.decoder_layer-1,-1):
+        for idx in range(self.deconv_layer,self.upsample_layer-1,-1):
             if idx==self.deconv_layer:
                 if self.merge_type=='concat':
                     feature=torch.cat([main[idx],aux[idx]],dim=1)
@@ -486,7 +490,41 @@ class motionnet_upsample_bilinear(TN.Module):
                           mode='bilinear', align_corners=True)
 
         return x
+    
+class transform_sparse(TN.Module):
+    """
+    midnet of motion_sparse
+    """
+    def __init__(self,backbone,config):
+        super().__init__()
+        self.config=config
+        self.upsample_layer=self.config.upsample_layer
+        self.deconv_layer=self.config.deconv_layer
+        self.sparse_ratio=self.config.sparse_ratio
         
+        self.concat_size=backbone.get_feature_map_size(self.upsample_layer,self.config.input_shape)
+        
+        self.concat_channels=0
+        shapes=backbone.get_layer_shapes(self.config.input_shape)
+        for idx in range(self.upsample_layer,self.deconv_layer+1):
+            self.concat_channels+=int(shapes[idx][1]*self.sparse_ratio)
+        self.concat_channels*=2
+            
+    def forward(self,main,aux):
+        for x in [main,aux]:
+            assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
+            assert len(x)==6
+        
+        features=[]
+        for idx in range(self.upsample_layer,self.deconv_layer+1):
+            channels=int(main[idx].shape[1]*self.sparse_ratio)
+            features+=[F.interpolate(x, size=self.concat_size,
+                          mode='bilinear', align_corners=True) \
+                        for x in [main[idx][:,0:channels],aux[idx][:,0:channels]]]
+        
+        concat_feature=torch.cat(features,dim=1)
+        return concat_feature
+    
 if __name__ == '__main__':
     config=edict()
     config.backbone_name='resnet152'

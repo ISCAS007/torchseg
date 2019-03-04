@@ -18,7 +18,6 @@ class cdnet_dataset(td.Dataset):
         if self.split in ['train','val']:
             if self.config['use_part_number'] > 0:
                 n=len(self.img_path_pairs)
-                l=[i for i in range(n)]
                 gap=n//self.config['use_part_number']
                 self.img_path_pairs=self.img_path_pairs[::gap]
                 print('total dataset image %d, use %d'%(n,len(self.img_path_pairs)))
@@ -134,8 +133,8 @@ class cdnet_dataset(td.Dataset):
                     half_gt_categories = ['badWeather', 'lowFramerate', 'PTZ', 'nightVideos', 'turbulence']
                     if category in half_gt_categories:
                         last_frame = (first_frame + last_frame) // 2 - 1
-                        print('category %s  subcategory %s with groundtruth image, roi is %d to %d' % (
-                            category, sub_category, first_frame, last_frame))
+#                        print('category %s  subcategory %s with groundtruth image, roi is %d to %d' % (
+#                            category, sub_category, first_frame, last_frame))
                     
                     img_path_pairs+=[self.get_img_path_pair(root_path,category,sub_category,frame_number) 
                                         for frame_number in range(first_frame,last_frame+1)]

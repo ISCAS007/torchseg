@@ -4,11 +4,13 @@ from dataset.fbms_dataset import fbms_dataset
 from dataset.cdnet_dataset import cdnet_dataset
 import torch.utils.data as td
 from models.motion_stn import motion_stn, stn_loss, motion_net
-from models.motionseg.motion_fcn import motion_fcn,motion_fcn_stn
+from models.motionseg.motion_fcn import motion_fcn,motion_fcn2,motion_fcn_stn
 from models.motionseg.motion_unet import motion_unet,motion_unet_stn
+from models.motionseg.motion_sparse import motion_sparse
 from utils.torch_tools import init_writer
 from dataset.dataset_generalize import image_normalizations
 from utils.augmentor import Augmentations
+from easydict import EasyDict as edict
 import os
 import torch
 import time
@@ -102,7 +104,7 @@ def get_parser():
     parser.add_argument("--net_name",
                         help="network name",
                         choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn',
-                                 'motion_unet','motion_unet_stn'],
+                                 'motion_unet','motion_unet_stn','motion_fcn2','motion_sparse'],
                         default='motion_unet')
     
     parser.add_argument('--dataset',
@@ -116,7 +118,7 @@ def get_parser():
     parser.add_argument('--backbone_name',
                         help='backbone for motion_fcn and motion_fcn_stn',
                         choices=backbone_names,
-                        default='vgg16')
+                        default='vgg11')
     
     parser.add_argument('--batch_size',
                         help='batch size for experiment',
@@ -126,7 +128,7 @@ def get_parser():
     parser.add_argument('--epoch',
                         help='epoch for experiment',
                         type=int,
-                        default=100)
+                        default=30)
     
     parser.add_argument('--upsample_layer',
                         help='upsample_layer for motion_fcn',
@@ -183,19 +185,72 @@ def get_parser():
                         default='images')
     parser.add_argument("--note",
                         help="note for model",
-                        default='000')
+                        default='test')
+    
+    # motion_sparse
+    parser.add_argument('--sparse_ratio',
+                        help='sparse ratio for motion_sparse',
+                        type=float,
+                        default=0.5)
     
     return parser
+
+def get_default_config():
+    config=edict()
+    config.input_shape=[224,224]
+    config.backbone_name='vgg11'
+    config.upsample_layer=1
+    config.deconv_layer=5
+    config.use_none_layer=False
+    config.net_name='motion_unet'
+    config.backbone_freeze=False
+    config.backbone_pretrained=True
+    config.freeze_layer=1
+    config.freeze_ratio=0.0
+    config.modify_resnet_head=False
+    config.layer_preference='last'
+    config.merge_type='concat'
+    
+    config.use_part_number=1000
+    config.ignore_outOfRoi=True
+    config.dataset='cdnet2014'
+    config['frame_gap']=5
+    config['log_dir']=os.path.expanduser('~/tmp/logs/motion')
+    config['init_lr']=1e-4
+    
+    config.use_bn=False
+    config.use_dropout=False
+    config.use_bias=True
+    config.upsample_type='bilinear'
+    config.note='test'
+    config.batch_size=4
+    config.epoch=30
+    config.app='train'
+    config.save_model=True
+    config.stn_loss_weight=1.0
+    config.motion_loss_weight=1.0
+    config.pose_mask_reg=1.0
+    config.stn_object='images'
+    config.sparse_ratio=0.5
+    
+    return config
 
 if __name__ == '__main__':
     parser=get_parser()
     args = parser.parse_args()
-        
-    config={}
-    config['dataset']=args.dataset
-    config['use_part_number']=args.use_part_number
-    config['ignore_outOfRoi']=args.ignore_outOfRoi
-    config['net_name']=args.net_name
+    
+    config=get_default_config()
+
+    for key in config.keys():
+        if hasattr(args,key):
+            print('{} = {} (default: {})'.format(key,args.__dict__[key],config[key]))
+            config[key]=args.__dict__[key]
+        else:
+            print('{} : (default:{})'.format(key,config[key]))
+    
+    for key in args.__dict__.keys():
+        if key not in config.keys():
+            print('{} : unused keys {}'.format(key,args.__dict__[key]))
     
     if args.dataset=='FBMS':
         config['train_path']='dataset/FBMS/Trainingset'
@@ -204,23 +259,6 @@ if __name__ == '__main__':
         config['root_path']='dataset/cdnet2014'
     else:
         assert False
-        
-    config['frame_gap']=5
-    config['log_dir']=os.path.expanduser('~/tmp/logs/motion')
-    config['epoch']=args.epoch
-    config['init_lr']=1e-4
-    config['stn_loss_weight']=args.stn_loss_weight
-    config['motion_loss_weight']=args.motion_loss_weight
-    config['pose_mask_reg']=args.pose_mask_reg
-    # features or images
-    config['stn_object']=args.stn_object
-    config['note']=args.note
-    config['save_model']=args.save_model
-    config['backbone_name']=args.backbone_name
-    config['upsample_layer']=args.upsample_layer
-    config['freeze_layer']=args.freeze_layer
-    config['use_none_layer']=args.use_none_layer
-    config['deconv_layer']=args.deconv_layer
     
     if config['net_name'] in ['motion_stn','motion_net']:
         model=globals()[config['net_name']]() 

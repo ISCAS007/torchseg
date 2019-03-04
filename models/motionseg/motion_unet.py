@@ -7,13 +7,11 @@ from models.motionseg.motion_fcn import stn,dict2edict
 class motion_unet(nn.Module):
     def __init__(self,config):
         super().__init__()
-        decoder_config=dict2edict(config)
-        decoder_config.model.merge_type='concat'
-        self.input_shape=decoder_config.model.input_shape
+        self.input_shape=config.input_shape
         self.upsample_layer=config['upsample_layer']
-        self.backbone=motion_backbone(decoder_config.model,use_none_layer=config['use_none_layer'])
+        self.backbone=motion_backbone(config,use_none_layer=config['use_none_layer'])
         
-        self.midnet=transform_motionnet(self.backbone,decoder_config)
+        self.midnet=transform_motionnet(self.backbone,config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
         self.class_number=2
         
