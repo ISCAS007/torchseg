@@ -13,6 +13,7 @@ class cdnet_dataset(td.Dataset):
         self.split=split
         self.normalizations=normalizations
         self.augmentations=augmentations
+        self.input_shape=tuple(config.input_shape)
         self.ignore_outOfRoi=self.config['ignore_outOfRoi']
         self.img_path_pairs=self.get_img_path_pairs(self.config['root_path'])
         if self.split in ['train','val']:
@@ -163,8 +164,8 @@ class cdnet_dataset(td.Dataset):
             frame_images=[self.augmentations.transform(img) for img in frame_images]
         
         # resize image
-        resize_frame_images=[cv2.resize(img,(224,224),interpolation=cv2.INTER_LINEAR) for img in frame_images]
-        resize_gt_image=cv2.resize(gt_image,(224,224),interpolation=cv2.INTER_NEAREST)
+        resize_frame_images=[cv2.resize(img,self.input_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
+        resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)
         
         # padding for out of roi
         if self.ignore_outOfRoi is False:

@@ -12,6 +12,7 @@ class fbms_dataset(td.Dataset):
         self.config=config
         self.split=split
         self.normalizations=normalizations
+        self.input_shape=tuple(config.input_shape)
         if split=='train':
             self.gt_files=glob.glob(os.path.join(self.config['train_path'],'*','GroundTruth','*.png'),recursive=True)
         else:
@@ -67,8 +68,8 @@ class fbms_dataset(td.Dataset):
         gt_image=cv2.imread(self.gt_files[index],cv2.IMREAD_GRAYSCALE)
         
         # resize image
-        resize_frame_images=[cv2.resize(img,(224,224),interpolation=cv2.INTER_LINEAR) for img in frame_images]
-        resize_gt_image=cv2.resize(gt_image,(224,224),interpolation=cv2.INTER_NEAREST)
+        resize_frame_images=[cv2.resize(img,self.input_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
+        resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)
         
         # normalize image
         if self.normalizations is not None:

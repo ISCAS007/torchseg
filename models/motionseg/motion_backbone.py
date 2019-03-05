@@ -7,6 +7,7 @@ import torch
 from torch.autograd import Variable
 from easydict import EasyDict as edict
 import warnings
+from models.upsample import local_upsample
 
 class conv_bn_relu(TN.Module):
     def __init__(self,
@@ -57,9 +58,9 @@ class motion_backbone(TN.Module):
         self.upsample_layer=self.config.upsample_layer
         self.deconv_layer=self.config.deconv_layer
         
-        if config.net_name.find('unet')>=0 or config.net_name.find('sparse')>=0:
+        if config.net_name.find('unet')>=0 or config.net_name.find('motion_sparse')>=0:
             assert self.deconv_layer > self.upsample_layer,'deconv %d must > decoder %d'%(self.decon_layer,self.upsample_layer)
-        elif config.net_name.find('fcn')>=0:
+        elif config.net_name.find('fcn')>=0 or config.net_name.find('motion_psp')>=0:
             self.deconv_layer = self.upsample_layer
         else:
             print('unknown net name {} for max extracted layer index'.format(config.net_name))
@@ -524,6 +525,88 @@ class transform_sparse(TN.Module):
         
         concat_feature=torch.cat(features,dim=1)
         return concat_feature
+    
+class transform_motion_psp(TN.Module):
+    """x->4x[pool->conv->bn->relu->upsample]->concat
+    input_shape[batch_size,channel,height,width]
+    height:lcm(pool_sizes)*scale*(2**upsample_ratio)
+    width:lcm(pool_sizes)*scale*(2**upsample_ratio)
+    lcm: least common multiple, lcm([4,5])=20, lcm([2,3,6])=6
+
+    for feature layer with output size (batch_size,channel,height=x,width=x)
+    digraph G {
+      "feature[x,x]" -> "pool6[x/6*scale,x/6*scale]" -> "conv_bn_relu6[x/6*scale,x/6*scale]" -> "interp6[x,x]" -> "concat[x,x]"
+      "feature[x,x]" -> "pool3[x/3*scale,x/3*scale]" -> "conv_bn_relu3[x/3*scale,x/3*scale]" -> "interp3[x,x]" -> "concat[x,x]"
+      "feature[x,x]" -> "pool2[x/2*scale,x/2*scale]" -> "conv_bn_relu2[x/2*scale,x/2*scale]" -> "interp2[x,x]" -> "concat[x,x]"
+      "feature[x,x]" -> "pool1[x/1*scale,x/1*scale]" -> "conv_bn_relu1[x/1*scale,x/1*scale]" -> "interp1[x,x]" -> "concat[x,x]"
+    }
+    """
+
+    def __init__(self, pool_sizes, scale, input_shape, out_channels, eps=1e-5, momentum=0.1):
+        """
+        pool_sizes = [1,2,3,6]
+        scale = 5,10
+        out_channels = the output channel for transform_psp
+        out_size = ?
+        """
+        super().__init__()
+        self.input_shape = input_shape
+        b, in_channels, height, width = input_shape
+        in_channels*=2
+        
+        path_out_c_list = []
+        N = len(pool_sizes)
+
+        assert out_channels > in_channels, 'out_channels will concat inputh, so out_chanels=%d should >= in_chanels=%d' % (
+            out_channels, in_channels)
+        # the output channel for pool_paths
+        pool_out_channels = out_channels-in_channels
+
+        mean_c = pool_out_channels//N
+        for i in range(N-1):
+            path_out_c_list.append(mean_c)
+
+        path_out_c_list.append(pool_out_channels+mean_c-mean_c*N)
+        
+        self.pool_sizes = pool_sizes
+        self.scale = scale
+        pool_paths = []
+        for pool_size, out_c in zip(pool_sizes, path_out_c_list):
+            pool_path = TN.Sequential(TN.AvgPool2d(kernel_size=pool_size*scale,
+                                                   stride=pool_size*scale,
+                                                   padding=0),
+                                      conv_bn_relu(in_channels=in_channels,
+                                                out_channels=out_c,
+                                                kernel_size=1,
+                                                stride=1,
+                                                padding=0),
+                                      local_upsample(size=(height, width), mode='bilinear', align_corners=True))
+            pool_paths.append(pool_path)
+
+        self.pool_paths = TN.ModuleList(pool_paths)
+
+        for m in self.modules():
+            if isinstance(m, TN.Conv2d):
+                TN.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, TN.BatchNorm2d):
+                TN.init.constant_(m.weight, 1)
+                TN.init.constant_(m.bias, 0)
+
+    def forward(self, main,aux):
+        x=torch.cat([main,aux],dim=1)
+        output_slices = [x]
+        min_input_size = max(self.pool_sizes)*self.scale
+        in_size = x.shape
+        assert in_size[2] >= min_input_size, 'psp in size %d should >= %d' % (
+            in_size[2], min_input_size)
+
+        for module in self.pool_paths:
+            y = module(x)
+            output_slices.append(y)
+
+        x = torch.cat(output_slices, dim=1)
+        return x
     
 if __name__ == '__main__':
     config=edict()

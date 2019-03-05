@@ -7,6 +7,7 @@ from models.motion_stn import motion_stn, stn_loss, motion_net
 from models.motionseg.motion_fcn import motion_fcn,motion_fcn2,motion_fcn_stn
 from models.motionseg.motion_unet import motion_unet,motion_unet_stn
 from models.motionseg.motion_sparse import motion_sparse
+from models.motionseg.motion_psp import motion_psp
 from utils.torch_tools import init_writer
 from dataset.dataset_generalize import image_normalizations
 from utils.augmentor import Augmentations
@@ -104,7 +105,8 @@ def get_parser():
     parser.add_argument("--net_name",
                         help="network name",
                         choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn',
-                                 'motion_unet','motion_unet_stn','motion_fcn2','motion_sparse'],
+                                 'motion_unet','motion_unet_stn','motion_fcn2','motion_sparse',
+                                 'motion_psp'],
                         default='motion_unet')
     
     parser.add_argument('--dataset',
@@ -232,6 +234,7 @@ def get_default_config():
     config.pose_mask_reg=1.0
     config.stn_object='images'
     config.sparse_ratio=0.5
+    config.psp_scale=5
     
     return config
 
@@ -240,7 +243,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     config=get_default_config()
-
+    
+    if args.net_name=='motion_psp':
+        if args.use_none_layer is False or args.upsample_layer<=3:
+            min_size=30*config.psp_scale*2**config.upsample_layer
+        else:
+            min_size=30*config.psp_scale*2**3
+            
+        config.input_shape=[min_size,min_size]
+        
     for key in config.keys():
         if hasattr(args,key):
             print('{} = {} (default: {})'.format(key,args.__dict__[key],config[key]))
@@ -270,7 +281,8 @@ if __name__ == '__main__':
     model.to(device)
     
     if args.app=='summary':
-        torchsummary.summary(model, ((3, 224, 224),(3, 224, 224)))
+        torchsummary.summary(model, ((3, config.input_shape[0], config.input_shape[1]),
+                                     (3, config.input_shape[0], config.input_shape[1])))
         sys.exit(0)
         
     normer=image_normalizations(ways='-1,1')
