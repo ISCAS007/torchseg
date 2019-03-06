@@ -15,7 +15,12 @@ class cdnet_dataset(td.Dataset):
         self.augmentations=augmentations
         self.input_shape=tuple(config.input_shape)
         self.ignore_outOfRoi=self.config['ignore_outOfRoi']
+        
+        self.train_set=set()
+        self.val_set=set()
         self.img_path_pairs=self.get_img_path_pairs(self.config['root_path'])
+        
+
         if self.split in ['train','val']:
             if self.config['use_part_number'] > 0:
                 n=len(self.img_path_pairs)
@@ -108,8 +113,10 @@ class cdnet_dataset(td.Dataset):
             
             if self.split=='train':
                 sub_category_list=sub_category_list[:-2]
+                self.train_set.update(set(sub_category_list))
             elif self.split=='val':
                 sub_category_list=sub_category_list[-2:]
+                self.val_set.update(set(sub_category_list))
             elif self.split=='test':
                 pass
             else:

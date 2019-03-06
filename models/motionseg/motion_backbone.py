@@ -90,14 +90,10 @@ class motion_backbone(TN.Module):
                                                 model.relu,
                                                 model.maxpool)
                 
-                if self.deconv_layer>=2:
-                    self.layer1=model.layer1
-                if self.deconv_layer>=3:
-                    self.layer2=model.layer2
-                if self.deconv_layer>=4:
-                    self.layer3=model.layer3
-                if self.deconv_layer>=5:
-                    self.layer4=model.layer4
+                self.layer1=model.layer1
+                self.layer2=model.layer2
+                self.layer3=model.layer3
+                self.layer4=model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
         else:
@@ -112,14 +108,10 @@ class motion_backbone(TN.Module):
                 # raise NotImplementedError
                 self.format='resnet'
                 self.prefix_net = model.prefix_net
-                if self.deconv_layer>=2:
-                    self.layer1=model.layer1
-                if self.deconv_layer>=3:
-                    self.layer2=model.layer2
-                if self.deconv_layer>=4:
-                    self.layer3=model.layer3
-                if self.deconv_layer>=5:
-                    self.layer4=model.layer4
+                self.layer1=model.layer1
+                self.layer2=model.layer2
+                self.layer3=model.layer3
+                self.layer4=model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
                 
