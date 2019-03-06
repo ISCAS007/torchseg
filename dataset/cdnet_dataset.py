@@ -111,6 +111,7 @@ class cdnet_dataset(td.Dataset):
                 if os.path.isdir(os.path.join(root_path,category,sub_category)):
                     sub_category_list.append(sub_category)
             
+            sub_category_list.sort()
             if self.split=='train':
                 sub_category_list=sub_category_list[:-2]
                 self.train_set.update(set(sub_category_list))
