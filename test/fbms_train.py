@@ -12,13 +12,9 @@ from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_
 from utils.torch_tools import init_writer
 from dataset.dataset_generalize import image_normalizations
 from utils.augmentor import Augmentations
-from easydict import EasyDict as edict
 import os
 import torch
 import time
-import argparse
-import numpy as np
-from utils.disc_tools import str2bool
 import torchsummary
 import sys
 

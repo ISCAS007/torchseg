@@ -188,6 +188,8 @@ class motion_net(nn.Module):
                 'features':features}
         
 def stn_loss(features,motion,pose,pose_mask_reg=1.0):
+    # ignore_index=255, view as motion
+    motion=torch.clamp(motion,min=0,max=1)
     n=len(features)
     total_loss=0
     for i in range(n-1):

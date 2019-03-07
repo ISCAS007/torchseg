@@ -8,10 +8,11 @@ import numpy as np
 import cv2
 
 class fbms_dataset(td.Dataset):
-    def __init__(self,config,split='train',normalizations=None):
+    def __init__(self,config,split='train',normalizations=None,augmentations=None):
         self.config=config
         self.split=split
         self.normalizations=normalizations
+        self.augmentations=augmentations
         self.input_shape=tuple(config.input_shape)
         if split=='train':
             self.gt_files=glob.glob(os.path.join(self.config['train_path'],'*','GroundTruth','*.png'),recursive=True)
@@ -21,8 +22,8 @@ class fbms_dataset(td.Dataset):
         print('%s dataset size %d'%(split,len(self.gt_files)))
         self.gt_files.sort()
         if self.split in ['train','val']:
-            if self.config['use_part_number'] > 0:
-                n=len(self.gt_files)
+            n=len(self.gt_files)
+            if n > self.config['use_part_number'] > 0:
                 gap=n//self.config['use_part_number']
                 self.gt_files=self.gt_files[::gap]
                 print('total dataset image %d, use %d'%(n,len(self.gt_files)))
@@ -74,6 +75,10 @@ class fbms_dataset(td.Dataset):
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in frames]
         gt_image=cv2.imread(self.gt_files[index],cv2.IMREAD_GRAYSCALE)
         
+        # augmentation dataset
+        if self.split=='train' and self.augmentations is not None:
+            frame_images=[self.augmentations.transform(img) for img in frame_images]
+            
         # resize image
         resize_frame_images=[cv2.resize(img,self.input_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
         resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)

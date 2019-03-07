@@ -22,8 +22,8 @@ class cdnet_dataset(td.Dataset):
         
 
         if self.split in ['train','val']:
-            if self.config['use_part_number'] > 0:
-                n=len(self.img_path_pairs)
+            n=len(self.img_path_pairs)
+            if n > self.config['use_part_number'] > 0:
                 gap=n//self.config['use_part_number']
                 self.img_path_pairs=self.img_path_pairs[::gap]
                 print('total dataset image %d, use %d'%(n,len(self.img_path_pairs)))
