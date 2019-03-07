@@ -17,8 +17,15 @@ class fbms_dataset(td.Dataset):
             self.gt_files=glob.glob(os.path.join(self.config['train_path'],'*','GroundTruth','*.png'),recursive=True)
         else:
             self.gt_files=glob.glob(os.path.join(self.config['val_path'],'*','GroundTruth','*.png'),recursive=True)
-            
+        
         print('%s dataset size %d'%(split,len(self.gt_files)))
+        self.gt_files.sort()
+        if self.split in ['train','val']:
+            if self.config['use_part_number'] > 0:
+                n=len(self.gt_files)
+                gap=n//self.config['use_part_number']
+                self.gt_files=self.gt_files[::gap]
+                print('total dataset image %d, use %d'%(n,len(self.gt_files)))
         
     def __len__(self):
         return len(self.gt_files)

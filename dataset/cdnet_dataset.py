@@ -159,6 +159,7 @@ class cdnet_dataset(td.Dataset):
                     
         print('%s size = %d'%(self.split,len(img_path_pairs)))
         
+        img_path_pairs.sort()
         return img_path_pairs
     
     def __getitem__(self,index):
