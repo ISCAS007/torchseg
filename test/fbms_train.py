@@ -153,7 +153,10 @@ if __name__ == '__main__':
             writer.add_scalar(split+'/total_loss',mean_total_loss,epoch)
             
             if epoch % 10 == 0:
-                print(split,'fmeasure=%0.4f'%fmeasure,'loss=',mean_total_loss)
+                print(split,'fmeasure=%0.4f'%fmeasure,
+                      'total_loss=',mean_total_loss,
+                      'stn_loss=',mean_stn_loss,
+                      'mask_loss=',mean_mask_loss)
     
     if config['save_model']:
         torch.save(model.state_dict(),checkpoint_path)

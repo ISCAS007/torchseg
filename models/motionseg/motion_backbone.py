@@ -494,15 +494,26 @@ class transform_sparse(TN.Module):
         self.upsample_layer=self.config.upsample_layer
         self.deconv_layer=self.config.deconv_layer
         self.sparse_ratio=self.config.sparse_ratio
-        
+        self.sparse_conv=self.config.sparse_conv
         self.concat_size=backbone.get_feature_map_size(self.upsample_layer,self.config.input_shape)
         
         self.concat_channels=0
+        sparse_convs=[]
         shapes=backbone.get_layer_shapes(self.config.input_shape)
         for idx in range(self.upsample_layer,self.deconv_layer+1):
-            self.concat_channels+=int(shapes[idx][1]*self.sparse_ratio)
+            in_channels=shapes[idx][1]
+            out_channels=int(in_channels*self.sparse_ratio)
+            sparse_convs.append(TN.Conv2d(in_channels=in_channels,
+                              out_channels=out_channels,
+                              kernel_size=1,
+                              padding=0,
+                              stride=1,
+                              bias=False))
+            self.concat_channels+=out_channels
         self.concat_channels*=2
+        self.sparse_convs=TN.ModuleList(sparse_convs)
             
+        
     def forward(self,main,aux):
         for x in [main,aux]:
             assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
@@ -511,9 +522,16 @@ class transform_sparse(TN.Module):
         features=[]
         for idx in range(self.upsample_layer,self.deconv_layer+1):
             channels=int(main[idx].shape[1]*self.sparse_ratio)
-            features+=[F.interpolate(x, size=self.concat_size,
+            if self.sparse_conv:
+                main_sparse=self.sparse_convs[idx-self.upsample_layer](main[idx])
+                aux_sparse=self.sparse_convs[idx-self.upsample_layer](aux[idx])
+                features+=[F.interpolate(x, size=self.concat_size,
                           mode='bilinear', align_corners=True) \
-                        for x in [main[idx][:,0:channels],aux[idx][:,0:channels]]]
+                        for x in [main_sparse,aux_sparse]]
+            else:
+                features+=[F.interpolate(x, size=self.concat_size,
+                              mode='bilinear', align_corners=True) \
+                            for x in [main[idx][:,0:channels],aux[idx][:,0:channels]]]
         
         concat_feature=torch.cat(features,dim=1)
         return concat_feature

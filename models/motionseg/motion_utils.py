@@ -178,6 +178,11 @@ def get_parser():
                         type=float,
                         default=0.5)
     
+    parser.add_argument('--sparse_conv',
+                        help='use sparse conv for motion_sparse or not',
+                        type=str2bool,
+                        default=False)
+    
     return parser
 
 def get_default_config():
@@ -217,6 +222,7 @@ def get_default_config():
     config.pose_mask_reg=1.0
     config.stn_object='images'
     config.sparse_ratio=0.5
+    config.sparse_conv=False
     config.psp_scale=5
     
     return config
