@@ -32,21 +32,43 @@ class fbms_dataset(td.Dataset):
         return len(self.gt_files)
     
     def get_frames(self,gt_file):
-        def get_frame_path(base_path,video_name,frame_index):
-            path=os.path.join(base_path,video_name+'_'+'%02d'%frame_index)+'.jpg'
-            if not os.path.exists(path):
-                path=os.path.join(base_path,video_name+'_'+'%03d'%frame_index)+'.jpg'
-            if not os.path.exists(path):
-                path=os.path.join(base_path,video_name+'_'+'%04d'%frame_index)+'.jpg'
+        def get_frame_index_bound(base_path,video_name):
+            """
+            in images, not in groundtruth
+            """
+            frames=glob.glob(os.path.join(base_path,'*.jpg'))
+            frames.sort()
+            target_frames=[frames[0],frames[-1]]
+            if video_name!='tennis':
+                bound=[int(f.split(os.path.sep)[-1].split('_')[1].split('.')[0]) for f in target_frames]
+            else:
+                bound=[int(f.split(os.path.sep)[-1].split('.')[0].replace(video_name,'')) for f in target_frames]
             
-            if not os.path.exists(path):
-                path=os.path.join(base_path,video_name+'%02d'%frame_index)+'.jpg'
-            if not os.path.exists(path):
+            assert bound[0]<bound[1]
+            return bound
+            
+        def get_frame_path(base_path,video_name,frame_index):
+            bound=get_frame_index_bound(base_path,video_name)
+            if frame_index<bound[0]:
+                #print('change frame index from {} to {} for {}'.format(frame_index,bound[0],base_path))
+                frame_index=bound[0]
+            elif frame_index>bound[1]:
+                #print('change frame index from {} to {} for {}'.format(frame_index,bound[1],base_path))
+                frame_index=bound[1]
+                
+            if video_name!='tennis':
+                path=os.path.join(base_path,video_name+'_'+'%02d'%frame_index)+'.jpg'
+                if not os.path.exists(path):
+                    path=os.path.join(base_path,video_name+'_'+'%03d'%frame_index)+'.jpg'
+                if not os.path.exists(path):
+                    path=os.path.join(base_path,video_name+'_'+'%04d'%frame_index)+'.jpg'
+            else:
                 path=os.path.join(base_path,video_name+'%03d'%frame_index)+'.jpg'
-            if not os.path.exists(path):
-                path=os.path.join(base_path,video_name+'%04d'%frame_index)+'.jpg'
+            
+            assert os.path.exists(path),'path={},base_path={},frame_index={}'.format(path,base_path,frame_index)
             return path
-    
+        
+        # gt_file=dataset/FBMS/Trainingset/bear01/GroundTruth/001_gt.png
         path_strings=gt_file.split(os.path.sep)
         
         index_string=path_strings[-1].split('_')[0]
@@ -55,19 +77,15 @@ class fbms_dataset(td.Dataset):
         
         base_path=os.path.sep.join(path_strings[0:-2])
         main_frame=get_frame_path(base_path,video_name,frame_index)
-        assert os.path.exists(main_frame),main_frame
+        assert os.path.exists(main_frame),'main_frame:{},gt_file:{}'.format(main_frame,gt_file)
         
         x=random.random()
         if x>0.5:
             aux_frame=get_frame_path(base_path,video_name,frame_index+self.config['frame_gap'])
-            if not os.path.exists(aux_frame):
-                aux_frame=get_frame_path(base_path,video_name,frame_index-self.config['frame_gap'])
         else:
             aux_frame=get_frame_path(base_path,video_name,frame_index-self.config['frame_gap'])
-            if not os.path.exists(aux_frame):
-                aux_frame=get_frame_path(base_path,video_name,frame_index+self.config['frame_gap'])
     
-        assert os.path.exists(aux_frame),aux_frame
+        assert os.path.exists(aux_frame),'aux_frame:{},gt_file:{}'.format(aux_frame,gt_file)
         return [main_frame,aux_frame]
     
     def __getitem__(self,index):

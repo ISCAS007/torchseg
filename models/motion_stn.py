@@ -195,10 +195,32 @@ def stn_loss(features,motion,pose,pose_mask_reg=1.0):
     for i in range(n-1):
         theta=pose[:,i,:].view(-1,2,3)
         grid=F.affine_grid(theta,features[i+1].size())
-        pose_mask=F.grid_sample(torch.ones_like(features[i+1]),grid)
-            
-#         loss=F.l1_loss(features[0],features[i+1],reduction='none')
+        # loss=F.l1_loss(features[0],features[i+1],reduction='none')
         loss=torch.abs(features[0]-features[i+1])
         loss=torch.clamp(loss,min=0,max=2.0)
-        total_loss+=torch.mean(loss*(1-motion)*pose_mask)+pose_mask_reg*torch.mean(1-pose_mask)
+        if pose_mask_reg<-1:
+            total_loss+=torch.mean(loss)
+        elif pose_mask_reg<0:
+            shape=features[i+1].shape
+            s=int(shape[2]*0.1)
+            e=int(shape[2]*0.9)
+            pose_mask=torch.zeros_like(features[i+1])
+            pose_mask[:,:,s:e,s:e]=1
+            
+            assert s>0 and e>0,'start index and end index must large than 0'
+            total_loss+=torch.mean(loss*pose_mask)
+        elif pose_mask_reg==0:
+            shape=features[i+1].shape
+            s=int(shape[2]*0.1)
+            e=int(shape[2]*0.9)
+            pose_mask=torch.zeros_like(features[i+1])
+            pose_mask[:,:,s:e,s:e]=1
+            
+            assert s>0 and e>0,'start index and end index must large than 0'
+            total_loss+=torch.mean(loss*(1-motion)*pose_mask)
+        elif pose_mask_reg>0:
+            pose_mask=F.grid_sample(torch.ones_like(features[i+1]),grid)
+            total_loss+=torch.mean(loss*(1-motion)*pose_mask)+pose_mask_reg*torch.mean(1-pose_mask)
+        else:
+            assert False,'pose mask reg error'
     return total_loss

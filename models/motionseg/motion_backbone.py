@@ -59,7 +59,7 @@ class motion_backbone(TN.Module):
         self.deconv_layer=self.config.deconv_layer
         
         if config.net_name.find('unet')>=0 or config.net_name.find('motion_sparse')>=0:
-            assert self.deconv_layer > self.upsample_layer,'deconv %d must > decoder %d'%(self.decon_layer,self.upsample_layer)
+            assert self.deconv_layer > self.upsample_layer,'deconv %d must > decoder %d'%(self.deconv_layer,self.upsample_layer)
         elif config.net_name.find('fcn')>=0 or config.net_name.find('motion_psp')>=0:
             self.deconv_layer = self.upsample_layer
         else:

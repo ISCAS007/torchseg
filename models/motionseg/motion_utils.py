@@ -138,6 +138,11 @@ def get_parser():
                         type=int,
                         default=1000)
     
+    parser.add_argument('--frame_gap',
+                        help='the frame gap for dataset(5)',
+                        type=int,
+                        default=5)
+    
     parser.add_argument('--use_none_layer',
                         help='use nono layer to replace maxpool2d or not',
                         type=str2bool,
