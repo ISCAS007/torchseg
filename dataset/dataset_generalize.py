@@ -61,7 +61,7 @@ def get_dataset_generalize_config(config, dataset_name):
     elif dataset_name == 'VOC2012':
         # train + val, no test
 #        config.root_path = '/media/sdb/CVDataset/VOC'
-        config.root_path = os.path.expanduser('~/.cv/datasets/VOC')
+        config.root_path = os.path.expanduser('~/cvdataset/VOC')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'voc2012'
         config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
@@ -79,7 +79,7 @@ def get_dataset_generalize_config(config, dataset_name):
         config.ignore_index = 255
     elif dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
         # train + val + test
-        config.root_path = os.path.expanduser('~/.cv/datasets/Cityscapes')
+        config.root_path = os.path.expanduser('~/cvdataset/Cityscapes')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'cityscapes_fine'
         config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
@@ -93,7 +93,7 @@ def get_dataset_generalize_config(config, dataset_name):
         config.ignore_index = 255
     elif dataset_name == 'Cityscapes_Coarse':
         # train + val + train_extra
-        config.root_path = '/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+        config.root_path = os.path.expanduser('~/cvdataset/Cityscapes')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'cityscapes_coarse'
         config.txt_path=os.path.join(os.getcwd(),'dataset','txt')

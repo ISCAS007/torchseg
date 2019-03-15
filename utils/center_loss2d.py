@@ -38,7 +38,7 @@ class CenterLoss(nn.Module):
         if len(label.shape)==3:
             label=label.unsqueeze(1)
         size=feature.shape[-2:]
-        label=F.interpolate(label,size=size,mode='nearest',align_corners=True)
+        label=F.interpolate(label.float(),size=size,mode='nearest',align_corners=None).long()
         valid_indexs=torch.nonzero((label!=self.ignore_index).flatten()).squeeze()
         label=label.flatten()[valid_indexs]
         feature_2d=feature.permute([0,2,3,1]).reshape([-1,self.channels])        

@@ -40,7 +40,7 @@
 """
 import os
 import glob
-root_path='/media/sdb/CVDataset/VOC'
+root_path=os.path.expanduser('~/cvdataset/VOC')
 txt_path=os.path.join(root_path,'VOCdevkit/VOC2012/ImageSets/Segmentation')
 image_path='VOCdevkit/VOC2012/JPEGImages'
 annotation_path='VOCdevkit/VOC2012/SegmentationClass'

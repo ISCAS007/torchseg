@@ -120,3 +120,4 @@ notebooks/processed
 notebooks/raw
 dataset/FBMS
 dataset/cdnet2014
+dataset/SegTrackv2

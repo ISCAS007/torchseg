@@ -22,7 +22,7 @@
 """
 import os
 import glob
-root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+root_path=os.path.expanduser('~/cvdataset/Cityscapes')
 image_path='leftImg8bit_trainvaltest/leftImg8bit'
 annotation_path='gtFine_trainvaltest/gtFine'
 splits=['train','val','test']
