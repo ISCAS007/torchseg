@@ -35,7 +35,6 @@ from utils.config import get_parser,get_config
 if __name__ == '__main__':
     parser=get_parser()
     args = parser.parse_args()
-
     config = get_config(args)
     
     if args.test == 'convert':

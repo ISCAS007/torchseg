@@ -34,6 +34,8 @@ class pspnet(TN.Module):
         self.decoder = get_suffix_net(config,
                                       self.midnet_out_channels,
                                       self.class_number)
+        
+        self.center_channels=self.decoder.center_channels
 
         # for pretrained module, use small lr_mult=1
         # for modified module, use middle lr_mult=10
@@ -69,5 +71,5 @@ class pspnet(TN.Module):
         feature_map = self.backbone.forward(x, self.upsample_layer)
         feature_mid = self.midnet(feature_map)
         x = self.decoder(feature_mid)
-
+        self.center_feature=self.decoder.center_feature
         return x

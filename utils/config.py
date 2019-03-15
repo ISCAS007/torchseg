@@ -155,6 +155,8 @@ def get_config(args=None):
     config.args.net_name=args.net_name
     config.model.net_name=args.net_name
     config.args.checkpoint_path=args.checkpoint_path
+    config.args.center_loss=args.center_loss
+    config.args.center_loss_weight=args.center_loss_weight
     if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
         config.dataset.with_edge = True
         
@@ -280,6 +282,17 @@ def get_parser():
                         help='use lr mult or not',
                         default=False,
                         type=str2bool)
+    
+    # 2019/03/14 center loss
+    parser.add_argument('--center_loss',
+                        help='use center loss or not',
+                        choices=['cos_loss','l1_loss','l2_loss',None],
+                        default=None)
+    
+    parser.add_argument('--center_loss_weight',
+                        help='center loss weight',
+                        type=float,
+                        default=1.0)
     
     parser.add_argument('--use_class_weight',
                         help='use class-wise weight for segmenation or not',

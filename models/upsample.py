@@ -146,6 +146,7 @@ class upsample_bilinear(TN.Module):
         """
         super().__init__()
         self.output_shape = output_shape
+        self.center_channels=512
         self.conv_bn_relu = conv_bn_relu(in_channels=in_channels,
                                          out_channels=512,
                                          kernel_size=3,
@@ -172,13 +173,13 @@ class upsample_bilinear(TN.Module):
 
     # TODO upsampel feature is self.conv_bn_relu(x) or self.conv(x)
     def forward(self, x, need_upsample_feature=False):
-        upsample_feature = x = self.conv_bn_relu(x)
+        self.center_feature = x = self.conv_bn_relu(x)
         x = self.conv(x)
         x = F.interpolate(x, size=self.output_shape,
                           mode='bilinear', align_corners=True)
 
         if need_upsample_feature:
-            return upsample_feature, x
+            return self.center_feature, x
         else:
             return x
 

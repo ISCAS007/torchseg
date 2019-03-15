@@ -82,7 +82,7 @@ def get_parser():
     
     parser.add_argument('--app',
                         help='application name',
-                        choices=['train','summary'],
+                        choices=['train','summary','dataset'],
                         default='train')
     
     parser.add_argument("--net_name",
@@ -94,7 +94,7 @@ def get_parser():
     
     parser.add_argument('--dataset',
                         help='dataset name (FBMS)',
-                        choices=['FBMS','cdnet2014'],
+                        choices=['FBMS','cdnet2014','segtrackv2'],
                         default='cdnet2014')
     
     backbone_names=['vgg'+str(number) for number in [11,13,16,19]]

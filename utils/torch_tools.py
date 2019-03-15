@@ -7,6 +7,7 @@ import os
 from tensorboardX import SummaryWriter
 from utils.metrics import get_scores, runningScore
 from utils.disc_tools import save_model_if_necessary, get_newest_file
+from utils.center_loss2d import CenterLoss
 from dataset.dataset_generalize import image_normalizations, dataset_generalize
 from utils.augmentor import Augmentations
 import torch.utils.data as TD
@@ -129,7 +130,9 @@ def freeze_layer(layer):
 def train_val(model, optimizer, scheduler, loss_fn_dict,
               metric_fn_dict, running_metrics,
               loader, config, epoch, summary_all, loader_name,
-              summary_metric=True):
+              summary_metric=True,
+              center_loss_model=None,
+              center_optimizer=None):
     if loader_name == 'train':
         model.train()
     else:
@@ -169,6 +172,8 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
 
         if loader_name == 'train':
             optimizer.zero_grad()
+            if config.args.center_loss is not None:
+                center_optimizer.zero_grad()
         outputs = model.forward(images)
 
         if isinstance(outputs, dict):
@@ -199,7 +204,11 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
         # total loss = [seg_weight, edge_weight, reg_weight, aux_weight ...] * [seg_loss, edge_loss, reg_loss, aux_loss ...]
         loss_dict = get_loss(outputs_dict, targets_dict, loss_fn_dict, config,
                              model, loss_weight_dict=loss_weight_dict, prefix_note=loader_name)
-
+        # not support test
+        if config.args.center_loss is not None:
+            center_loss=center_loss_model(model.center_feature,labels)
+            loss_dict['%s/center_loss'%loader_name]=center_loss
+            loss_dict['%s/total_loss' % loader_name]+=config.args.center_loss_weight*center_loss
         # record loss for summary
         for k, v in loss_dict.items():
             if k in losses_dict.keys():
@@ -211,7 +220,11 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
             # loss backward and update weight (train only)
             loss_dict['%s/total_loss' % loader_name].backward()
             optimizer.step()
-
+            if config.args.center_loss is not None:
+                for param in center_loss_model.parameters():
+                    param.grad.data *= (1. / config.args.center_loss_weight)
+                center_optimizer.step()
+            
             # record grad for summary (train only)
             for key_prefix in ['first_grad', 'last_grad']:
                 for key_suffix in ['mean', 'max']:
@@ -376,7 +389,16 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
 
     optimizer = get_optimizer(model, config)
     scheduler = get_scheduler(optimizer, config)
-
+    
+    if config.args.center_loss is not None:
+        center_loss_model=CenterLoss(model.center_channels,model.class_number,
+                                     ignore_index=config.dataset.ignore_index,
+                                     loss_fn=config.args.center_loss).to(device)
+        center_optimizer=torch.optim.SGD(center_loss_model.parameters(), lr=0.5)
+    else:
+        center_loss_model=None
+        center_optimizer=None
+        
     loss_fn_dict = get_loss_fn_dict(config)
     # for different output, generate the metric_fn_dict automaticly.
     metric_fn_dict = {}
@@ -451,7 +473,9 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                         epoch=epoch,
                         summary_all=summary_all,
                         summary_metric=summary_metric,
-                        loader_name=loader_name)
+                        loader_name=loader_name,
+                        center_loss_model=center_loss_model,
+                        center_optimizer=center_optimizer)
                 
                 # use rop/poly_rop to schedule learning rate
                 if isinstance(scheduler,(poly_rop,rop)):
@@ -472,7 +496,9 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                     epoch=epoch,
                     summary_all=summary_all,
                     summary_metric=summary_metric,
-                    loader_name=loader_name)
+                    loader_name=loader_name,
+                    center_loss_model=center_loss_model,
+                    center_optimizer=center_optimizer)
 
                 # use cos_lr to shceduler the learning rate
                 if isinstance(scheduler,cos_lr):
