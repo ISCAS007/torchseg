@@ -1,18 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from dataset.fbms_dataset import fbms_dataset
-from dataset.cdnet_dataset import cdnet_dataset
-from dataset.segtrackv2_dataset import segtrackv2_dataset
 import torch.utils.data as td
 from models.motion_stn import motion_stn, stn_loss, motion_net
 from models.motionseg.motion_fcn import motion_fcn,motion_fcn2,motion_fcn_stn
 from models.motionseg.motion_unet import motion_unet,motion_unet_stn
 from models.motionseg.motion_sparse import motion_sparse
 from models.motionseg.motion_psp import motion_psp
-from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config
+from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config,get_dataset
 from utils.torch_tools import init_writer
-from dataset.dataset_generalize import image_normalizations
-from utils.augmentor import Augmentations
 import os
 import torch
 import time
@@ -44,30 +39,9 @@ if __name__ == '__main__':
         if key not in config.keys():
             print('{} : unused keys {}'.format(key,args.__dict__[key]))
     
-    if args.dataset=='FBMS':
-        config['train_path']='dataset/FBMS/Trainingset'
-        config['test_path']=config['val_path']='dataset/FBMS/Testset'
-    elif args.dataset=='cdnet2014':
-        config['root_path']='dataset/cdnet2014'
-    elif args.dataset=='segtrackv2':
-        config['root_path']='dataset/SegTrackv2'
-    else:
-        assert False
-    
-    normer=image_normalizations(ways='-1,1')
-    augmentations = Augmentations()
     if args.app=='dataset':
         for split in ['train','val']:
-            if args.dataset=='FBMS':
-                xxx_dataset=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
-            elif args.dataset=='cdnet2014':
-                xxx_dataset=cdnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-                print(xxx_dataset.train_set,xxx_dataset.val_set)
-            elif args.dataset=='segtrackv2':
-                xxx_dataset=segtrackv2_dataset(config,split,normalizations=normer,augmentations=augmentations)
-            else:
-                assert False,'dataset={}'.format(args.dataset)
-                
+            xxx_dataset=get_dataset(config,split)                
             dataset_size=len(xxx_dataset)
             for idx in range(dataset_size):
                 xxx_dataset.__getitem__(idx)
@@ -89,16 +63,7 @@ if __name__ == '__main__':
         
     dataset_loaders={}
     for split in ['train','val']:
-        if args.dataset=='FBMS':
-            xxx_dataset=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        elif args.dataset=='cdnet2014':
-            xxx_dataset=cdnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-            print(xxx_dataset.train_set,xxx_dataset.val_set)
-        elif args.dataset=='segtrackv2':
-            xxx_dataset=segtrackv2_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        else:
-            assert False,'dataset={}'.format(args.dataset)
-        
+        xxx_dataset=get_dataset(config,split)
         xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=args.batch_size,shuffle=True,drop_last=False,num_workers=2)
         dataset_loaders[split]=xxx_loader
     

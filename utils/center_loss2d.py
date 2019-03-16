@@ -24,6 +24,7 @@ class CenterLoss(nn.Module):
         
         # self.centers = nn.Parameter(torch.randn(channels,num_classes))
         self.centers = nn.Parameter(torch.randn(num_classes,channels))
+        self.sum_feature=True
         
     def forward(self,feature,label):
         """
@@ -44,28 +45,20 @@ class CenterLoss(nn.Module):
         feature_2d=feature.permute([0,2,3,1]).reshape([-1,self.channels])        
         feature_2d=feature_2d.index_select(0,valid_indexs)
         
-        # fast version for cos_loss only
-        added_label=torch.unique(label)
-        sum_feature_2d=torch.zeros_like(self.centers)
-        sum_feature_2d.index_add_(0,label,feature_2d)
-        sum_feature_2d=sum_feature_2d[added_label]
-        
-        count=torch.bincount(label)[added_label]
-        count=count.reshape(-1,1).float()
-        assert sum_feature_2d.size(0)==count.size(0),'sum_feature_2d.shape={},count.shape={}'.format(sum_feature_2d,count)
-        sum_feature_2d.div_(count)
-        center2d=self.centers[added_label]
-        return self.loss_fn(sum_feature_2d,center2d)
-        
-        # slow version
-        valid_center_2d=self.centers.index_select(0,label)
-        return self.loss_fn(feature_2d,valid_center_2d)
-        # cos_loss
-#        cross_value=feature_2d.matmul(self.centers)
-#        norm_value=feature_2d.norm(p=2,dim=1,keepdim=True).matmul(self.centers.norm(p=2,dim=0,keepdim=True))
-#        assert cross_value.shape==norm_value.shape,'{} != {}'.format(cross_value.shape,norm_value.shape)
-#        cos_value=1-cross_value/norm_value
-#        
-#        valid_indexs=label.flatten()[valid_mask]
-#        valid_cos_value=cos_value[valid_mask][valid_indexs]
-#        return torch.mean(valid_cos_value)
+        if self.sum_feature:
+            # memory save and fast version for cos_loss only
+            added_label=torch.unique(label)
+            sum_feature_2d=torch.zeros_like(self.centers)
+            sum_feature_2d.index_add_(0,label,feature_2d)
+            sum_feature_2d=sum_feature_2d[added_label]
+            
+            count=torch.bincount(label)[added_label]
+            count=count.reshape(-1,1).float()
+            assert sum_feature_2d.size(0)==count.size(0),'sum_feature_2d.shape={},count.shape={}'.format(sum_feature_2d,count)
+            sum_feature_2d.div_(count)
+            center2d=self.centers[added_label]
+            return self.loss_fn(sum_feature_2d,center2d)
+        else:
+            # memory big and slow version
+            valid_center_2d=self.centers.index_select(0,label)
+            return self.loss_fn(feature_2d,valid_center_2d)

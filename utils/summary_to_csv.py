@@ -75,6 +75,23 @@ def summary(rootpath):
             
     return tasks
 
+def today_log(log_files):
+    today_str=time.strftime('%Y-%m-%d',time.localtime())
+    today_log_files=[f for f in log_files if f.find(today_str)>=0]
+    return today_log_files
+            
+def recent_log(log_files,log_number=100):        
+    log_files_tuple=[]
+    for f in log_files:
+        for s in f.split(os.sep):
+            if s.find('___')>=0:
+                log_files_tuple.append((s,f))
+    log_files_tuple.sort()
+    log_number=min(log_number,len(log_files_tuple))
+    
+    recent_files=[f[1] for f in log_files_tuple[-log_number:]]
+    return recent_files
+
 if __name__ == '__main__':
     rootpath=os.path.expanduser('~/tmp/logs/pytorch')
     tasks=summary(rootpath)

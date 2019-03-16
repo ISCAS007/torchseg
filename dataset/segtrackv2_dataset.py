@@ -57,9 +57,10 @@ class segtrackv2_dataset(td.Dataset):
         video_files=glob.glob(video_path)
         video_files.sort()
         
+        main_index=video_files.index(main_file)
+        video_files.remove(main_file)
         n=len(video_files)
         assert n>0,'main_file={}'.format(main_file)
-        main_index=video_files.index(main_file)
         assert main_index>=0,'main_file={}'.format(main_file)
         x=random.random()
         if x>0.5:
