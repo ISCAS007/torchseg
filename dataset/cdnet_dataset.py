@@ -6,6 +6,7 @@ import random
 import numpy as np
 import cv2
 import sys
+from dataset.segtrackv2_dataset import main2flow
 
 class cdnet_dataset(td.Dataset):
     def __init__(self,config,split='train',normalizations=None, augmentations=None):
@@ -15,7 +16,7 @@ class cdnet_dataset(td.Dataset):
         self.augmentations=augmentations
         self.input_shape=tuple(config.input_shape)
         self.ignore_outOfRoi=self.config['ignore_outOfRoi']
-        
+        self.use_optical_flow=config.use_optical_flow
         self.train_set=set()
         self.val_set=set()
         self.img_path_pairs=self.get_img_path_pairs(self.config['root_path'])
@@ -162,6 +163,9 @@ class cdnet_dataset(td.Dataset):
         img_path_pairs.sort()
         return img_path_pairs
     
+    def __get_path__(self,index):
+        return self.img_path_pairs[index]
+    
     def __getitem__(self,index):
         main_img_path,aux_img_path,gt_img_path=self.img_path_pairs[index]
         
@@ -198,6 +202,16 @@ class cdnet_dataset(td.Dataset):
         labels[resize_gt_image==170]=1
         labels[resize_gt_image==255]=1
         labels=labels.astype(np.uint8)
-        return resize_frame_images,labels
-                
+        
+        if self.use_optical_flow:
+            flow_path=main2flow(main_img_path)
+            flow_file=open(flow_path,'r')
+            a=np.fromfile(flow_file,np.uint8,count=4)
+            b=np.fromfile(flow_file,np.int32,count=2)
+            flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
+            flow=np.clip(flow,a_min=-50,a_max=50)/50.0
+            optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
+            return [resize_frame_images[0],optical_flow],labels
+        else:
+            return resize_frame_images,labels
                 

@@ -344,6 +344,7 @@ class transform_motionnet(TN.Module):
         self.upsample_layer=self.config.upsample_layer
         self.deconv_layer=self.config.deconv_layer
         self.merge_type=self.config.merge_type
+        self.use_aux_input=self.config.use_aux_input
         
         self.layers=[]
         
@@ -376,12 +377,16 @@ class transform_motionnet(TN.Module):
                                                      inplace=inplace))
                 self.layers.append(layer)
                 if self.merge_type=='concat':
-                    self.concat_layers.append(conv_bn_relu(in_channels=2*out_c,
-                                                    out_channels=in_c,
-                                                    kernel_size=1,
-                                                    stride=1,
-                                                    padding=0,
-                                                    inplace=inplace))
+                    merge_c=2*out_c if self.use_aux_input else out_c
+                    if self.use_aux_input:
+                        self.concat_layers.append(conv_bn_relu(in_channels=merge_c,
+                                                        out_channels=in_c,
+                                                        kernel_size=1,
+                                                        stride=1,
+                                                        padding=0,
+                                                        inplace=inplace))
+                    else:
+                        self.concat_layers.append(None)
                 else:
                     assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
             else:
@@ -389,7 +394,7 @@ class transform_motionnet(TN.Module):
                 out_c=backbone.get_feature_map_channel(idx)
 #                print('idx,in_c,out_c',idx,in_c,out_c)
                 
-                if self.use_none_layer and idx>3:
+                if (self.use_none_layer and idx>3) or idx==0:
                     layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,
@@ -397,16 +402,8 @@ class transform_motionnet(TN.Module):
                                                      padding=1,
                                                      inplace=inplace))
                 else:
-                    if idx>0:
-                        layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
+                    layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
                                         conv_bn_relu(in_channels=in_c,
-                                                     out_channels=out_c,
-                                                     kernel_size=3,
-                                                     stride=1,
-                                                     padding=1,
-                                                     inplace=inplace))
-                    else:
-                        layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,
                                                      stride=1,
@@ -414,7 +411,8 @@ class transform_motionnet(TN.Module):
                                                      inplace=inplace))
                 self.layers.append(layer)
                 if self.merge_type=='concat':
-                    self.concat_layers.append(conv_bn_relu(in_channels=in_c+2*out_c,
+                    merge_c=in_c+2*out_c if self.use_aux_input else in_c+out_c
+                    self.concat_layers.append(conv_bn_relu(in_channels=merge_c,
                                                     out_channels=in_c,
                                                     kernel_size=1,
                                                     stride=1,
@@ -429,31 +427,175 @@ class transform_motionnet(TN.Module):
         else:
             assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
     
-    def forward(self,main,aux):
-        for x in [main,aux]:
-            assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
-            assert len(x)==6
+    def forward(self,main,aux=None):
+        if self.use_aux_input:
+            for x in [main,aux]:
+                assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
+                assert len(x)==6
+            
+            for idx in range(self.deconv_layer,self.upsample_layer-1,-1):
+                if idx==self.deconv_layer:
+                    if self.merge_type=='concat':
+                        feature=torch.cat([main[idx],aux[idx]],dim=1)
+                        feature=self.concat_layers[idx](feature)
+                    else:
+                        assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
+                        feature=main[idx]+aux[idx]
+                    feature=self.layers[idx](feature)
+                else:
+                    
+                    if self.merge_type=='concat':
+                        feature=torch.cat([feature,main[idx],aux[idx]],dim=1)
+                        feature=self.concat_layers[idx](feature)
+                    else:
+                        assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
+                        feature+=main[idx]+aux[idx]
+                    
+                    feature=self.layers[idx](feature)
+            return feature
+        else:
+            assert aux is None
+            assert isinstance(main,(list,tuple)),'main input for segnet should be list or tuple'
+            assert len(main)==6
+            
+            for idx in range(self.deconv_layer,self.upsample_layer-1,-1):
+                if idx==self.deconv_layer:
+                    feature=main[idx]
+                else:
+                    if self.merge_type=='concat':
+                        feature=torch.cat([feature,main[idx]],dim=1)
+                        feature=self.concat_layers[idx](feature)
+                    else:
+                        assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
+                        feature+=main[idx]
+                        
+                feature=self.layers[idx](feature)
+                
+            return feature
+
+class upsample_merge(TN.Module):
+    def __init__(self,config):
+        super().__init__()
+        self.merge_type=config.merge_type
+        
+    def forward(self,features):
+        s=features[0].shape
+        
+        y=[]
+        for f in features:
+            if f.shape[2:4]!=s[2:4]:
+                f=F.interpolate(f, size=s[2:4],
+                                mode='bilinear', align_corners=True)
+            y.append(f)
+        
+        if self.merge_type=='concat':
+                merge_feature=torch.cat(y,dim=1)
+        else:
+            assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
+            for idx in range(len(y)):
+                if idx==0:
+                    merge_feature=y[idx]
+                else:
+                    merge_feature+=y[idx]
+        
+        return merge_feature
+    
+class transform_motionnet_flow(TN.Module):
+    def __init__(self,backbone,config):
+        super().__init__()
+        self.config=config
+        self.use_none_layer=self.config.use_none_layer
+        self.upsample_layer=self.config.upsample_layer
+        self.deconv_layer=self.config.deconv_layer
+        self.merge_type=self.config.merge_type
+        self.always_merge_flow=self.config.always_merge_flow
+        
+        assert self.deconv_layer > self.upsample_layer
+        assert self.merge_type=='concat'
+        self.upsample_merge_layers=[]
+        self.deconv_layers=[]
+        inplace=True
+        for idx in range(self.deconv_layer+1):
+            if idx<self.upsample_layer:
+                self.upsample_merge_layers.append(None)
+                self.deconv_layers.append(None)
+            elif idx==self.deconv_layer:
+                in_c=out_c=backbone.get_feature_map_channel(idx)
+                merge_c=in_c+2
+                self.upsample_merge_layers.append(TN.Sequential(upsample_merge(config),
+                                                               conv_bn_relu(in_channels=merge_c,
+                                                                out_channels=in_c,
+                                                                kernel_size=1,
+                                                                stride=1,
+                                                                padding=0,
+                                                                inplace=inplace)))
+                
+                if self.use_none_layer and idx>3:
+                    layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=3,
+                                                     stride=1,
+                                                     padding=1,
+                                                     inplace=inplace))
+                else:
+                    layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
+                                        conv_bn_relu(in_channels=in_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=3,
+                                                     stride=1,
+                                                     padding=1,
+                                                     inplace=inplace))
+                self.deconv_layers.append(layer)
+            else:
+                in_c=backbone.get_feature_map_channel(idx+1)
+                out_c=backbone.get_feature_map_channel(idx)
+#                print('idx,in_c,out_c',idx,in_c,out_c)
+                merge_c=in_c+out_c
+                
+                if self.always_merge_flow:
+                    merge_c+=2
+                self.upsample_merge_layers.append(TN.Sequential(upsample_merge(config),
+                                                               conv_bn_relu(in_channels=merge_c,
+                                                                out_channels=in_c,
+                                                                kernel_size=1,
+                                                                stride=1,
+                                                                padding=0,
+                                                                inplace=inplace)))
+                if (self.use_none_layer and idx>3) or idx==0:
+                    layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=3,
+                                                     stride=1,
+                                                     padding=1,
+                                                     inplace=inplace))
+                else:
+                    layer=TN.Sequential(TN.ConvTranspose2d(in_c,in_c,kernel_size=4,stride=2,padding=1,bias=False),
+                                        conv_bn_relu(in_channels=in_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=3,
+                                                     stride=1,
+                                                     padding=1,
+                                                     inplace=inplace))
+                self.deconv_layers.append(layer)
+                
+        self.model_layers=TN.ModuleList([layer for layer in self.deconv_layers if layer is not None])
+        self.merge_layers=TN.ModuleList([layer for layer in self.upsample_merge_layers if layer is not None])
+            
+    def forward(self,main,flow):
+        assert isinstance(main,(list,tuple)),'main input for segnet should be list or tuple'
+        assert len(main)==6
         
         for idx in range(self.deconv_layer,self.upsample_layer-1,-1):
             if idx==self.deconv_layer:
-                if self.merge_type=='concat':
-                    feature=torch.cat([main[idx],aux[idx]],dim=1)
-                    feature=self.concat_layers[idx](feature)
-                else:
-                    assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
-                    feature=main[idx]+aux[idx]
-                feature=self.layers[idx](feature)
+                feature=self.upsample_merge_layers[idx]((main[idx],flow))
             else:
-                
-                if self.merge_type=='concat':
-                    feature=torch.cat([feature,main[idx],aux[idx]],dim=1)
-                    feature=self.concat_layers[idx](feature)
+                if self.always_merge_flow:
+                    feature=self.upsample_merge_layers[idx]((main[idx],feature,flow))
                 else:
-                    assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
-                    feature+=main[idx]+aux[idx]
-                
-                feature=self.layers[idx](feature)
+                    feature=self.upsample_merge_layers[idx]((main[idx],feature))
+            feature=self.deconv_layers[idx](feature)
         return feature
+    
 
 class motionnet_upsample_bilinear(TN.Module):
     def __init__(self, in_channels, out_channels, output_shape, eps=1e-5, momentum=0.1):

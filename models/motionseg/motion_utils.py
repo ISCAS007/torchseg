@@ -95,7 +95,7 @@ def get_parser():
                         help="network name",
                         choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn',
                                  'motion_unet','motion_unet_stn','motion_fcn2','motion_sparse',
-                                 'motion_psp'],
+                                 'motion_psp','motion_fcn2_flow','motion_fcn_flow','motion_unet_flow'],
                         default='motion_unet')
     
     parser.add_argument('--dataset',
@@ -151,6 +151,16 @@ def get_parser():
     
     parser.add_argument('--use_none_layer',
                         help='use nono layer to replace maxpool2d or not',
+                        type=str2bool,
+                        default=False)
+    
+    parser.add_argument('--use_aux_input',
+                        help='use aux image as input or not(True)',
+                        type=str2bool,
+                        default=True)
+    
+    parser.add_argument('--always_merge_flow',
+                        help='merge flow at every deconv layer or not (False)',
                         type=str2bool,
                         default=False)
     
@@ -211,6 +221,8 @@ def get_default_config():
     config.modify_resnet_head=False
     config.layer_preference='last'
     config.merge_type='concat'
+    config.always_merge_flow=False
+    config.use_aux_input=True
     
     config.use_part_number=1000
     config.ignore_outOfRoi=True
@@ -239,6 +251,11 @@ def get_default_config():
     return config
 
 def get_dataset_config(config):
+    if config.net_name.find('flow')>=0:
+        config.use_optical_flow=True
+    else:
+        config.use_optical_flow=False
+        
     if config.dataset=='FBMS':
         config['train_path']=os.path.expanduser('~/cvdataset/FBMS/Trainingset')
         config['test_path']=config['val_path']=os.path.expanduser('~/cvdataset/FBMS/Testset')

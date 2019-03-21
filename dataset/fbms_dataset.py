@@ -6,6 +6,7 @@ import torch.utils.data as td
 import random
 import numpy as np
 import cv2
+from dataset.segtrackv2_dataset import main2flow
 
 class fbms_dataset(td.Dataset):
     def __init__(self,config,split='train',normalizations=None,augmentations=None):
@@ -14,6 +15,7 @@ class fbms_dataset(td.Dataset):
         self.normalizations=normalizations
         self.augmentations=augmentations
         self.input_shape=tuple(config.input_shape)
+        self.use_optical_flow=config.use_optical_flow
         if split=='train':
             self.gt_files=glob.glob(os.path.join(self.config['train_path'],'*','GroundTruth','*.png'),recursive=True)
         else:
@@ -88,6 +90,10 @@ class fbms_dataset(td.Dataset):
         assert os.path.exists(aux_frame),'aux_frame:{},gt_file:{}'.format(aux_frame,gt_file)
         return [main_frame,aux_frame]
     
+    def __get_path__(self,index):
+        frames=self.get_frames(self.gt_files[index])
+        return frames[0],frames[1],self.gt_files[index]
+    
     def __getitem__(self,index):
         frames=self.get_frames(self.gt_files[index])
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in frames]
@@ -110,4 +116,15 @@ class fbms_dataset(td.Dataset):
         resize_gt_image=np.expand_dims(resize_gt_image,0)
         
         resize_gt_image=(resize_gt_image!=0).astype(np.uint8)
-        return resize_frame_images,resize_gt_image
+
+        if self.use_optical_flow:
+            flow_path=main2flow(frames[0])
+            flow_file=open(flow_path,'r')
+            a=np.fromfile(flow_file,np.uint8,count=4)
+            b=np.fromfile(flow_file,np.int32,count=2)
+            flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
+            flow=np.clip(flow,a_min=-50,a_max=50)/50.0
+            optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
+            return [resize_frame_images[0],optical_flow],resize_gt_image
+        else:
+            return resize_frame_images,resize_gt_image

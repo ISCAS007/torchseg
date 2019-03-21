@@ -6,6 +6,7 @@ import torch.utils.data as td
 import numpy as np
 import random
 import cv2
+from dataset.segtrackv2_dataset import main2flow
 
 class bmcnet_dataset(td.Dataset):
     """
@@ -59,6 +60,7 @@ class bmcnet_dataset(td.Dataset):
             print('total dataset image %d, use %d'%(n,len(self.main_files)))
                 
         self.frame_gap=config.frame_gap
+        self.use_optical_flow=config.use_optical_flow
         
     def __len__(self):
         return len(self.main_files)
@@ -103,6 +105,13 @@ class bmcnet_dataset(td.Dataset):
             gt_file=main_file.replace('input','private_truth')
         return gt_file
     
+    def __get_path__(self,index):
+        main_file=self.main_files[index]
+        aux_file=self.get_aux_file(main_file)
+        gt_file=self.get_gt_file(main_file)
+        
+        return main_file,aux_file,gt_file
+        
     def __getitem__(self,index):
         main_file=self.main_files[index]
         aux_file=self.get_aux_file(main_file)
@@ -129,4 +138,15 @@ class bmcnet_dataset(td.Dataset):
         resize_gt_image=np.expand_dims(resize_gt_image,0)
         
         resize_gt_image=(resize_gt_image!=0).astype(np.uint8)
-        return resize_frame_images,resize_gt_image
+    
+        if self.use_optical_flow:
+            flow_path=main2flow(main_file)
+            flow_file=open(flow_path,'r')
+            a=np.fromfile(flow_file,np.uint8,count=4)
+            b=np.fromfile(flow_file,np.int32,count=2)
+            flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
+            flow=np.clip(flow,a_min=-50,a_max=50)/50.0
+            optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
+            return [resize_frame_images[0],optical_flow],resize_gt_image
+        else:
+            return resize_frame_images,resize_gt_image

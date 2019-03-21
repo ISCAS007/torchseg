@@ -35,6 +35,7 @@ class motion_fcn(nn.Module):
         
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=2*self.midnet_input_shape[1]
+        self.concat_size=self.midnet_input_shape[2:]
         self.class_number=2
         self.decoder=get_suffix_net(decoder_config,
                                     self.midnet_out_channels,
@@ -42,6 +43,31 @@ class motion_fcn(nn.Module):
         
     def forward(self,imgs):
         features=[self.backbone(img,self.upsample_layer) for img in imgs]
+        x=torch.cat(features,dim=1)
+        x=self.decoder(x)
+        #x=torch.sigmoid(x)
+        return {'masks':[x]}
+    
+class motion_fcn_flow(nn.Module):
+    def __init__(self,config):
+        super().__init__()
+        decoder_config=dict2edict(config)
+        self.input_shape=config.input_shape
+        self.upsample_layer=config['upsample_layer']
+        self.backbone=backbone(config,use_none_layer=config.use_none_layer)
+        
+        self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
+        self.midnet_out_channels=2+self.midnet_input_shape[1]
+        self.concat_size=self.midnet_input_shape[2:]
+        self.class_number=2
+        self.decoder=get_suffix_net(decoder_config,
+                                    self.midnet_out_channels,
+                                    self.class_number)
+        
+    def forward(self,imgs):
+        features=[self.backbone(imgs[0],self.upsample_layer),
+                  F.interpolate(imgs[1], size=self.midnet_input_shape[2:4],
+                                mode='bilinear', align_corners=True)]
         x=torch.cat(features,dim=1)
         x=self.decoder(x)
         #x=torch.sigmoid(x)
@@ -67,6 +93,31 @@ class motion_fcn2(nn.Module):
         x=self.decoder(x)
         #x=torch.sigmoid(x)
         return {'masks':[x]}
+    
+class motion_fcn2_flow(nn.Module):
+    def __init__(self,config):
+        super().__init__()
+        self.input_shape=config.input_shape
+        self.upsample_layer=config['upsample_layer']
+        self.backbone=motion_backbone(config,use_none_layer=config['use_none_layer'])
+        
+        self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
+        self.midnet_out_channels=2+self.midnet_input_shape[1]
+        self.class_number=2
+        
+        self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
+                                                     out_channels=self.class_number,
+                                                     output_shape=self.input_shape[0:2])
+        
+    def forward(self,imgs):
+        features=[self.backbone(imgs[0],self.upsample_layer),
+                  F.interpolate(imgs[1], size=self.midnet_input_shape[2:4],
+                                mode='bilinear', align_corners=True)]
+        x=torch.cat(features,dim=1)
+        x=self.decoder(x)
+        #x=torch.sigmoid(x)
+        return {'masks':[x]}
+    
     
 class stn(nn.Module):
     def __init__(self,config):

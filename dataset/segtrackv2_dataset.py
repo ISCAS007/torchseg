@@ -6,6 +6,30 @@ import torch.utils.data as td
 import numpy as np
 import random
 import cv2
+import sys
+#if '.' not in sys.path:
+#    sys.path.insert(0,'.')
+#from models.motionseg.motion_utils import main2flow
+
+
+def main2flow(main_path,
+              dataset_root_dir=os.path.expanduser('~/cvdataset'),
+              flow_root_dir=os.path.expanduser('~/cvdataset/optical_flow')):
+    """
+    convert main path to flow path
+    
+    # path to save optical flow results
+    flow_root_dir=os.path.expanduser('~/cvdataset/optical_flow')
+    # root path for all dataset
+    dataset_root_dir=os.path.expanduser('~/cvdataset')
+    """
+    
+    assert main_path.find(dataset_root_dir)>=0,'suppose is wrong for {} and {} !!! cannot generate out_path'.format(main_path,dataset_root_dir)
+    out_path=main_path.replace(dataset_root_dir,flow_root_dir)
+    suffix=os.path.splitext(out_path)[1]
+    out_path=out_path.replace(suffix,'.flo')
+    
+    return out_path
 
 class segtrackv2_dataset(td.Dataset):
     """
@@ -20,6 +44,7 @@ class segtrackv2_dataset(td.Dataset):
         self.root_path=config.root_path
         self.main_files=self.get_main_files()
         self.frame_gap=config.frame_gap
+        self.use_optical_flow=config.use_optical_flow
         
     def __len__(self):
         return len(self.main_files)
@@ -76,6 +101,7 @@ class segtrackv2_dataset(td.Dataset):
         frame_path=os.path.join(self.root_path,'JPEGImages')
         videos=[d for d in os.listdir(frame_path) if os.path.isdir(os.path.join(frame_path,d))]
         videos.sort()
+        videos.remove('penguin')
         assert len(videos)>0,'frame_path={}'.format(frame_path)
         n=len(videos)
         train_size=int(n*0.7)
@@ -96,6 +122,13 @@ class segtrackv2_dataset(td.Dataset):
         frame_files.sort()
         assert len(frame_files)>0,'videos={}'.format(videos)
         return frame_files
+    
+    def __get_path__(self,index):
+        main_file=self.main_files[index]
+        aux_file=self.get_aux_file(main_file)
+        gt_files=self.get_gt_files(main_file)
+        
+        return main_file,aux_file,gt_files
     
     def __getitem__(self,index):
         main_file=self.main_files[index]
@@ -126,4 +159,15 @@ class segtrackv2_dataset(td.Dataset):
         resize_gt_image=np.expand_dims(resize_gt_image,0)
         
         resize_gt_image=(resize_gt_image!=0).astype(np.uint8)
-        return resize_frame_images,resize_gt_image
+        
+        if self.use_optical_flow:
+            flow_path=main2flow(main_file)
+            flow_file=open(flow_path,'r')
+            a=np.fromfile(flow_file,np.uint8,count=4)
+            b=np.fromfile(flow_file,np.int32,count=2)
+            flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
+            flow=np.clip(flow,a_min=-50,a_max=50)/50.0
+            optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
+            return [resize_frame_images[0],optical_flow],resize_gt_image
+        else:
+            return resize_frame_images,resize_gt_image
