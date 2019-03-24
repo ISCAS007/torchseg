@@ -8,6 +8,7 @@ from torch.autograd import Variable
 from easydict import EasyDict as edict
 import warnings
 from models.upsample import local_upsample
+from models.MobileNetV2 import mobilenet2
 
 class conv_bn_relu(TN.Module):
     def __init__(self,
@@ -78,7 +79,7 @@ class motion_backbone(TN.Module):
             
         if use_none_layer == False:
             model=self.get_model()
-            if self.config.backbone_name.find('vgg')>=0:
+            if self.config.backbone_name.find('vgg')>=0 or self.config.backbone_name.lower().find('mobilenet')>=0:
                 self.format='vgg'
                 self.features=model.features
                 self.df=self.get_dataframe()
@@ -98,7 +99,7 @@ class motion_backbone(TN.Module):
                 assert False,'unknown backbone name %s'%self.config.backbone_name
         else:
             model=self.get_model()
-            if self.config.backbone_name.find('vgg')>=0:
+            if self.config.backbone_name.find('vgg')>=0 or self.config.backbone_name.lower().find('mobilenet')>=0:
                 self.format='vgg'
                 self.features=model.features
                 self.df=self.get_dataframe()
@@ -155,7 +156,10 @@ class motion_backbone(TN.Module):
         features=[]
         if self.format=='vgg':
             layer_num=0
-            assert hasattr(self.layer_depths,str(layer_num))
+            if not hasattr(self.layer_depths,str(layer_num)):
+                features.append(x)
+                layer_num+=1
+
             for idx,layer in enumerate(self.features):
                 x=layer(x)
                 if idx == self.layer_depths[str(layer_num)]:
@@ -181,6 +185,8 @@ class motion_backbone(TN.Module):
         
     def forward(self,x,level):        
         if self.format=='vgg':
+            if not hasattr(self.layer_depths,str(level)):
+                return x
             assert hasattr(self.layer_depths,str(level))
             for idx,layer in enumerate(self.features):
                 x=layer(x)
@@ -253,14 +259,19 @@ class motion_backbone(TN.Module):
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn']:
                 return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum)
+            elif self.config.backbone_name == 'MobileNetV2':
+                return mobilenet2(pretrained=pretrained)
             else:
                 return locals()[self.config.backbone_name](momentum=self.momentum)
         else:
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn
             from models.psp_vgg import vgg16_gn,vgg19_gn
-            assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
-            return locals()[self.config.backbone_name](pretrained=pretrained)
+            if self.config.backbone_name == 'MobileNetV2':
+                return mobilenet2(pretrained=pretrained)
+            else:
+                assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
+                return locals()[self.config.backbone_name](pretrained=pretrained)
     
     def get_dataframe(self):
         assert self.format=='vgg','only vgg models have features'
@@ -270,11 +281,17 @@ class motion_backbone(TN.Module):
             name=layer.__class__.__name__
 #            if name in ['ZeroPadding2D','Dropout','Reshape'] or name.find('Pool')>=0:
 #                continue
-            if name in ['Conv2d'] or name.find('Pool2d')>=0:
-                if layer.stride==2:
+            if name in ['Conv2d','InvertedResidual'] or name.find('Pool2d')>=0:
+                if layer.stride==2 or layer.stride==(2,2) :
                     level=level+1
             elif name.find('NoneLayer')>=0:
                 level=level+1
+            elif name == 'Sequential':
+                for l in layer:
+                    l_name=l.__class__.__name__
+                    if l_name in ['Conv2d'] or l_name.find('Pool2d')>=0:
+                        if l.stride==2 or l.stride==(2,2):
+                            level=level+1
             
             df=df.append({'level':level,
                        'layer_depth':idx,

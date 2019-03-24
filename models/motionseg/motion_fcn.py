@@ -123,7 +123,7 @@ class stn(nn.Module):
     def __init__(self,config):
         super().__init__()
         self.nb_ref_imgs = 1
-
+        self.norm_stn_pose=config.norm_stn_pose
         conv_planes = [16, 32, 64, 128, 256, 256, 256]
         self.conv1 = conv(3, conv_planes[0], kernel_size=7)
         self.conv2 = conv(conv_planes[0], conv_planes[1], kernel_size=5)
@@ -156,6 +156,10 @@ class stn(nn.Module):
         pose = pose.mean(3).mean(2)
         pose = pose.view(pose.size(0), self.nb_ref_imgs, 6)
         
+        if self.norm_stn_pose:
+            pose[:,:,0]+=1
+            pose[:,:,4]+=1
+            
         stn_images=[imgs[0]]
         n=len(features)
         for i in range(n-1):

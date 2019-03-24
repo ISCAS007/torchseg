@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from easydict import EasyDict as edict
+from models.MobileNetV2 import mobilenet2
 import warnings
 
 class backbone(TN.Module):
@@ -28,7 +29,7 @@ class backbone(TN.Module):
         if use_none_layer == False:
             self.use_none_layer=False
             model=self.get_model()
-            if self.config.backbone_name.find('vgg')>=0:
+            if self.config.backbone_name.find('vgg')>=0 or self.config.backbone_name.lower().find('mobilenet')>=0:
                 self.format='vgg'
                 self.features=model.features
                 self.df=self.get_dataframe()
@@ -51,7 +52,7 @@ class backbone(TN.Module):
         else:
             self.use_none_layer=True
             model=self.get_model()
-            if self.config.backbone_name.find('vgg')>=0:
+            if self.config.backbone_name.find('vgg')>=0 or self.config.backbone_name.lower().find('mobilenet')>=0:
                 self.format='vgg'
                 self.features=model.features
                 self.df=self.get_dataframe()
@@ -132,7 +133,10 @@ class backbone(TN.Module):
         features=[]
         if self.format=='vgg':
             layer_num=0
-            assert hasattr(self.layer_depths,str(layer_num))
+            if not hasattr(self.layer_depths,str(layer_num)):
+                features.append(x)
+                layer_num+=1
+                
             for idx,layer in enumerate(self.features):
                 x=layer(x)
                 if idx == self.layer_depths[str(layer_num)]:
@@ -163,7 +167,10 @@ class backbone(TN.Module):
         features=[]
         if self.format=='vgg':
             layer_num=0
-            assert hasattr(self.layer_depths,str(layer_num))
+            if not hasattr(self.layer_depths,str(layer_num)):
+                features.append(x)
+                layer_num+=1
+                
             for idx,layer in enumerate(self.features):
                 x=layer(x)
                 if idx == self.layer_depths[str(layer_num)]:
@@ -190,6 +197,9 @@ class backbone(TN.Module):
         assert level in [1,2,3,4,5],'feature level %d not in range(0,5)'%level
         
         if self.format=='vgg':
+            if not hasattr(self.layer_depths,str(level)):
+                return x
+            
             assert hasattr(self.layer_depths,str(level))
             for idx,layer in enumerate(self.features):
                 x=layer(x)
@@ -261,14 +271,20 @@ class backbone(TN.Module):
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn']:
                 return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum)
+            elif self.config.backbone_name == 'MobileNetV2':
+                return mobilenet2(pretrained=pretrained)
             else:
                 return locals()[self.config.backbone_name](momentum=self.momentum)
         else:
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn
             from models.psp_vgg import vgg16_gn,vgg19_gn
-            assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
-            return locals()[self.config.backbone_name](pretrained=pretrained)
+            
+            if self.config.backbone_name == 'MobileNetV2':
+                return mobilenet2(pretrained=pretrained)
+            else:
+                assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
+                return locals()[self.config.backbone_name](pretrained=pretrained)
     
     def get_dataframe(self):
         assert self.format=='vgg','only vgg models have features'
@@ -278,11 +294,17 @@ class backbone(TN.Module):
             name=layer.__class__.__name__
 #            if name in ['ZeroPadding2D','Dropout','Reshape'] or name.find('Pool')>=0:
 #                continue
-            if name in ['Conv2d'] or name.find('Pool2d')>=0:
-                if layer.stride==2:
+            if name in ['Conv2d','InvertedResidual'] or name.find('Pool2d')>=0:
+                if layer.stride==2 or layer.stride==(2,2) :
                     level=level+1
             elif name.find('NoneLayer')>=0:
                 level=level+1
+            elif name == 'Sequential':
+                for l in layer:
+                    l_name=l.__class__.__name__
+                    if l_name in ['Conv2d'] or l_name.find('Pool2d')>=0:
+                        if l.stride==2 or l.stride==(2,2):
+                            level=level+1
             
             df=df.append({'level':level,
                        'layer_depth':idx,
@@ -325,6 +347,7 @@ class backbone(TN.Module):
     
     def show_layers(self):
         if self.format=='vgg':
+            print(self.layer_depths)
             for idx,layer in enumerate(self.features):
                 if idx in self.layer_depths.values():
                     print(idx,layer)
@@ -344,11 +367,17 @@ class backbone(TN.Module):
 if __name__ == '__main__':
     config=edict()
     config.backbone_name='resnet152'
-    config.layer_preference='first'
+    config.layer_preference='last'
+    config.backbone_freeze=False
+    config.freeze_layer=0
+    config.freeze_ratio=0
+    config.upsample_layer=5
+    config.net_name='pspnet'
+    config.modify_resnet_head=False
     
-    for name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','resnet18','resnet34','resnet50','resnet101','resnet152']:
+    for name in ['vgg11','MobileNetV2']:
         print(name+'*'*50)
         config.backbone_name=name
         bb=backbone(config)
         bb.show_layers()
-        break
+        

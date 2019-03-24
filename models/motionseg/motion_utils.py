@@ -105,7 +105,7 @@ def get_parser():
     
     backbone_names=['vgg'+str(number) for number in [11,13,16,19]]
     backbone_names+=[s+'_bn' for s in backbone_names]
-    backbone_names+=['resnet50','resnet101']
+    backbone_names+=['resnet50','resnet101','MobileNetV2']
     parser.add_argument('--backbone_name',
                         help='backbone for motion_fcn and motion_fcn_stn',
                         choices=backbone_names,
@@ -182,9 +182,15 @@ def get_parser():
                         type=float,
                         default=1.0)
     parser.add_argument('--pose_mask_reg',
-                        help='regular weight for pose mask (1.0)',
+                        help='regular weight for pose mask (0.0)',
                         type=float,
-                        default=1.0)
+                        default=0.0)
+    
+    parser.add_argument('--norm_stn_pose',
+                        help='norm stn pose or not (False)',
+                        type=str2bool,
+                        default=False)
+    
     parser.add_argument("--stn_object",
                         help="use feature or images to compute stn loss",
                         choices=['images','features'],
@@ -243,6 +249,7 @@ def get_default_config():
     config.stn_loss_weight=1.0
     config.motion_loss_weight=1.0
     config.pose_mask_reg=1.0
+    config.norm_stn_pose=False
     config.stn_object='images'
     config.sparse_ratio=0.5
     config.sparse_conv=False
