@@ -14,6 +14,7 @@ import torch
 import time
 import torchsummary
 import sys
+from tqdm import trange,tqdm
 
 if __name__ == '__main__':
     parser=get_parser()
@@ -86,7 +87,8 @@ if __name__ == '__main__':
     metric_mask_loss=Metric_Mean()
     metric_total_loss=Metric_Mean()
     
-    for epoch in range(config['epoch']):
+    tqdm_epoch = trange(config['epoch'], desc='epochs', leave=True)
+    for epoch in tqdm_epoch:
         for split in ['train','val']:
             if split=='train':
                 model.train()
@@ -97,7 +99,9 @@ if __name__ == '__main__':
             metric_stn_loss.reset()
             metric_mask_loss.reset()
             metric_total_loss.reset()
-            for frames,gt in dataset_loaders[split]:
+            
+            tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
+            for frames,gt in tqdm_step:
                 images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
                 labels=torch.autograd.Variable(gt.to(device).long())
                 
@@ -142,11 +146,16 @@ if __name__ == '__main__':
             writer.add_scalar(split+'/mask_loss',mean_mask_loss,epoch)
             writer.add_scalar(split+'/total_loss',mean_total_loss,epoch)
             
-            if epoch % 10 == 0:
-                print(split,'fmeasure=%0.4f'%fmeasure,
-                      'total_loss=',mean_total_loss,
-                      'stn_loss=',mean_stn_loss,
-                      'mask_loss=',mean_mask_loss)
+            if split=='train':
+                tqdm_epoch.set_postfix(train_fmeasure=fmeasure.item())
+            else:
+                tqdm_epoch.set_postfix(val_fmeasure=fmeasure.item())
+                
+#            if epoch % 10 == 0:
+#                print(split,'fmeasure=%0.4f'%fmeasure,
+#                      'total_loss=',mean_total_loss,
+#                      'stn_loss=',mean_stn_loss,
+#                      'mask_loss=',mean_mask_loss)
     
     if config['save_model']:
         torch.save(model.state_dict(),checkpoint_path)
