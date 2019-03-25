@@ -7,11 +7,14 @@ from models.psp_vgg import make_layers
 from easydict import EasyDict as edict
 
 class panet(motion_backbone):
-    def __init__(self,config):
-        if config.net_name.find('flow')>=0:
-            self.in_channels=2
+    def __init__(self,config,in_c=None):
+        if in_c is None:
+            if config.net_name.find('flow')>=0:
+                self.in_channels=2
+            else:
+                self.in_channels=3
         else:
-            self.in_channels=3
+            self.in_channels=in_c
         super().__init__(config,config.use_none_layer)
         
         
@@ -52,18 +55,23 @@ class panet(motion_backbone):
                 nn.init.constant_(m.bias, 0)
 
 class transform_panet(transform_motionnet):
-    def __init__(self,backbone,panet,config):
+    def __init__(self,backbone,panet,config,flow_panet=None):
         super().__init__(backbone,config)
-        self.get_layers(backbone,panet)
+        if flow_panet is None:
+            self.get_layers(backbone,panet)
+        else:
+            self.get_layers(backbone,panet,flow_panet)
         
-    def get_layers(self,backbone,panet=None):
+    def get_layers(self,backbone,panet=None,flow_panet=None):
         """
         concat layer:
             main_input: main_c
             aux_input: aux_c
+            main_panet_input: main_panet_c
+            aux_panet_input: aux_panet_c
             previous_input: pre_c
             current_output: cur_c
-            concat([main_c,aux_c,pre_c])
+            concat([main_c,aux_c,main_panet_c,aux_panet_c,pre_c])
             conv(main_c+aux_c+pre_c,cur_c)
         deconv layer:
             previsou_input: pre_c
@@ -81,10 +89,16 @@ class transform_panet(transform_motionnet):
                 self.concat_layers.append(None)
             elif idx==self.deconv_layer:
                 out_c=main_c=backbone.get_feature_map_channel(idx)
-                aux_c=panet.get_feature_map_channel(idx)
+                main_panet_c=panet.get_feature_map_channel(idx)
+                if self.config.net_name.find('flow')>=0:
+                    aux_c=flow_panet.get_feature_map_channel(idx)
+                    aux_panet_c=0
+                else:
+                    aux_c=backbone.get_feature_map_channel(idx)
+                    aux_panet_c=panet.get_feature_map_channel(idx)
                 
                 if self.merge_type=='concat':
-                    merge_c=main_c+aux_c if self.use_aux_input else main_c
+                    merge_c=main_c+aux_c+main_panet_c+aux_panet_c if self.use_aux_input else main_c+main_panet_c
                     if self.use_aux_input:
                         self.concat_layers.append(conv_bn_relu(in_channels=merge_c,
                                                         out_channels=main_c,
@@ -117,10 +131,16 @@ class transform_panet(transform_motionnet):
             else:
                 pre_c=backbone.get_feature_map_channel(idx+1)
                 out_c=main_c=backbone.get_feature_map_channel(idx)
-                aux_c=panet.get_feature_map_channel(idx)
+                main_panet_c=panet.get_feature_map_channel(idx)
+                if self.config.net_name.find('flow')>=0:
+                    aux_c=flow_panet.get_feature_map_channel(idx)
+                    aux_panet_c=0
+                else:
+                    aux_c=backbone.get_feature_map_channel(idx)
+                    aux_panet_c=panet.get_feature_map_channel(idx)
 #                print('idx,in_c,out_c',idx,in_c,out_c)
                 if self.merge_type=='concat':
-                    merge_c=pre_c+main_c+aux_c if self.use_aux_input else pre_c+main_c
+                    merge_c=pre_c+main_c+main_panet_c+aux_c+aux_panet_c if self.use_aux_input else pre_c+main_c+main_panet_c
                     self.concat_layers.append(conv_bn_relu(in_channels=merge_c,
                                                     out_channels=main_c,
                                                     kernel_size=1,
@@ -151,6 +171,29 @@ class transform_panet(transform_motionnet):
             self.merge_layers=nn.ModuleList([layer for layer in self.concat_layers if layer is not None])
         else:
             assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
+            
+    def forward(self,backbone_features,panet_features):
+        feature=None
+        for idx in range(self.deconv_layer,self.upsample_layer-1,-1):
+            if isinstance(backbone_features[0],(tuple,list)):
+                main=backbone_features[0][idx]
+                aux=backbone_features[1][idx]
+            else:
+                main=backbone_features[idx]
+                aux=None
+            
+            if isinstance(panet_features[0],(tuple,list)):
+                main_panet=panet_features[0][idx]
+                aux_panet=panet_features[1][idx]
+            else:
+                main_panet=panet_features[idx]
+                aux_panet=None
+                
+            f_list=[f for f in [feature,main,main_panet,aux,aux_panet] if f is not None]
+            feature=torch.cat(f_list,dim=1)
+            feature=self.concat_layers[idx](feature)
+            feature=self.layers[idx](feature)
+        return feature
         
 class motion_panet(nn.Module):
     def __init__(self,config):
@@ -159,9 +202,14 @@ class motion_panet(nn.Module):
         self.upsample_layer=config['upsample_layer']
         self.use_aux_input=config.use_aux_input
         self.backbone=motion_backbone(config,use_none_layer=config['use_none_layer'])
-        self.panet=panet(config)
-        
-        self.midnet=transform_panet(self.backbone,self.panet,config)
+        self.panet=panet(config,in_c=3)
+        if config.net_name.find('flow')>=0:
+            self.use_flow=True
+            self.flow_panet=panet(config,in_c=2)
+            self.midnet=transform_panet(self.backbone,self.panet,config,self.flow_panet)
+        else:
+            self.use_flow=False
+            self.midnet=transform_panet(self.backbone,self.panet,config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
         self.class_number=2
         
@@ -170,12 +218,20 @@ class motion_panet(nn.Module):
                                                      output_shape=self.input_shape[0:2])
         
     def forward(self,imgs):
-        if self.use_aux_input:
-            main=self.backbone.forward_layers(imgs[0])
-            aux=self.panet.forward_layers(imgs[1])
-            feature_transform=self.midnet.forward(main,aux)
-        else:
-            feature_transform=self.midnet.forward(self.backbone.forward_layers(imgs[0]))
+        if self.use_aux_input or self.use_flow:
+            if self.use_flow:
+                backbone_features=self.backbone.forward_layers(imgs[0])
+                panet_features=[self.panet.forward_layers(imgs[0]),
+                                self.flow_panet.forward_layers(imgs[1])]
+                feature_transform=self.midnet.forward(backbone_features,panet_features)
+            else:
+                backbone_features=[self.backbone.forward_layers(img) for img in imgs]
+                panet_features=[self.panet.forward_layers(img) for img in imgs]
+                feature_transform=self.midnet.forward(backbone_features,panet_features)
+        else: 
+            backbone_features=self.backbone.forward_layers(imgs[0])
+            panet_features=self.panet.forward_layers(imgs[0])
+            feature_transform=self.midnet.forward(self.backbone.forward_layers(backbone_features,panet_features))
         y=self.decoder(feature_transform)
         
         return {'masks':[y]}
