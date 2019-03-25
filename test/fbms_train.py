@@ -4,6 +4,7 @@ import torch.utils.data as td
 from models.motion_stn import motion_stn, stn_loss, motion_net
 from models.motionseg.motion_fcn import motion_fcn,motion_fcn2,motion_fcn_stn,motion_fcn2_flow,motion_fcn_flow
 from models.motionseg.motion_unet import motion_unet,motion_unet_stn,motion_unet_flow
+from models.motionseg.motion_panet import motion_panet,motion_panet_flow
 from models.motionseg.motion_sparse import motion_sparse
 from models.motionseg.motion_psp import motion_psp
 from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config,get_dataset

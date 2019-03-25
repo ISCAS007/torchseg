@@ -26,108 +26,9 @@ class backbone(TN.Module):
         else:
             self.momentum=0.1
         
-        if use_none_layer == False:
-            self.use_none_layer=False
-            model=self.get_model()
-            if self.config.backbone_name.find('vgg')>=0 or self.config.backbone_name.lower().find('mobilenet')>=0:
-                self.format='vgg'
-                self.features=model.features
-                self.df=self.get_dataframe()
-                self.layer_depths=self.get_layer_depths()
-            elif self.config.backbone_name.find('resnet')>=0:
-                self.format='resnet'
-                self.prefix_net = TN.Sequential(model.conv1,
-                                                model.bn1,
-                                                model.relu,
-                                                model.maxpool)
-                
-                self.layer1=model.layer1
-                self.layer2=model.layer2
-                if config.upsample_layer>=4 or config.net_name=='motionnet':
-                    self.layer3=model.layer3
-                if config.upsample_layer>=5 or config.net_name=='motionnet':
-                    self.layer4=model.layer4
-            else:
-                assert False,'unknown backbone name %s'%self.config.backbone_name
-        else:
-            self.use_none_layer=True
-            model=self.get_model()
-            if self.config.backbone_name.find('vgg')>=0 or self.config.backbone_name.lower().find('mobilenet')>=0:
-                self.format='vgg'
-                self.features=model.features
-                self.df=self.get_dataframe()
-                self.layer_depths=self.get_layer_depths()
-            elif self.config.backbone_name.find('resnet')>=0:
-                # the output size of resnet layer is different from stand model!
-                # raise NotImplementedError
-                self.format='resnet'
-                self.prefix_net = model.prefix_net
-                self.layer1=model.layer1
-                self.layer2=model.layer2
-                if config.upsample_layer>=4 or config.net_name=='motionnet':
-                    self.layer3=model.layer3
-                if config.upsample_layer>=5 or config.net_name=='motionnet':
-                    self.layer4=model.layer4
-            else:
-                assert False,'unknown backbone name %s'%self.config.backbone_name
-                
-        if self.config.backbone_freeze:
-            for param in self.parameters():
-                param.requrires_grad=False
-        
-        if self.config.freeze_layer > 0:
-            if self.config.backbone_freeze:
-                warnings.warn("it's not good to use freeze layer with backbone_freeze")
-
-            freeze_layer=self.config.freeze_layer
-            if self.format=='vgg':
-                for idx,layer in enumerate(self.features):
-                    if idx <= self.layer_depths[str(freeze_layer)]:                        
-                        for param in layer.parameters():
-                            param.requires_grad = False
-            else:
-                if freeze_layer>0:
-                    for param in self.prefix_net.parameters():
-                        param.requires_grad = False
-                if freeze_layer>1:
-                    for param in self.layer1.parameters():
-                        param.requires_grad = False
-                if freeze_layer>2:
-                    for param in self.layer2.parameters():
-                        param.requires_grad = False
-                if freeze_layer>3:
-                    for param in self.layer3.parameters():
-                        param.requires_grad = False
-                if freeze_layer>4:
-                    for param in self.layer4.parameters():
-                        param.requires_grad = False
-        
-        if self.config.freeze_ratio > 0.0:
-            if self.config.backbone_freeze or self.config.freeze_layer:
-                warnings.warn("it's not good to use freeze ratio with freeze layer or backbone")
-            
-            if self.format=='vgg':
-                freeze_index=len(self.features)*self.config.freeze_ratio    
-                for idx,layer in enumerate(self.features):
-                    if idx < freeze_index:                        
-                        for param in layer.parameters():
-                            param.requires_grad = False
-            else:
-                valid_layer_number=0
-                for name,param in self.named_parameters():
-                    valid_layer_number+=1 
-
-                freeze_index=valid_layer_number*self.config.freeze_ratio
-                
-                for idx,(name,param) in enumerate(self.named_parameters()):
-                    if idx < freeze_index:
-                        print('freeze weight of',name)
-                        param.requires_grad=False
-        
-        # if modify resnet head worked, train the modified resnet head
-        if config.modify_resnet_head and self.config.use_none_layer and self.format=='resnet':
-            for param in self.prefix_net.parameters():
-                param.requires_grad = True
+        self.use_none_layer=use_none_layer
+        self.get_layers()
+        self.freeze_layers()
     
     def forward_layers(self,x):
         features=[]
@@ -266,7 +167,7 @@ class backbone(TN.Module):
         if self.use_none_layer:
             print('use none layer'+'*'*30)
             from models.psp_resnet import resnet50,resnet101
-            from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn
+            from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn']:
@@ -278,14 +179,126 @@ class backbone(TN.Module):
         else:
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn
-            from models.psp_vgg import vgg16_gn,vgg19_gn
+            from pretrainedmodels import se_resnet50
+            from models.psp_vgg import vgg16_gn,vgg19_gn,vgg21,vgg21_bn
             
             if self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained)
+            elif self.config.backbone_name.find('se_resnet')>=0:
+                if pretrained:
+                    return locals()[self.config.backbone_name](pretrained='imagenet')
+                else:
+                    return locals()[self.config.backbone_name](pretrained=None)
             else:
                 assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
                 return locals()[self.config.backbone_name](pretrained=pretrained)
     
+    def get_layers(self):
+        if self.use_none_layer == False:
+            model=self.get_model()
+            if self.config.backbone_name.find('vgg')>=0 or self.config.backbone_name.lower().find('mobilenet')>=0:
+                self.format='vgg'
+                self.features=model.features
+                self.df=self.get_dataframe()
+                self.layer_depths=self.get_layer_depths()
+            elif self.config.backbone_name.find('resnet')>=0:
+                self.format='resnet'
+                if self.config.backbone_name.find('se_resnet')>=0:
+                    self.prefix_net=model.layer0
+                else:
+                    self.prefix_net = TN.Sequential(model.conv1,
+                                                model.bn1,
+                                                model.relu,
+                                                model.maxpool)
+                
+                self.layer1=model.layer1
+                self.layer2=model.layer2
+                if config.upsample_layer>=4 or config.net_name=='motionnet':
+                    self.layer3=model.layer3
+                if config.upsample_layer>=5 or config.net_name=='motionnet':
+                    self.layer4=model.layer4
+            else:
+                assert False,'unknown backbone name %s'%self.config.backbone_name
+        else:
+            model=self.get_model()
+            if self.config.backbone_name.find('vgg')>=0 or self.config.backbone_name.lower().find('mobilenet')>=0:
+                self.format='vgg'
+                self.features=model.features
+                self.df=self.get_dataframe()
+                self.layer_depths=self.get_layer_depths()
+            elif self.config.backbone_name.find('resnet')>=0:
+                # the output size of resnet layer is different from stand model!
+                # raise NotImplementedError
+                self.format='resnet'
+                self.prefix_net = model.prefix_net
+                self.layer1=model.layer1
+                self.layer2=model.layer2
+                if config.upsample_layer>=4 or config.net_name=='motionnet':
+                    self.layer3=model.layer3
+                if config.upsample_layer>=5 or config.net_name=='motionnet':
+                    self.layer4=model.layer4
+            else:
+                assert False,'unknown backbone name %s'%self.config.backbone_name
+    
+    def freeze_layers(self):
+        if self.config.backbone_freeze:
+            for param in self.parameters():
+                param.requrires_grad=False
+        
+        if self.config.freeze_layer > 0:
+            if self.config.backbone_freeze:
+                warnings.warn("it's not good to use freeze layer with backbone_freeze")
+
+            freeze_layer=self.config.freeze_layer
+            if self.format=='vgg':
+                for idx,layer in enumerate(self.features):
+                    if idx <= self.layer_depths[str(freeze_layer)]:                        
+                        for param in layer.parameters():
+                            param.requires_grad = False
+            else:
+                if freeze_layer>0:
+                    for param in self.prefix_net.parameters():
+                        param.requires_grad = False
+                if freeze_layer>1:
+                    for param in self.layer1.parameters():
+                        param.requires_grad = False
+                if freeze_layer>2:
+                    for param in self.layer2.parameters():
+                        param.requires_grad = False
+                if freeze_layer>3:
+                    for param in self.layer3.parameters():
+                        param.requires_grad = False
+                if freeze_layer>4:
+                    for param in self.layer4.parameters():
+                        param.requires_grad = False
+        
+        if self.config.freeze_ratio > 0.0:
+            if self.config.backbone_freeze or self.config.freeze_layer:
+                warnings.warn("it's not good to use freeze ratio with freeze layer or backbone")
+            
+            if self.format=='vgg':
+                freeze_index=len(self.features)*self.config.freeze_ratio    
+                for idx,layer in enumerate(self.features):
+                    if idx < freeze_index:                        
+                        for param in layer.parameters():
+                            param.requires_grad = False
+            else:
+                valid_layer_number=0
+                for name,param in self.named_parameters():
+                    valid_layer_number+=1 
+
+                freeze_index=valid_layer_number*self.config.freeze_ratio
+                
+                for idx,(name,param) in enumerate(self.named_parameters()):
+                    if idx < freeze_index:
+                        print('freeze weight of',name)
+                        param.requires_grad=False
+        
+        # if modify resnet head worked, train the modified resnet head
+        if self.config.modify_resnet_head and self.config.use_none_layer and self.format=='resnet':
+            for param in self.prefix_net.parameters():
+                param.requires_grad = True
+                
     def get_dataframe(self):
         assert self.format=='vgg','only vgg models have features'
         df=pd.DataFrame(columns=['level','layer_depth','layer_name'])
@@ -375,7 +388,7 @@ if __name__ == '__main__':
     config.net_name='pspnet'
     config.modify_resnet_head=False
     
-    for name in ['vgg11','MobileNetV2']:
+    for name in ['se_resnet50']:
         print(name+'*'*50)
         config.backbone_name=name
         bb=backbone(config)

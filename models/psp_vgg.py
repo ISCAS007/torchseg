@@ -77,17 +77,17 @@ class VGG(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1):
+def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1,use_none_layer=None,in_channels=3):
     layers = []
-    in_channels = 3
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
         elif v == 'N':
-            if 'use_none_layer' in os.environ.keys():
-                use_none_layer = str2bool(os.environ['use_none_layer'])
-            else:
-                use_none_layer = True
+            if use_none_layer is None:
+                if 'use_none_layer' in os.environ.keys():
+                    use_none_layer = str2bool(os.environ['use_none_layer'])
+                else:
+                    use_none_layer = True
             
             if use_none_layer:
                 layers += [NoneLayer()]
@@ -122,6 +122,7 @@ cfg = {
     'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'N', 512, 512, 'N'],
     'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'N', 512, 512, 512, 'N'],
     'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'N', 512, 512, 512, 512, 'N'],
+    'F': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'N', 512, 512, 512, 512, 'N', 512, 512],
 }
 
 
@@ -213,5 +214,20 @@ def vgg16_gn(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
         model.load_state_dict(model_zoo.load_url(model_urls['vgg16_bn']))
     return model
 
+def vgg21(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
+    model = VGG(make_layers(cfg['F'],eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg19']))
+    return model
 
+
+def vgg21_bn(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
+    model = VGG(make_layers(cfg['F'], batch_norm=True,eps=eps,momentum=momentum), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg19_bn']))
+    return model
 

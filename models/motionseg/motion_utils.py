@@ -95,7 +95,8 @@ def get_parser():
                         help="network name",
                         choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn',
                                  'motion_unet','motion_unet_stn','motion_fcn2','motion_sparse',
-                                 'motion_psp','motion_fcn2_flow','motion_fcn_flow','motion_unet_flow'],
+                                 'motion_psp','motion_fcn2_flow','motion_fcn_flow','motion_unet_flow',
+                                 'motion_panet','motion_panet_flow'],
                         default='motion_unet')
     
     parser.add_argument('--dataset',
@@ -103,9 +104,9 @@ def get_parser():
                         choices=['FBMS','cdnet2014','segtrackv2','BMCnet'],
                         default='cdnet2014')
     
-    backbone_names=['vgg'+str(number) for number in [11,13,16,19]]
+    backbone_names=['vgg'+str(number) for number in [11,13,16,19,21]]
     backbone_names+=[s+'_bn' for s in backbone_names]
-    backbone_names+=['resnet50','resnet101','MobileNetV2']
+    backbone_names+=['resnet50','resnet101','MobileNetV2','se_resnet50']
     parser.add_argument('--backbone_name',
                         help='backbone for motion_fcn and motion_fcn_stn',
                         choices=backbone_names,
