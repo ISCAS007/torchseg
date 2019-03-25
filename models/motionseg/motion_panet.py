@@ -187,17 +187,17 @@ class motion_panet_flow(motion_panet):
 if __name__ == '__main__':
     config=edict()
     config.backbone_name='resnet152'
-    config.layer_preference='first'
+    config.layer_preference='last'
     config.backbone_freeze=False
     config.freeze_layer=0
     config.freeze_ratio=0
     config.upsample_layer=3
     config.net_name='pspnet'
     config.modify_resnet_head=False
-    config.use_none_layer=True
+    config.use_none_layer=False
     config.deconv_layer=5
     
-    for name in ['zzz']:
+    for name in ['vgg21_bn']:
         print(name+'*'*50)
         config.backbone_name=name
         bb=panet(config)

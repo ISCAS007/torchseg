@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import pandas as pd
 import torch.nn.functional as F
 import torch.nn as TN
@@ -55,7 +56,13 @@ class motion_backbone(TN.Module):
         """
         super().__init__()
         self.config=config
-        self.use_none_layer=use_none_layer
+        if hasattr(config,'use_none_layer'):
+            self.use_none_layer=config.use_none_layer
+            assert self.use_none_layer==use_none_layer,'I donot known why!'
+        else:
+            self.use_none_layer=use_none_layer
+        
+        os.environ['use_none_layer']=str(self.use_none_layer)
         self.upsample_layer=self.config.upsample_layer
         self.deconv_layer=self.config.deconv_layer
         
@@ -176,6 +183,8 @@ class motion_backbone(TN.Module):
                 if idx == self.layer_depths[str(layer_num)]:
                     features.append(x)
                     layer_num+=1
+                if layer_num>=6:
+                    break
                 
         elif self.format=='resnet':
             features.append(x)
@@ -268,7 +277,7 @@ class motion_backbone(TN.Module):
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
-            if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn']:
+            if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
                 return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum)
             elif self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained)
@@ -354,6 +363,8 @@ class motion_backbone(TN.Module):
             for idx,layer in enumerate(self.features):
                 if idx in self.layer_depths.values():
                     print(idx,layer)
+            for idx in range(6):
+                print(self.get_feature_map_size(level=idx,input_size=(224,224)))
         else:
             print('layer 1 '+'*'*50)
             print(self.layer1)
@@ -799,14 +810,16 @@ class transform_motion_psp(TN.Module):
 if __name__ == '__main__':
     config=edict()
     config.backbone_name='resnet152'
-    config.layer_preference='first'
+    config.layer_preference='last'
     config.upsample_layer=1
     config.deconv_layer=5
     config.freeze_layer=1
     config.backbone_freeze=False
     config.modify_resnet_head=False
+    config.use_none_layer=False
+    config.net_name='motion_unet'
     
-    for name in ['vgg11','vgg16','vgg19_bn','resnet50']:
+    for name in ['vgg21_bn','vgg19_bn']:
         print(name+'*'*50)
         config.backbone_name=name
         bb=motion_backbone(config)

@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 from utils.disc_tools import str2bool
 import os
-
+import warnings
 model_urls = {
     'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
     'vgg13': 'https://download.pytorch.org/models/vgg13-c768596a.pth',
@@ -87,6 +87,7 @@ def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1,use
                 if 'use_none_layer' in os.environ.keys():
                     use_none_layer = str2bool(os.environ['use_none_layer'])
                 else:
+                    warnings.warn('use default value for use_none_layer')
                     use_none_layer = True
             
             if use_none_layer:
@@ -223,7 +224,7 @@ def vgg21(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
     return model
 
 
-def vgg21_bn(pretrained=True,eps=1e-5,momentum=0.1, **kwargs):
+def vgg21_bn(pretrained=True,eps=1e-5,momentum=0.1,**kwargs):
     if pretrained:
         kwargs['init_weights'] = False
     model = VGG(make_layers(cfg['F'], batch_norm=True,eps=eps,momentum=momentum), **kwargs)

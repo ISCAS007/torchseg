@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import pandas as pd
 import torchvision as TV
 import torch.nn as TN
@@ -26,7 +27,13 @@ class backbone(TN.Module):
         else:
             self.momentum=0.1
         
-        self.use_none_layer=use_none_layer
+        if hasattr(config,'use_none_layer'):
+            self.use_none_layer=config.use_none_layer
+            assert self.use_none_layer==use_none_layer,'I donot known why!'
+        else:
+            self.use_none_layer=use_none_layer
+        
+        os.environ['use_none_layer']=str(self.use_none_layer)
         self.get_layers()
         self.freeze_layers()
     
@@ -43,6 +50,8 @@ class backbone(TN.Module):
                 if idx == self.layer_depths[str(layer_num)]:
                     features.append(x)
                     layer_num+=1
+                if layer_num>=6:
+                    break
                 
         elif self.format=='resnet':
             features.append(x)
@@ -77,6 +86,9 @@ class backbone(TN.Module):
                 if idx == self.layer_depths[str(layer_num)]:
                     features.append(x)
                     layer_num+=1
+                    
+                    if layer_num>=6:
+                        break
         elif self.format=='resnet':
             features.append(x)
             x=self.prefix_net(x)
@@ -170,7 +182,7 @@ class backbone(TN.Module):
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
-            if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn']:
+            if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
                 return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum)
             elif self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained)
