@@ -74,36 +74,7 @@ class backbone(TN.Module):
         assert main_level in [1,2,3,4,5],'main feature level %d not in range(0,5)'%main_level
         assert aux_level in [1,2,3,4,5],'aux feature level %d not in range(0,5)'%aux_level
         
-        features=[]
-        if self.format=='vgg':
-            layer_num=0
-            if not hasattr(self.layer_depths,str(layer_num)):
-                features.append(x)
-                layer_num+=1
-                
-            for idx,layer in enumerate(self.features):
-                x=layer(x)
-                if idx == self.layer_depths[str(layer_num)]:
-                    features.append(x)
-                    layer_num+=1
-                    
-                    if layer_num>=6:
-                        break
-        elif self.format=='resnet':
-            features.append(x)
-            x=self.prefix_net(x)
-            features.append(x)
-            x = self.layer1(x)
-            features.append(x)
-            x = self.layer2(x)
-            features.append(x)
-            x = self.layer3(x)
-            features.append(x)
-            x = self.layer4(x)
-            features.append(x)
-        else:
-            assert False,'unexpected format %s'%(self.format)
-        
+        features=self.forward_layers(x)
         return features[main_level],features[aux_level]
         
     def forward(self,x,level):
@@ -225,10 +196,8 @@ class backbone(TN.Module):
                 
                 self.layer1=model.layer1
                 self.layer2=model.layer2
-                if config.upsample_layer>=4 or config.net_name=='motionnet':
-                    self.layer3=model.layer3
-                if config.upsample_layer>=5 or config.net_name=='motionnet':
-                    self.layer4=model.layer4
+                self.layer3=model.layer3
+                self.layer4=model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
         else:
@@ -245,10 +214,8 @@ class backbone(TN.Module):
                 self.prefix_net = model.prefix_net
                 self.layer1=model.layer1
                 self.layer2=model.layer2
-                if config.upsample_layer>=4 or config.net_name=='motionnet':
-                    self.layer3=model.layer3
-                if config.upsample_layer>=5 or config.net_name=='motionnet':
-                    self.layer4=model.layer4
+                self.layer3=model.layer3
+                self.layer4=model.layer4
             else:
                 assert False,'unknown backbone name %s'%self.config.backbone_name
     
@@ -256,8 +223,7 @@ class backbone(TN.Module):
         if self.config.backbone_freeze:
             for param in self.parameters():
                 param.requrires_grad=False
-        
-        if self.config.freeze_layer > 0:
+        elif self.config.freeze_layer > 0:
             if self.config.backbone_freeze:
                 warnings.warn("it's not good to use freeze layer with backbone_freeze")
 
@@ -283,11 +249,7 @@ class backbone(TN.Module):
                 if freeze_layer>4:
                     for param in self.layer4.parameters():
                         param.requires_grad = False
-        
-        if self.config.freeze_ratio > 0.0:
-            if self.config.backbone_freeze or self.config.freeze_layer:
-                warnings.warn("it's not good to use freeze ratio with freeze layer or backbone")
-            
+        elif self.config.freeze_ratio > 0.0:
             if self.format=='vgg':
                 freeze_index=len(self.features)*self.config.freeze_ratio    
                 for idx,layer in enumerate(self.features):
@@ -306,10 +268,11 @@ class backbone(TN.Module):
                         print('freeze weight of',name)
                         param.requires_grad=False
         
+        if hasattr(self.config,'modify_resnet_head') and hasattr(self.config,'use_none_layer'):
         # if modify resnet head worked, train the modified resnet head
-        if self.config.modify_resnet_head and self.config.use_none_layer and self.format=='resnet':
-            for param in self.prefix_net.parameters():
-                param.requires_grad = True
+            if self.config.modify_resnet_head and self.config.use_none_layer and self.format=='resnet':
+                for param in self.prefix_net.parameters():
+                    param.requires_grad = True
                 
     def get_dataframe(self):
         assert self.format=='vgg','only vgg models have features'

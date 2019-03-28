@@ -231,7 +231,7 @@ class motion_panet(nn.Module):
         else: 
             backbone_features=self.backbone.forward_layers(imgs[0])
             panet_features=self.panet.forward_layers(imgs[0])
-            feature_transform=self.midnet.forward(self.backbone.forward_layers(backbone_features,panet_features))
+            feature_transform=self.midnet.forward(backbone_features,panet_features)
         y=self.decoder(feature_transform)
         
         return {'masks':[y]}

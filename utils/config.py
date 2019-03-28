@@ -10,29 +10,33 @@ from utils.disc_tools import str2bool
 from utils.augmentor import get_default_augmentor_config
 from dataset.dataset_generalize import get_dataset_generalize_config
 
+
+def get_default_config():
+    config=edict()
+    config.model=edict()
+    config.model.class_number=20
+    config.model.backbone_name='vgg16'
+    config.model.layer_preference='last'
+    config.model.input_shape=(224,224)
+    
+    config.dataset=edict()
+    config.dataset.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+    config.dataset.cityscapes_split=random.choice(['test','val','train'])
+    config.dataset.resize_shape=(224,224)
+    config.dataset.name='cityscapes'
+    
+    config.training=edict()
+    config.training.n_epoch=300
+    config.training.batch_size=4
+    config.training.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
+    config.training.note='default'
+    
+    return config
+
 def get_config(args=None):
     # for test some function
     if args is None:
-        config=edict()
-        config.model=edict()
-        config.model.class_number=20
-        config.model.backbone_name='vgg16'
-        config.model.layer_preference='last'
-        config.model.input_shape=(224,224)
-        
-        config.dataset=edict()
-        config.dataset.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
-        config.dataset.cityscapes_split=random.choice(['test','val','train'])
-        config.dataset.resize_shape=(224,224)
-        config.dataset.name='cityscapes'
-        
-        config.training=edict()
-        config.training.n_epoch=300
-        config.training.batch_size=4
-        config.training.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
-        config.training.note='default'
-        
-        return config
+        return get_default_config()
     
     config = edict()
     config.model = edict()
@@ -44,6 +48,7 @@ def get_config(args=None):
         config.model.use_none_layer = args.use_none_layer = True
     os.environ['use_none_layer'] = str(config.model.use_none_layer)
     
+    config.model.deconv_layer=args.deconv_layer
     config.model.auxnet_layer = args.auxnet_layer
     config.model.cross_merge_times=args.cross_merge_times
     
@@ -199,9 +204,6 @@ def get_config(args=None):
         print('max_crop_size is',config.aug.max_crop_size)
         print('crop_size_step is',config.aug.crop_size_step)
             
-    return config
-
-def get_share_config(config):
     return config
 
 def dump_config(config,log_dir,filename='config.txt'):
@@ -367,7 +369,7 @@ def get_parser():
                         choices=['vgg16', 'vgg19', 'vgg16_bn', 'vgg19_bn', 'resnet18',
                                  'resnet34', 'resnet50', 'resnet101', 'resnet152',
                                  'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn',
-                                 'vgg16_gn','vgg19_gn'],
+                                 'vgg16_gn','vgg19_gn','se_resnet50','vgg21','vgg21_bn'],
                         default='resnet50')
     
     # 2018/11/08 change default from False to True
@@ -403,7 +405,7 @@ def get_parser():
                                  'psp_fractal', 'psp_dict', 'psp_aux',
                                  'fcn', 'fcn8s', 'fcn16s', 'fcn32s',
                                  'merge_seg','cross_merge', 'psp_hed',
-                                 'motionnet'],
+                                 'motionnet','motion_panet'],
                         default='pspnet')
 
     parser.add_argument('--midnet_scale',
@@ -437,6 +439,11 @@ def get_parser():
                         help='layer number for upsample',
                         type=int,
                         default=3)
+    
+    parser.add_argument('--deconv_layer',
+                        help='layer number for start deconv',
+                        type=int,
+                        default=5)
 
     parser.add_argument('--auxnet_layer',
                         help='layer number for auxnet',
