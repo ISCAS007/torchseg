@@ -9,7 +9,8 @@ from torch.autograd import Variable
 from easydict import EasyDict as edict
 import warnings
 from models.upsample import local_upsample
-from models.MobileNetV2 import mobilenet2
+from models.Anet.layers import Anet
+
 
 class conv_bn_relu(TN.Module):
     def __init__(self,
@@ -68,12 +69,13 @@ class motion_backbone(TN.Module):
         
         if config.net_name.find('unet')>=0 or \
             config.net_name.find('motion_sparse')>=0 or \
-            config.net_name.find('panet')>=0:
+            config.net_name.find('panet')>=0 or \
+            config.net_name=='motion_anet':
             assert self.deconv_layer > self.upsample_layer,'deconv %d must > decoder %d'%(self.deconv_layer,self.upsample_layer)
         elif config.net_name.find('fcn')>=0 or config.net_name.find('motion_psp')>=0:
             self.deconv_layer = self.upsample_layer
         else:
-            print('unknown net name {} for max extracted layer index'.format(config.net_name))
+            warnings.warn('unknown net name {} for max extracted layer index'.format(config.net_name))
             assert self.deconv_layer > self.upsample_layer
     
         if hasattr(self.config,'eps'):
@@ -91,15 +93,22 @@ class motion_backbone(TN.Module):
         self.freeze_layers()
     
     def get_layers(self):
+        if self.config.backbone_name.find('resnet')>=0:
+            self.format='resnet'
+        elif self.config.backbone_name.find('vgg')>=0 or \
+            self.config.backbone_name.lower().find('mobilenet')>=0 or \
+            self.config.backbone_name=='Anet':
+            self.format='vgg'
+        else:
+            assert False,'unknown backbone name %s'%self.config.backbone_name
+            
         if self.use_none_layer == False:
             model=self.get_model()
-            if self.config.backbone_name.find('vgg')>=0 or self.config.backbone_name.lower().find('mobilenet')>=0:
-                self.format='vgg'
+            if self.format=='vgg':
                 self.features=model.features
                 self.df=self.get_dataframe()
                 self.layer_depths=self.get_layer_depths()
-            elif self.config.backbone_name.find('resnet')>=0:
-                self.format='resnet'
+            elif self.format=='resnet':
                 if self.config.backbone_name.find('se_resnet')>=0:
                     self.prefix_net=model.layer0
                 else:
@@ -113,25 +122,24 @@ class motion_backbone(TN.Module):
                 self.layer3=model.layer3
                 self.layer4=model.layer4
             else:
-                assert False,'unknown backbone name %s'%self.config.backbone_name
+                assert False,'unknown backbone format %s'%self.format
         else:
             model=self.get_model()
-            if self.config.backbone_name.find('vgg')>=0 or self.config.backbone_name.lower().find('mobilenet')>=0:
-                self.format='vgg'
+            if self.format=='vgg':
                 self.features=model.features
                 self.df=self.get_dataframe()
                 self.layer_depths=self.get_layer_depths()
-            elif self.config.backbone_name.find('resnet')>=0:
+            elif self.format=='resnet':
                 # the output size of resnet layer is different from stand model!
                 # raise NotImplementedError
-                self.format='resnet'
+                
                 self.prefix_net = model.prefix_net
                 self.layer1=model.layer1
                 self.layer2=model.layer2
                 self.layer3=model.layer3
                 self.layer4=model.layer4
             else:
-                assert False,'unknown backbone name %s'%self.config.backbone_name
+                assert False,'unknown backbone format %s'%self.format
     
     def freeze_layers(self):       
         if self.config.backbone_freeze:
@@ -270,8 +278,15 @@ class motion_backbone(TN.Module):
         else:
             print('warning: backbone is not pretrained!!!')
             pretrained=False
-                
-        if self.use_none_layer:
+        
+        if self.config.backbone_name == 'Anet':
+            self.config.a_depth_mode='increase'
+            self.config.a_out_c_mode='increase'
+            self.config.a_mid_c_mode='reduction'
+            self.config.class_number=2
+            self.config.batch_norm=False
+            return Anet(self.config)
+        elif self.use_none_layer:
             print('use none layer'+'*'*30)
             from models.psp_resnet import resnet50,resnet101
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
@@ -279,15 +294,15 @@ class motion_backbone(TN.Module):
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
                 return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum)
-            elif self.config.backbone_name == 'MobileNetV2':
-                return mobilenet2(pretrained=pretrained)
             else:
                 return locals()[self.config.backbone_name](momentum=self.momentum)
         else:
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn
             from models.psp_vgg import vgg16_gn,vgg19_gn,vgg21,vgg21_bn
+            from models.MobileNetV2 import mobilenet2
             from pretrainedmodels import se_resnet50
+            
             if self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained)
             elif self.config.backbone_name.find('se_resnet')>=0:

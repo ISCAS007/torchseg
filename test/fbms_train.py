@@ -7,6 +7,7 @@ from models.motionseg.motion_unet import motion_unet,motion_unet_stn,motion_unet
 from models.motionseg.motion_panet import motion_panet,motion_panet_flow
 from models.motionseg.motion_sparse import motion_sparse
 from models.motionseg.motion_psp import motion_psp
+from models.Anet.motion_anet import motion_anet
 from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config,get_dataset
 from utils.torch_tools import init_writer
 import os
@@ -109,7 +110,13 @@ if __name__ == '__main__':
                     optimizer.zero_grad()
                     
                 outputs=model.forward(images)
-                mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(labels,dim=1))
+                if config.net_name=='motion_anet':
+                    mask_gt=torch.squeeze(labels,dim=1)
+                    mask_loss_value=0
+                    for mask in outputs['masks']:
+                        mask_loss_value+=seg_loss_fn(mask,mask_gt)
+                else:
+                    mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(labels,dim=1))
                 
                 # config['net_name'].find('stn')>=0
                 if config['net_name'] in ['motion_stn','motion_fcn_stn','motion_unet_stn']:
@@ -151,11 +158,9 @@ if __name__ == '__main__':
             else:
                 tqdm_epoch.set_postfix(val_fmeasure=fmeasure.item())
                 
-#            if epoch % 10 == 0:
-#                print(split,'fmeasure=%0.4f'%fmeasure,
-#                      'total_loss=',mean_total_loss,
-#                      'stn_loss=',mean_stn_loss,
-#                      'mask_loss=',mean_mask_loss)
+            if epoch % 10 == 0:
+                print(split,'fmeasure=%0.4f'%fmeasure,
+                      'total_loss=',mean_total_loss)
     
     if config['save_model']:
         torch.save(model.state_dict(),checkpoint_path)
