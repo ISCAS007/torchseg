@@ -142,7 +142,7 @@ def get_parser():
     
     parser.add_argument('--upsample_type',
                         help='upsample type for motion_unet (bilinear)',
-                        choices=['bilinear','subclass','mid_subclass'],
+                        choices=['bilinear','subclass','mid_decoder'],
                         default='bilinear')
     
     parser.add_argument('--subclass_sigmoid',
