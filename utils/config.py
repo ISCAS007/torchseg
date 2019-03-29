@@ -120,6 +120,8 @@ def get_config(args=None):
             count_size = max(config.model.midnet_pool_sizes) * \
                 config.model.midnet_scale*2**upsample_ratio
             input_shape = (count_size, count_size)
+        elif args.net_name == 'motion_panet':
+            input_shape=(448,448)
         elif args.midnet_name == 'psp':
             upsample_ratio=args.upsample_layer
             if args.use_none_layer and args.upsample_layer>=3:
@@ -136,6 +138,7 @@ def get_config(args=None):
     
     config.model.input_shape = input_shape
     config.model.midnet_out_channels = 512
+    config.model.subclass_sigmoid=args.subclass_sigmoid
     config.dataset = get_dataset_generalize_config(
         config.dataset, args.dataset_name)
     if config.dataset.ignore_index == 0:
@@ -426,8 +429,13 @@ def get_parser():
     # 2018/11/08 change default from duc to bilinear
     parser.add_argument('--upsample_type',
                         help='bilinear or duc upsample',
-                        choices=['duc', 'bilinear','fcn'],
+                        choices=['duc', 'bilinear','fcn','subclass'],
                         default='bilinear')
+    
+    parser.add_argument('--subclass_sigmoid',
+                        help='use sigmoid for upsample_subclass or not',
+                        type=str2bool,
+                        default=True)
     
     # 2018/11/08 change default from duc to bilinear
     parser.add_argument('--auxnet_type',

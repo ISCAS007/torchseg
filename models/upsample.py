@@ -183,6 +183,34 @@ class upsample_bilinear(TN.Module):
         else:
             return x
 
+class upsample_subclass(TN.Module):
+    def __init__(self,in_channels, out_channels, output_shape,use_sigmoid):
+        """
+        in_channels
+        out_channels
+        sub_class_number=in_channels//out_channels
+        mid_channels=out_channels*sub_class_number
+        """
+        super().__init__()
+        self.output_shape=output_shape
+        self.class_number=out_channels
+        self.sub_class_number=in_channels//out_channels
+        assert self.sub_class_number>1
+        self.midnet=conv_bn_relu(in_channels,self.class_number*self.sub_class_number)
+        
+        self.use_sigmoid=use_sigmoid
+        self.sigmoid=TN.Sigmoid()
+        
+    def forward(self,x):
+        x=self.midnet(x)
+        b,c,h,w=x.shape
+        x=x.permute(0,2,3,1).reshape(b,h,w,self.class_number,-1)
+        if self.use_sigmoid:
+            x=self.sigmoid(x)
+        x=torch.sum(x,dim=-1).permute(0,3,1,2)
+        x = F.interpolate(x, size=self.output_shape,
+                          mode='bilinear', align_corners=True)
+        return x
 
 class upsample_fcn(TN.Module):
     def __init__(self, in_channels, out_channels, output_shape):
@@ -870,6 +898,9 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
     elif upsample_type == 'fcn':
         decoder = upsample_fcn(midnet_out_channels,
                                class_number, input_shape[0:2])
+    elif upsample_type == 'subclass':
+        use_sigmoid=config.model.subclass_sigmoid
+        decoder = upsample_subclass(midnet_out_channels,class_number,input_shape[0:2],use_sigmoid)
     else:
         assert False, 'unknown upsample type %s' % upsample_type
 
