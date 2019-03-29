@@ -115,4 +115,4 @@ tar -czvf results.tgz results
 # useful script
 - `python utils/summary_to_csv.py` output best val/iou to orange tab file
 - `python test/dp_log.py` view pid and detail
-- `pipreqs --ignore models/examples,models/mxnet --force .` pip requirements
+- `pipreqs --ignore models/examples,models/mxnet,utils/model_hyperopt.py --force .` pip requirements

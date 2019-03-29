@@ -2,7 +2,11 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from models.motionseg.motion_backbone import motion_backbone,motionnet_upsample_bilinear,transform_motionnet,conv_bn_relu
+from models.motionseg.motion_backbone import (motion_backbone,
+                                              motionnet_upsample_bilinear,
+                                              transform_motionnet,
+                                              conv_bn_relu
+                                              )
 from models.psp_vgg import make_layers
 from easydict import EasyDict as edict
 

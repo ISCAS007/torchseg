@@ -235,7 +235,7 @@ class Anet(nn.Module):
             return stage_f_list,mid_f_list
         else:
             return self.features(x)
-        
+    
 if __name__ == '__main__':
     config=edict()
     config.class_number=2

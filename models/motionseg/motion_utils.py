@@ -140,6 +140,16 @@ def get_parser():
                         type=int,
                         default=5)
     
+    parser.add_argument('--upsample_type',
+                        help='upsample type for motion_unet (bilinear)',
+                        choices=['bilinear','subclass','mid_subclass'],
+                        default='bilinear')
+    
+    parser.add_argument('--subclass_sigmoid',
+                        help='use sigmoid or not in subclass upsample (False)',
+                        type=str2bool,
+                        default=False)
+    
     parser.add_argument('--use_part_number',
                         help='the dataset size, 0 for total dataset',
                         type=int,
@@ -255,6 +265,9 @@ def get_default_config():
     config.sparse_ratio=0.5
     config.sparse_conv=False
     config.psp_scale=5
+    
+    config.upsample_type='bilinear'
+    config.subclass_sigmoid=False
     
     return config
 

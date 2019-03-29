@@ -2,33 +2,9 @@
 import torch.nn as nn
 import torch
 from models.motionseg.motion_backbone import motion_backbone,motionnet_upsample_bilinear,conv_bn_relu
-from models.motionseg.motion_unet import motion_unet
+from models.motionseg.motion_unet import motion_unet,mid_decoder
 from models.Anet.layers import Anet
 from easydict import EasyDict as edict
-
-class mid_decoder(nn.Module):
-    def __init__(self,in_c,mid_c,config,ratio=10):
-        """
-        in_c --> mid_c --> class_number
-        in_c --> mid_c*ratio --> mid_c --> class_number
-        """
-        super().__init__()
-        self.config=config
-        self.input_shape=config.input_shape
-        self.class_number=2
-        self.midnet=conv_bn_relu(in_c,mid_c*ratio)
-        self.midnet_out_channels=mid_c
-        self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
-                                                     out_channels=self.class_number,
-                                                     output_shape=self.input_shape[0:2])
-        
-    def forward(self,x):
-        x=self.midnet(x)
-        b,c,h,w=x.shape
-        x=x.permute(0,2,3,1).reshape(b,h,w,self.midnet_out_channels,-1)
-        x=torch.sum(x,dim=-1).permute(0,3,1,2)
-        
-        return self.decoder(x)
     
 class motion_anet(motion_unet):
     def __init__(self,config):

@@ -13,7 +13,7 @@ import json
 import time
 import os
 
-from utils.model_hyperopt import psp_opt
+
 from models.pspnet import pspnet
 from models.psp_edge import psp_edge
 from models.psp_global import psp_global
@@ -173,6 +173,7 @@ if __name__ == '__main__':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         torchsummary.summary(net.to(device), (3, height, width))
     elif test == 'hyperopt':
+        from utils.model_hyperopt import psp_opt
         config.args.log_dir = os.path.expanduser('~/tmp/logs/hyperopt')
         psp_model=globals()[args.net_name]
         config.args.n_calls=args.hyperopt_calls
