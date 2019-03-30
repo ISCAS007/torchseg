@@ -187,7 +187,7 @@ class motion_net(nn.Module):
         return {'masks':[exp_mask1,exp_mask2,exp_mask3,exp_mask4],
                 'features':features}
         
-def stn_loss(features,motion,pose,pose_mask_reg=1.0):
+def stn_loss(features,motion,pose,pose_mask_reg=0.0):
     # ignore_index=255, view as motion
     motion=torch.clamp(motion,min=0,max=1)
     n=len(features)

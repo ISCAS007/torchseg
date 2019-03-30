@@ -64,6 +64,13 @@ class motion_backbone(TN.Module):
             self.use_none_layer=use_none_layer
         
         os.environ['use_none_layer']=str(self.use_none_layer)
+        
+        if hasattr(config,'modify_resnet_head'):
+            os.environ['modify_resnet_head']=str(config.modify_resnet_head)
+        else:
+            os.environ['modify_resnet_head']=str(False)
+        
+        
         self.upsample_layer=self.config.upsample_layer
         self.deconv_layer=self.config.deconv_layer
         
