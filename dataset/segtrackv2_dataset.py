@@ -43,6 +43,14 @@ class segtrackv2_dataset(td.Dataset):
         self.input_shape=tuple(config.input_shape)
         self.root_path=config.root_path
         self.main_files=self.get_main_files()
+        
+        print('dataset size = {}',len(self.main_files))
+        n=len(self.main_files)
+        if n > self.config['use_part_number'] > 0:
+            gap=n//self.config['use_part_number']
+            self.main_files=self.main_files[::gap]
+            print('total dataset image %d, use %d'%(n,len(self.main_files)))
+            
         self.frame_gap=config.frame_gap
         self.use_optical_flow=config.use_optical_flow
         

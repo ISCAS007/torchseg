@@ -220,7 +220,7 @@ def load_config(config_file):
     l=f.readline()
     f.close()
 
-    d=yaml.load(l)
+    d=yaml.load(l,Loader=yaml.FullLoader)
     config=edict(d)
 
     return config
