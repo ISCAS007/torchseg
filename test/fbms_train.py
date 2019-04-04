@@ -8,7 +8,7 @@ from models.motionseg.motion_panet import motion_panet,motion_panet_flow
 from models.motionseg.motion_sparse import motion_sparse
 from models.motionseg.motion_psp import motion_psp
 from models.Anet.motion_anet import motion_anet
-from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config,get_dataset
+from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config,get_dataset,get_dataset_config
 from utils.torch_tools import init_writer
 import os
 import torch
@@ -41,6 +41,9 @@ if __name__ == '__main__':
     for key in args.__dict__.keys():
         if key not in config.keys():
             print('{} : unused keys {}'.format(key,args.__dict__[key]))
+    
+    # update config according to basic config
+    config=get_dataset_config(config)
     
     if args.app=='dataset':
         for split in ['train','val']:

@@ -221,6 +221,11 @@ def get_parser():
                         type=str2bool,
                         default=False)
     
+    parser.add_argument('--input_shape',
+                        help='input shape for model',
+                        type=int,
+                        default=224)
+    
     return parser
 
 def get_default_config():
@@ -276,6 +281,9 @@ def get_dataset_config(config):
         config.use_optical_flow=True
     else:
         config.use_optical_flow=False
+    
+    if not isinstance(config.input_shape,(list,tuple)):
+        config.input_shape=[config.input_shape,config.input_shape]
         
     if config.dataset=='FBMS':
         config['train_path']=os.path.expanduser('~/cvdataset/FBMS/Trainingset')
