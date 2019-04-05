@@ -96,7 +96,8 @@ def get_parser():
                         choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn',
                                  'motion_unet','motion_unet_stn','motion_fcn2','motion_sparse',
                                  'motion_psp','motion_fcn2_flow','motion_fcn_flow','motion_unet_flow',
-                                 'motion_panet','motion_panet_flow','motion_anet'],
+                                 'motion_panet','motion_panet_flow','motion_anet',
+                                 'motion_panet2','motion_panet2_flow'],
                         default='motion_unet')
     
     parser.add_argument('--dataset',
@@ -110,6 +111,11 @@ def get_parser():
     parser.add_argument('--backbone_name',
                         help='backbone for motion_fcn and motion_fcn_stn',
                         choices=backbone_names,
+                        default='vgg11')
+    
+    parser.add_argument('--flow_backbone',
+                        help='backbone for flow network(vgg11), currently motion_panet2 support only',
+                        choices=['vgg'+str(number) for number in [11,13,16,19]],
                         default='vgg11')
     
     parser.add_argument('--batch_size',
@@ -226,6 +232,26 @@ def get_parser():
                         type=int,
                         default=224)
     
+    parser.add_argument('--main_panet',
+                        help='use main panet or not(False) currently motion_panet2 support only',
+                        type=str2bool,
+                        default=False)
+    
+    parser.add_argument('--aux_panet',
+                        help='use aux panet or not(False) currently motion_panet2 support only',
+                        type=str2bool,
+                        default=False)
+    
+    parser.add_argument('--share_backbone',
+                        help='share the backbone for main and aux(None), currently motion_panet2 support only',
+                        type=str2bool,
+                        default=None)
+    
+    parser.add_argument('--fusion_type',
+                        help='type for fusion the aux with main(all), currently motion_panet2 support only',
+                        choices=['all','first','last'],
+                        default='all')
+    
     return parser
 
 def get_default_config():
@@ -273,14 +299,23 @@ def get_default_config():
     
     config.upsample_type='bilinear'
     config.subclass_sigmoid=False
-    
+    config.flow_backbone='vgg11'
+    config.main_panet=False
+    config.aux_panet=False
+    # note, false for flow
+    config.share_backbone=None
+    config.fusion_type='all'
     return config
 
 def get_dataset_config(config):
     if config.net_name.find('flow')>=0:
         config.use_optical_flow=True
+        if config.share_backbone is None:
+            config.share_backbone=False
     else:
         config.use_optical_flow=False
+        if config.share_backbone is None:
+            config.share_backbone=True
     
     if not isinstance(config.input_shape,(list,tuple)):
         config.input_shape=[config.input_shape,config.input_shape]

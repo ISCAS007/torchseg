@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import warnings
 from models.motionseg.motion_backbone import (motion_backbone,
                                               motionnet_upsample_bilinear,
                                               transform_motionnet,
@@ -11,7 +12,11 @@ from models.psp_vgg import make_layers
 from easydict import EasyDict as edict
 
 class panet(motion_backbone):
-    def __init__(self,config,in_c=None):
+    """
+    use for panet for image/flow and backbone for flow
+    with network_mode=config.flow_backbone
+    """
+    def __init__(self,config,in_c=None,network_mode=None):
         if in_c is None:
             if config.net_name.find('flow')>=0:
                 self.in_channels=2
@@ -19,12 +24,25 @@ class panet(motion_backbone):
                 self.in_channels=3
         else:
             self.in_channels=in_c
+        
+        self.network_mode=network_mode
         super().__init__(config,config.use_none_layer)
         
         
     def get_layers(self):
         self.format='vgg'
-        cfg=[8,'M',16,'M',32,32,'M',64,64,'N',64,64,'N',64,64]
+        
+        cfg_modes = {
+            'vgg11': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512,'N', 512, 512, 'N'],
+            'vgg13': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'N', 512, 512, 'N'],
+            'vgg16': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'N', 512, 512, 512, 'N'],
+            'vgg19': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'N', 512, 512, 512, 512, 'N'],
+        }
+        if self.network_mode is None:
+            cfg=[8,'M',16,'M',32,32,'M',64,64,'N',64,64,'N',64,64]
+        else:
+            cfg=cfg_modes[self.network_mode]
+            
         self.features=make_layers(cfg,batch_norm=False,eps=self.eps,
                                   momentum=self.momentum,
                                   use_none_layer=self.use_none_layer,
@@ -241,6 +259,158 @@ class motion_panet(nn.Module):
         return {'masks':[y]}
 
 class motion_panet_flow(motion_panet):
+    def __init__(self,config):
+        super().__init__(config)
+
+class transform_panet2(nn.Module):
+    def __init__(self,backbones,config):
+        super().__init__()
+        self.deconv_layer=config.deconv_layer
+        self.upsample_layer=config.upsample_layer
+        self.fusion_type=config.fusion_type
+        self.use_none_layer=config.use_none_layer
+        self.backbones=backbones
+        
+        self.layers=[]
+        self.keys=['main_backbone','aux_backbone','main_panet','aux_panet']
+        channels={}
+        inplace=True
+        for idx in range(self.deconv_layer+1):
+            if idx<self.upsample_layer:
+                self.layers.append(None)
+                continue
+            elif idx==self.deconv_layer:
+                merge_c=0
+            else:
+                merge_c=backbones['main_backbone'].get_feature_map_channel(idx+1)
+            
+            out_c=backbones['main_backbone'].get_feature_map_channel(idx)
+            for key,value in backbones.items():
+                assert key in self.keys
+                channels[key]=value.get_feature_map_channel(idx)
+                if self.fusion_type=='all' or key.find('main')>=0:
+                    merge_c+=channels[key]
+                elif self.fusion_type=='first' and idx==self.upsample_layer:
+                    merge_c+=channels[key]
+                elif self.fusion_type=='last' and idx==self.deconv_layer:
+                    merge_c+=channels[key]
+                
+            current_layer=[conv_bn_relu(in_channels=merge_c,
+                                                 out_channels=out_c,
+                                                 kernel_size=3,
+                                                 stride=1,
+                                                 padding=1,
+                                                 inplace=inplace)]
+                    
+            if idx==0 or (self.use_none_layer and idx>3):
+                pass
+            else:
+                current_layer.append(nn.ConvTranspose2d(out_c,out_c,kernel_size=4,stride=2,padding=1,bias=False))
+           
+            current_layer.append(conv_bn_relu(in_channels=out_c,
+                                                 out_channels=out_c,
+                                                 kernel_size=3,
+                                                 stride=1,
+                                                 padding=1,
+                                                 inplace=inplace))
+            self.layers.append(nn.Sequential(*current_layer))
+                
+        self.model_layers=nn.ModuleList([layer for layer in self.layers if layer is not None])
+            
+    def forward(self,features):
+        assert isinstance(features,dict)
+        feature=None
+        for idx in range(self.deconv_layer,self.upsample_layer-1,-1):
+            f_list=[feature]
+            for key,value in features.items():
+                assert key in self.keys
+                if self.fusion_type=='all' or key.find('main')>=0:
+                    f_list.append(features[key][idx])
+                elif self.fusion_type=='first' and idx==self.upsample_layer:
+                    f_list.append(features[key][idx])
+                elif self.fusion_type=='last' and idx==self.deconv_layer:
+                    f_list.append(features[key][idx])
+            f_list=[f for f in f_list if f is not None]
+            feature=torch.cat(f_list,dim=1)
+            feature=self.layers[idx](feature)
+        return feature
+        
+class motion_panet2(nn.Module):
+    def __init__(self,config):
+        super().__init__()
+        self.config=config
+        self.input_shape=config.input_shape
+        self.upsample_layer=config.upsample_layer
+        self.use_aux_input=config.use_aux_input
+        if config.net_name.find('flow')>=0:
+            self.use_flow=True
+            self.share_backbone=False
+            if config.share_backbone:
+                warnings.warn('share backbone not worked for {}'.format(config.net_name))
+        else:
+            self.use_flow=False
+            self.share_backbone=config.share_backbone
+        
+        self.main_backbone=motion_backbone(config,use_none_layer=config.use_none_layer)
+        
+        self.aux_backbone=None
+        if config.share_backbone:
+            if self.use_aux_input:
+                self.aux_backbone=self.main_backbone
+        else:
+            if self.use_flow:
+                self.aux_backbone=panet(config,in_c=2,network_mode=config.flow_backbone)
+            elif self.use_aux_input:
+                self.aux_backbone=motion_backbone(config,use_none_layer=config.use_none_layer)
+        
+        self.main_panet=None
+        if config.main_panet:
+            in_c=2 if self.use_flow else 3
+            self.main_panet=panet(config,in_c=in_c)
+        
+        self.aux_panet=None
+        if config.aux_panet:
+            if config.share_backbone:
+                self.aux_panet=self.main_panet
+            else:
+                self.aux_panet=panet(config,in_c=in_c)
+        
+        keys=['main_backbone','aux_backbone','main_panet','aux_panet']
+        none_backbones={'main_backbone':self.main_backbone,
+                   'aux_backbone':self.aux_backbone,
+                   'main_panet':self.main_panet,
+                   'aux_panet':self.aux_panet}
+        backbones={}
+        for key in keys:
+            if none_backbones[key] is not None:
+                backbones[key]=none_backbones[key]
+                
+        self.midnet=transform_panet2(backbones,config)
+        
+        self.midnet_out_channels=self.main_backbone.get_feature_map_channel(self.upsample_layer)
+        self.class_number=2
+        
+        self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
+                                                     out_channels=self.class_number,
+                                                     output_shape=self.input_shape[0:2])
+        
+    def forward(self,imgs):
+        features={}
+        features['main_backbone']=self.main_backbone.forward_layers(imgs[0])
+        if self.use_aux_input or self.use_flow:
+            features['aux_backbone']=self.aux_backbone.forward_layers(imgs[1])
+        
+        if self.config.main_panet:
+            features['main_panet']=self.main_panet.forward_layers(imgs[0])
+        
+        if self.config.aux_panet:
+            features['aux_panet']=self.aux_panet.forward_layers(imgs[1])
+        
+        x=self.midnet(features)
+        y=self.decoder(x)
+        return {'masks':[y]}
+        
+class motion_panet2_flow(motion_panet2):
     def __init__(self,config):
         super().__init__(config)
     
