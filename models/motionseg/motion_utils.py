@@ -177,7 +177,7 @@ def get_parser():
                         default=True)
     
     parser.add_argument('--always_merge_flow',
-                        help='merge flow at every deconv layer or not (False)',
+                        help='@deprecated merge flow at every deconv layer or not (False)',
                         type=str2bool,
                         default=False)
     
@@ -248,7 +248,7 @@ def get_parser():
                         default=None)
     
     parser.add_argument('--fusion_type',
-                        help='type for fusion the aux with main(all), currently motion_panet2 support only',
+                        help='type for fusion the aux with main(all), currently motion_panet2 and motion_unet_flow support only',
                         choices=['all','first','last'],
                         default='all')
     

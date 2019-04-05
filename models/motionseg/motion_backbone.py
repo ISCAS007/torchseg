@@ -547,7 +547,7 @@ class upsample_merge(TN.Module):
         super().__init__()
         self.merge_type=config.merge_type
         
-    def forward(self,features):
+    def forward(self,features):        
         s=features[0].shape
         
         y=[]
@@ -577,7 +577,7 @@ class transform_motionnet_flow(TN.Module):
         self.upsample_layer=self.config.upsample_layer
         self.deconv_layer=self.config.deconv_layer
         self.merge_type=self.config.merge_type
-        self.always_merge_flow=self.config.always_merge_flow
+        self.fusion_type=config.fusion_type
         
         assert self.deconv_layer > self.upsample_layer
         assert self.merge_type=='concat'
@@ -590,14 +590,25 @@ class transform_motionnet_flow(TN.Module):
                 self.deconv_layers.append(None)
             elif idx==self.deconv_layer:
                 in_c=out_c=backbone.get_feature_map_channel(idx)
-                merge_c=in_c+2
-                self.upsample_merge_layers.append(TN.Sequential(upsample_merge(config),
+                if self.fusion_type in ['all','last']:
+                    merge_c=in_c+2
+                    self.upsample_merge_layers.append(TN.Sequential(upsample_merge(config),
                                                                conv_bn_relu(in_channels=merge_c,
                                                                 out_channels=in_c,
                                                                 kernel_size=1,
                                                                 stride=1,
                                                                 padding=0,
                                                                 inplace=inplace)))
+                else:
+                    merge_c=in_c
+                    self.upsample_merge_layers.append(conv_bn_relu(in_channels=merge_c,
+                                                                out_channels=in_c,
+                                                                kernel_size=1,
+                                                                stride=1,
+                                                                padding=0,
+                                                                inplace=inplace))
+                
+                
                 
                 if self.use_none_layer and idx>3:
                     layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
@@ -621,8 +632,11 @@ class transform_motionnet_flow(TN.Module):
 #                print('idx,in_c,out_c',idx,in_c,out_c)
                 merge_c=in_c+out_c
                 
-                if self.always_merge_flow:
+                if self.fusion_type == 'all':
                     merge_c+=2
+                elif self.fusion_type=='first' and idx==self.upsample_layer:
+                    merge_c+=2
+                
                 self.upsample_merge_layers.append(TN.Sequential(upsample_merge(config),
                                                                conv_bn_relu(in_channels=merge_c,
                                                                 out_channels=in_c,
@@ -653,12 +667,15 @@ class transform_motionnet_flow(TN.Module):
     def forward(self,main,flow):
         assert isinstance(main,(list,tuple)),'main input for segnet should be list or tuple'
         assert len(main)==6
-        
+
         for idx in range(self.deconv_layer,self.upsample_layer-1,-1):
             if idx==self.deconv_layer:
-                feature=self.upsample_merge_layers[idx]((main[idx],flow))
+                if self.fusion_type in ['all','last']:
+                    feature=self.upsample_merge_layers[idx]((main[idx],flow))
+                else:
+                    feature=self.upsample_merge_layers[idx]((main[idx]))
             else:
-                if self.always_merge_flow:
+                if self.fusion_type == 'all' or (self.fusion_type=='first' and idx==self.upsample_layer):
                     feature=self.upsample_merge_layers[idx]((main[idx],feature,flow))
                 else:
                     feature=self.upsample_merge_layers[idx]((main[idx],feature))
