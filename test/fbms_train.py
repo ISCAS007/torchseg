@@ -10,6 +10,7 @@ from models.motionseg.motion_psp import motion_psp
 from models.Anet.motion_anet import motion_anet
 from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config,get_dataset,get_dataset_config
 from utils.torch_tools import init_writer
+import torch.nn.functional as F
 import os
 import torch
 import time
@@ -70,7 +71,8 @@ if __name__ == '__main__':
     dataset_loaders={}
     for split in ['train','val']:
         xxx_dataset=get_dataset(config,split)
-        xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=args.batch_size,shuffle=True,drop_last=False,num_workers=2)
+        batch_size=args.batch_size if split=='train' else 1
+        xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=True,drop_last=False,num_workers=2)
         dataset_loaders[split]=xxx_loader
     
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
@@ -107,7 +109,8 @@ if __name__ == '__main__':
             tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
             for frames,gt in tqdm_step:
                 images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
-                labels=torch.autograd.Variable(gt.to(device).long())
+                origin_labels=torch.autograd.Variable(gt.to(device).long())
+                labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
                 
                 if split=='train':
                     optimizer.zero_grad()
@@ -134,7 +137,10 @@ if __name__ == '__main__':
                 else:
                     stn_loss_value=torch.tensor(0.0)
                     total_loss_value=mask_loss_value
-                metric_acc.update(outputs['masks'][0],labels)
+                    
+                origin_mask=F.interpolate(outputs['masks'][0], size=origin_labels.shape[2:4],mode='nearest')
+                
+                metric_acc.update(origin_mask,origin_labels)
                 metric_stn_loss.update(stn_loss_value.item())
                 metric_mask_loss.update(mask_loss_value.item())
                 metric_total_loss.update(total_loss_value.item())
