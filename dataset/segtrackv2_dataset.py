@@ -156,8 +156,10 @@ class segtrackv2_dataset(td.Dataset):
             
         # resize image
         resize_frame_images=[cv2.resize(img,self.input_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
-#        resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)
-        resize_gt_image=gt_image
+        if self.split=='train':
+            resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)
+        else:
+            resize_gt_image=gt_image
         
         # normalize image
         if self.normalizations is not None:
