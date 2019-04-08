@@ -66,7 +66,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, modify_resnet_head=None, momentum=0.1,upsample_layer=5):
+    def __init__(self, block, layers, modify_resnet_head=None, momentum=0.1,upsample_layer=5,in_channels=3):
         self.inplanes = 64
         self.momentum=momentum
         super(ResNet, self).__init__()
@@ -83,7 +83,7 @@ class ResNet(nn.Module):
             self.modify_resnet_head=modify_resnet_head
             
         if self.modify_resnet_head:
-            self.prefix_net = nn.Sequential(self.conv_bn_relu(in_channels=3,
+            self.prefix_net = nn.Sequential(self.conv_bn_relu(in_channels=in_channels,
                                                               out_channels=64,
                                                               kernel_size=3,
                                                               stride=2,
@@ -102,7 +102,7 @@ class ResNet(nn.Module):
                                                          stride=2,
                                                          padding=1))
         else:
-            self.conv1=nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,bias=False)
+            self.conv1=nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3,bias=False)
             self.bn1=nn.BatchNorm2d(64, momentum=momentum)
             self.relu=nn.ReLU(inplace=True)
             self.maxpool=nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -229,31 +229,31 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet50(pretrained=True,momentum=0.1,upsample_layer=5):
+def resnet50(pretrained=True,momentum=0.1,upsample_layer=5,in_channels=3):
     """Constructs a ResNet-50 model.
 
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3], momentum=momentum,upsample_layer=upsample_layer)
+    model = ResNet(Bottleneck, [3, 4, 6, 3], momentum=momentum,upsample_layer=upsample_layer,in_channels=in_channels)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
     return model
 
 
-def resnet101(pretrained=True,momentum=0.1,upsample_layer=5):
+def resnet101(pretrained=True,momentum=0.1,upsample_layer=5,in_channels=3):
     """Constructs a ResNet-101 model.
 
     """
-    model = ResNet(Bottleneck, [3, 4, 23, 3], momentum=momentum,upsample_layer=upsample_layer)
+    model = ResNet(Bottleneck, [3, 4, 23, 3], momentum=momentum,upsample_layer=upsample_layer,in_channels=in_channels)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))
     return model
 
 
-def resnet152(momentum=0.1,upsample_layer=5):
+def resnet152(momentum=0.1,upsample_layer=5,in_channels=3):
     """Constructs a ResNet-152 model.
 
     """
-    model = ResNet(Bottleneck, [3, 8, 36, 3], momentum=momentum,upsample_layer=upsample_layer)
+    model = ResNet(Bottleneck, [3, 8, 36, 3], momentum=momentum,upsample_layer=upsample_layer,in_channels=in_channels)
     return model
 
 def get_backbone(momentum):

@@ -77,7 +77,7 @@ class motion_backbone(TN.Module):
         if config.net_name.find('unet')>=0 or \
             config.net_name.find('motion_sparse')>=0 or \
             config.net_name.find('panet')>=0 or \
-            config.net_name=='motion_anet':
+            config.net_name in ['motion_anet','motion_mix','motion_mix_flow']:
             assert self.deconv_layer > self.upsample_layer,'deconv %d must > decoder %d'%(self.deconv_layer,self.upsample_layer)
         elif config.net_name.find('fcn')>=0 or config.net_name.find('motion_psp')>=0:
             self.deconv_layer = self.upsample_layer
@@ -95,7 +95,13 @@ class motion_backbone(TN.Module):
         else:
             self.momentum=0.1
         
-        self.use_none_layer=use_none_layer
+        if self.config.net_name== 'motion_mix':
+            self.in_channels=6
+        elif self.config.net_name=='motion_mix_flow':
+            self.in_channels=5
+        else:
+            self.in_channels=3
+            
         self.get_layers()
         self.freeze_layers()
     
@@ -249,7 +255,7 @@ class motion_backbone(TN.Module):
     def get_feature_map_channel(self,level):
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
-        x=torch.rand(2,3,224,224)
+        x=torch.rand(2,self.in_channels,224,224)
         x=Variable(x.to(device).float())
         x=self.forward(x,level)
         return x.shape[1]
@@ -257,7 +263,7 @@ class motion_backbone(TN.Module):
     def get_feature_map_size(self,level,input_size):
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
-        x=torch.rand(2,3,input_size[0],input_size[1])
+        x=torch.rand(2,self.in_channels,input_size[0],input_size[1])
         x=Variable(x.to(device).float())
         x=self.forward(x,level)
         return x.shape[2:4]
@@ -265,7 +271,7 @@ class motion_backbone(TN.Module):
     def get_output_shape(self,level,input_size):
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
-        x=torch.rand(2,3,input_size[0],input_size[1])
+        x=torch.rand(2,self.in_channels,input_size[0],input_size[1])
         x=torch.autograd.Variable(x.to(device).float())
         x=self.forward(x,level)
         return x.shape
@@ -273,7 +279,7 @@ class motion_backbone(TN.Module):
     def get_layer_shapes(self,input_size):
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
-        x=torch.rand(2,3,input_size[0],input_size[1])
+        x=torch.rand(2,self.in_channels,input_size[0],input_size[1])
         x=torch.autograd.Variable(x.to(device).float())
         features=self.forward_layers(x)
         shapes=[f.shape for f in features]
@@ -293,16 +299,16 @@ class motion_backbone(TN.Module):
             self.config.class_number=2
             self.config.batch_norm=False
             return Anet(self.config)
-        elif self.use_none_layer:
+        elif self.use_none_layer or self.config.net_name in ['motion_mix','motion_mix_flow']:
             print('use none layer'+'*'*30)
             from models.psp_resnet import resnet50,resnet101
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
-                return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum)
+                return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum,in_channels=self.in_channels)
             else:
-                return locals()[self.config.backbone_name](momentum=self.momentum)
+                return locals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels)
         else:
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn

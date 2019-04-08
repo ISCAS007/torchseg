@@ -8,6 +8,7 @@ from models.motionseg.motion_panet import motion_panet,motion_panet_flow,motion_
 from models.motionseg.motion_sparse import motion_sparse
 from models.motionseg.motion_psp import motion_psp
 from models.Anet.motion_anet import motion_anet
+from models.motionseg.motion_mix import motion_mix,motion_mix_flow
 from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config,get_dataset,get_dataset_config
 from utils.torch_tools import init_writer
 import torch.nn.functional as F
