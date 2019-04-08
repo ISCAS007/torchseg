@@ -248,8 +248,8 @@ def get_parser():
                         default=None)
     
     parser.add_argument('--fusion_type',
-                        help='type for fusion the aux with main(all), currently motion_panet2 and motion_unet_flow support only',
-                        choices=['all','first','last'],
+                        help='type for fusion the aux with main(all), currently motion_panet2 and motion_unet_flow support only, first=HR,last=LR',
+                        choices=['all','first','last', 'HR','LR'],
                         default='all')
     
     return parser
