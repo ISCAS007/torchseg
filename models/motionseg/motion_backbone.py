@@ -590,7 +590,7 @@ class transform_motionnet_flow(TN.Module):
                 self.deconv_layers.append(None)
             elif idx==self.deconv_layer:
                 in_c=out_c=backbone.get_feature_map_channel(idx)
-                if self.fusion_type in ['all','last']:
+                if self.fusion_type in ['all','last','LR']:
                     merge_c=in_c+2
                     self.upsample_merge_layers.append(TN.Sequential(upsample_merge(config),
                                                                conv_bn_relu(in_channels=merge_c,
@@ -634,7 +634,7 @@ class transform_motionnet_flow(TN.Module):
                 
                 if self.fusion_type == 'all':
                     merge_c+=2
-                elif self.fusion_type=='first' and idx==self.upsample_layer:
+                elif self.fusion_type in ['first','HR'] and idx==self.upsample_layer:
                     merge_c+=2
                 
                 self.upsample_merge_layers.append(TN.Sequential(upsample_merge(config),
@@ -670,12 +670,12 @@ class transform_motionnet_flow(TN.Module):
 
         for idx in range(self.deconv_layer,self.upsample_layer-1,-1):
             if idx==self.deconv_layer:
-                if self.fusion_type in ['all','last']:
+                if self.fusion_type in ['all','last','LR']:
                     feature=self.upsample_merge_layers[idx]((main[idx],flow))
                 else:
                     feature=self.upsample_merge_layers[idx]((main[idx]))
             else:
-                if self.fusion_type == 'all' or (self.fusion_type=='first' and idx==self.upsample_layer):
+                if self.fusion_type == 'all' or (self.fusion_type in ['first','HR'] and idx==self.upsample_layer):
                     feature=self.upsample_merge_layers[idx]((main[idx],feature,flow))
                 else:
                     feature=self.upsample_merge_layers[idx]((main[idx],feature))
