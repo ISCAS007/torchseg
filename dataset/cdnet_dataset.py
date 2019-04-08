@@ -180,14 +180,14 @@ class cdnet_dataset(td.Dataset):
         resize_frame_images=[cv2.resize(img,self.input_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
         if self.split=='train':
             resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)
+            # padding for out of roi
+            if self.ignore_outOfRoi is False:
+                random_pixel=np.random.randint(low=0,high=256,size=(3,))
+                for img in resize_frame_images:
+                    img[resize_gt_image==85]=random_pixel
         else:
             resize_gt_image=gt_image
         
-        # padding for out of roi
-        if self.ignore_outOfRoi is False:
-            random_pixel=np.random.randint(low=0,high=256,size=(3,))
-            for img in resize_frame_images:
-                img[resize_gt_image==85]=random_pixel
         # normalize image
         if self.normalizations is not None:
             resize_frame_images = [self.normalizations.forward(img) for img in resize_frame_images]
