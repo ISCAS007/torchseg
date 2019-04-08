@@ -292,6 +292,7 @@ class motion_backbone(TN.Module):
             print('warning: backbone is not pretrained!!!')
             pretrained=False
         
+        # use_none_layer is a mark for feature map size. true for [224,112,56,28,28,28], false for [224,112,56,28,14,7]
         if self.config.backbone_name == 'Anet':
             self.config.a_depth_mode='increase'
             self.config.a_out_c_mode='increase'
@@ -303,12 +304,13 @@ class motion_backbone(TN.Module):
             print('use none layer'+'*'*30)
             from models.psp_resnet import resnet50,resnet101
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
+            
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
                 return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum,in_channels=self.in_channels)
             else:
-                return locals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels)
+                return locals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
         else:
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn
@@ -532,7 +534,6 @@ class transform_motionnet(TN.Module):
             assert aux is None
             assert isinstance(main,(list,tuple)),'main input for segnet should be list or tuple'
             assert len(main)==6
-            
             for idx in range(self.deconv_layer,self.upsample_layer-1,-1):
                 if idx==self.deconv_layer:
                     feature=main[idx]

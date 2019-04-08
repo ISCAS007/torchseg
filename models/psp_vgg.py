@@ -132,6 +132,8 @@ def vgg(cfg_key,url_key,pretrained=True,group_norm=False,eps=1e-5,momentum=0.1,i
     model = VGG(make_layers(cfg[cfg_key],group_norm=group_norm,eps=eps,momentum=momentum,in_channels=in_channels), **kwargs)
     if pretrained and in_channels==3:
         model.load_state_dict(model_zoo.load_url(model_urls[url_key]))
+    elif pretrained:
+        warnings.warn('not pretrain vgg model')
     return model
 
 def vgg11(**kwargs):
