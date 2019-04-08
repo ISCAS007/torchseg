@@ -294,8 +294,6 @@ class transform_panet2(nn.Module):
                     merge_c+=channels[key]
                 elif self.fusion_type in ['last','LR'] and idx==self.deconv_layer:
                     merge_c+=channels[key]
-                else:
-                    assert False
                 
             current_layer=[conv_bn_relu(in_channels=merge_c,
                                                  out_channels=out_c,
@@ -332,8 +330,7 @@ class transform_panet2(nn.Module):
                     f_list.append(features[key][idx])
                 elif self.fusion_type in ['last','LR'] and idx==self.deconv_layer:
                     f_list.append(features[key][idx])
-                else:
-                    assert False
+
             f_list=[f for f in f_list if f is not None]
             feature=torch.cat(f_list,dim=1)
             feature=self.layers[idx](feature)
