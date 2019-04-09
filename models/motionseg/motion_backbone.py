@@ -95,6 +95,10 @@ class motion_backbone(TN.Module):
         else:
             self.momentum=0.1
         
+        self.get_layers()
+        self.freeze_layers()
+    
+    def get_layers(self):
         if self.config.net_name== 'motion_mix':
             self.in_channels=6
         elif self.config.net_name=='motion_mix_flow':
@@ -102,10 +106,6 @@ class motion_backbone(TN.Module):
         else:
             self.in_channels=3
             
-        self.get_layers()
-        self.freeze_layers()
-    
-    def get_layers(self):
         if self.config.backbone_name.find('resnet')>=0:
             self.format='resnet'
         elif self.config.backbone_name.find('vgg')>=0 or \
