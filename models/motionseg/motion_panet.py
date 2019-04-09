@@ -269,6 +269,7 @@ class transform_panet2(nn.Module):
         self.upsample_layer=config.upsample_layer
         self.fusion_type=config.fusion_type
         self.use_none_layer=config.use_none_layer
+        self.decode_main_layer=config.decode_main_layer
         self.backbones=backbones
         
         self.layers=[]
@@ -306,13 +307,14 @@ class transform_panet2(nn.Module):
                 pass
             else:
                 current_layer.append(nn.ConvTranspose2d(out_c,out_c,kernel_size=4,stride=2,padding=1,bias=False))
-           
-            current_layer.append(conv_bn_relu(in_channels=out_c,
-                                                 out_channels=out_c,
-                                                 kernel_size=3,
-                                                 stride=1,
-                                                 padding=1,
-                                                 inplace=inplace))
+            
+            if self.decode_main_layer==1:
+                current_layer.append(conv_bn_relu(in_channels=out_c,
+                                                     out_channels=out_c,
+                                                     kernel_size=3,
+                                                     stride=1,
+                                                     padding=1,
+                                                     inplace=inplace))
             self.layers.append(nn.Sequential(*current_layer))
                 
         self.model_layers=nn.ModuleList([layer for layer in self.layers if layer is not None])

@@ -252,6 +252,11 @@ def get_parser():
                         choices=['all','first','last', 'HR','LR'],
                         default='all')
     
+    parser.add_argument('--decode_main_layer',
+                        help='the flag for decode layers, currently only motion_panet2 support',
+                        type=int,
+                        default=1)
+    
     return parser
 
 def get_default_config():
@@ -275,9 +280,9 @@ def get_default_config():
     config.use_part_number=1000
     config.ignore_outOfRoi=True
     config.dataset='cdnet2014'
-    config['frame_gap']=5
-    config['log_dir']=os.path.expanduser('~/tmp/logs/motion')
-    config['init_lr']=1e-4
+    config.frame_gap=5
+    config.log_dir=os.path.expanduser('~/tmp/logs/motion')
+    config.init_lr=1e-4
     
     config.use_bn=False
     config.use_dropout=False
@@ -305,6 +310,7 @@ def get_default_config():
     # note, false for flow
     config.share_backbone=None
     config.fusion_type='all'
+    config.decode_main_layer=1
     return config
 
 def get_dataset_config(config):

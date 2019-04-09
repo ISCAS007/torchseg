@@ -32,8 +32,9 @@ if __name__ == '__main__':
             min_size=30*config.psp_scale*2**3
             
         config.input_shape=[min_size,min_size]
-        
-    for key in config.keys():
+    
+    sort_keys=sorted(list(config.keys()))
+    for key in sort_keys:
         if hasattr(args,key):
             print('{} = {} (default: {})'.format(key,args.__dict__[key],config[key]))
             config[key]=args.__dict__[key]
