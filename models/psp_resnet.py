@@ -112,7 +112,7 @@ class ResNet(nn.Module):
                                             self.bn1,
                                             self.relu,
                                             self.maxpool)
-
+        
         self.layer1 = self._make_layer(
             block, 64, layers[0], index=1, momentum=momentum)
         self.layer2 = self._make_layer(

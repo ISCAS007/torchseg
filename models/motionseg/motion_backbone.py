@@ -209,8 +209,12 @@ class motion_backbone(TN.Module):
                 
         elif self.format=='resnet':
             features.append(x)
-            x=self.prefix_net(x)
-            features.append(x)
+            for idx,layer in enumerate(self.prefix_net):
+                name=layer.__class__.__name__
+                if name.find('Pool2d')>=0:
+                    features.append(x)
+                x=layer(x)
+                
             x = self.layer1(x)
             features.append(x)
             x = self.layer2(x)
@@ -235,7 +239,15 @@ class motion_backbone(TN.Module):
                     return x
             
         elif self.format=='resnet':
-            x=self.prefix_net(x)
+            if level==0:
+                return x
+            for idx,layer in enumerate(self.prefix_net):
+                name=layer.__class__.__name__
+                if name.find('Pool2d')>=0:
+                    if level==1:
+                        return x
+                x=layer(x)
+            
             x = self.layer1(x)
             # layer 1 not change feature map height and width
             if level==2:
@@ -396,17 +408,8 @@ class motion_backbone(TN.Module):
             for idx in range(6):
                 print(self.get_feature_map_size(level=idx,input_size=(224,224)))
         else:
-            print('layer 1 '+'*'*50)
-            print(self.layer1)
-            print('layer 2 '+'*'*50)
-            print(self.layer2)
-            if config.upsample_layer>=4:
-                print('layer 3 '+'*'*50)
-                print(self.layer3)
-            
-            if config.upsample_layer>=5:
-                print('layer 4 '+'*'*50)
-                print(self.layer4)
+            for idx in range(6):
+                print(self.get_feature_map_size(level=idx,input_size=(224,224)))
 
 class transform_motionnet(TN.Module):
     """
@@ -865,7 +868,7 @@ if __name__ == '__main__':
     config.use_none_layer=False
     config.net_name='motion_unet'
     
-    for name in ['vgg21_bn','vgg19_bn']:
+    for name in ['resnet50','vgg19_bn']:
         print(name+'*'*50)
         config.backbone_name=name
         bb=motion_backbone(config)
