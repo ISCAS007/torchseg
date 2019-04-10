@@ -369,12 +369,12 @@ class motion_panet2(nn.Module):
         
         self.main_panet=None
         if config.main_panet:
-            in_c=2 if self.use_flow else 3
-            self.main_panet=panet(config,in_c=in_c)
+            self.main_panet=panet(config,in_c=3)
         
         self.aux_panet=None
         if config.aux_panet:
-            if config.share_backbone:
+            in_c=2 if self.use_flow else 3
+            if config.share_backbone and self.main_panet is not None:
                 self.aux_panet=self.main_panet
             else:
                 self.aux_panet=panet(config,in_c=in_c)
