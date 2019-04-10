@@ -9,6 +9,7 @@ from models.motionseg.motion_backbone import (motion_backbone,
                                               conv_bn_relu
                                               )
 from models.psp_vgg import make_layers
+from models.motionseg.motion_fcn import stn
 from easydict import EasyDict as edict
 
 class panet(motion_backbone):
@@ -416,6 +417,19 @@ class motion_panet2(nn.Module):
 class motion_panet2_flow(motion_panet2):
     def __init__(self,config):
         super().__init__(config)
+
+class motion_panet2_stn(nn.Module):
+    def __init__(self,config):
+        super().__init__()
+        self.stn=stn(config)
+        self.motion_panet2=motion_panet2(config)
+        
+    def forward(self,imgs):
+        results=self.stn(imgs)
+        masks=self.motion_panet2(results['stn_images'])
+        results['masks']=masks['masks']
+        
+        return results
     
 if __name__ == '__main__':
     config=edict()

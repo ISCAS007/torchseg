@@ -97,7 +97,8 @@ def get_parser():
                                  'motion_unet','motion_unet_stn','motion_fcn2','motion_sparse',
                                  'motion_psp','motion_fcn2_flow','motion_fcn_flow','motion_unet_flow',
 #                                 'motion_panet','motion_panet_flow','motion_anet',
-                                 'motion_panet2','motion_panet2_flow','motion_mix','motion_mix_flow'],
+                                 'motion_panet2','motion_panet2_flow','motion_mix','motion_mix_flow',
+                                 'motion_panet2_stn'],
                         default='motion_unet')
     
     parser.add_argument('--dataset',
