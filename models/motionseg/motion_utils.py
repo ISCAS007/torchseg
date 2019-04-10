@@ -96,7 +96,7 @@ def get_parser():
                         choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn',
                                  'motion_unet','motion_unet_stn','motion_fcn2','motion_sparse',
                                  'motion_psp','motion_fcn2_flow','motion_fcn_flow','motion_unet_flow',
-                                 'motion_panet','motion_panet_flow','motion_anet',
+#                                 'motion_panet','motion_panet_flow','motion_anet',
                                  'motion_panet2','motion_panet2_flow','motion_mix','motion_mix_flow'],
                         default='motion_unet')
     
@@ -253,7 +253,7 @@ def get_parser():
                         default='all')
     
     parser.add_argument('--decode_main_layer',
-                        help='the flag for decode layers, currently only motion_panet2 support',
+                        help='the number for decode layers, currently only motion_panet2 support',
                         type=int,
                         default=1)
     

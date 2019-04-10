@@ -308,7 +308,7 @@ class transform_panet2(nn.Module):
             else:
                 current_layer.append(nn.ConvTranspose2d(out_c,out_c,kernel_size=4,stride=2,padding=1,bias=False))
             
-            if self.decode_main_layer==1:
+            for _ in range(self.decode_main_layer):
                 current_layer.append(conv_bn_relu(in_channels=out_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,
