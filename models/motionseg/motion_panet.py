@@ -271,6 +271,7 @@ class transform_panet2(nn.Module):
         self.fusion_type=config.fusion_type
         self.use_none_layer=config.use_none_layer
         self.decode_main_layer=config.decode_main_layer
+        self.min_channel_number=config.min_channel_number
         self.backbones=backbones
         
         self.layers=[]
@@ -284,9 +285,12 @@ class transform_panet2(nn.Module):
             elif idx==self.deconv_layer:
                 merge_c=0
             else:
-                merge_c=backbones['main_backbone'].get_feature_map_channel(idx+1)
+                merge_c=max(backbones['main_backbone'].get_feature_map_channel(idx+1),
+                            self.min_channel_number)
             
-            out_c=backbones['main_backbone'].get_feature_map_channel(idx)
+            out_c=max(backbones['main_backbone'].get_feature_map_channel(idx),
+                      self.min_channel_number)
+            
             for key,value in backbones.items():
                 assert key in self.keys
                 channels[key]=value.get_feature_map_channel(idx)
@@ -346,6 +350,7 @@ class motion_panet2(nn.Module):
         self.input_shape=config.input_shape
         self.upsample_layer=config.upsample_layer
         self.use_aux_input=config.use_aux_input
+        self.min_channel_number=config.min_channel_number
         if config.net_name.find('flow')>=0:
             self.use_flow=True
             self.share_backbone=False
@@ -391,7 +396,8 @@ class motion_panet2(nn.Module):
                 
         self.midnet=transform_panet2(backbones,config)
         
-        self.midnet_out_channels=self.main_backbone.get_feature_map_channel(self.upsample_layer)
+        self.midnet_out_channels=max(self.main_backbone.get_feature_map_channel(self.upsample_layer),
+                                     self.min_channel_number)
         self.class_number=2
         
         self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,

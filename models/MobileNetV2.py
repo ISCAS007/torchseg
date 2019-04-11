@@ -134,6 +134,21 @@ def mobilenet2(pretrained=True):
             url='https://github.com/ISCAS007/torchseg/releases/download/mobilenet_v2/mobilenet_v2.pth.tar'
             os.makedirs(os.path.dirname(path),exist_ok=True)
             os.system('wget {} -o {}'.format(url,path))
+            import hashlib
+            sha256=hashlib.sha256()
+            file=open(path,'rb')
+            buf=file.read()
+            sha256.update(buf)
+            sha256_hex=sha256.hexdigest()
+            if sha256_hex.find('ecbe2b56')==0:
+                print('download mobilenet weight okay')
+            else:
+                import warnings
+                warnings.warn('download mobilenet weight {} failed'.format(url))
+                os.system('rm {}'.format(path))
+                assert False
+            file.close()
+            
         model.load_state_dict(torch.load(path))
     
     return model

@@ -258,6 +258,11 @@ def get_parser():
                         type=int,
                         default=1)
     
+    parser.add_argument('--min_channel_number',
+                        help='the min channel number for decode layers, currently only motion_panet2 support',
+                        type=int,
+                        default=0)
+    
     return parser
 
 def get_default_config():
@@ -312,6 +317,7 @@ def get_default_config():
     config.share_backbone=None
     config.fusion_type='all'
     config.decode_main_layer=1
+    config.min_channel_number=0
     return config
 
 def get_dataset_config(config):
