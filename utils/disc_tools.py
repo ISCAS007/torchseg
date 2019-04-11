@@ -4,6 +4,7 @@ import torch
 import math
 import os
 import matplotlib.pyplot as plt
+import glob
 
 # Minimum common multiple or least common multiple
 def lcm(a,b):
@@ -128,3 +129,8 @@ def get_newest_file(files):
                 newest_file = full_f
     
     return newest_file
+
+def remove_file(root_path,suffix):
+    files=glob.glob(os.path.join(root_path,'**','*.{}'.format(suffix)),recursive=True)
+    for f in files:
+        os.system('rm {}'.format(f))

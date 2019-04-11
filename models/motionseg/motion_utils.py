@@ -190,7 +190,7 @@ def get_parser():
     parser.add_argument("--save_model",
                         help="save model or not",
                         type=str2bool,
-                        default=True)
+                        default=False)
     parser.add_argument("--stn_loss_weight",
                         help="stn loss weight (1.0)",
                         type=float,
@@ -263,6 +263,11 @@ def get_parser():
                         type=int,
                         default=0)
     
+    parser.add_argument('--init_lr',
+                        help='the learing rate for trainning model',
+                        type=float,
+                        default=1e-4)
+    
     return parser
 
 def get_default_config():
@@ -298,7 +303,7 @@ def get_default_config():
     config.batch_size=4
     config.epoch=30
     config.app='train'
-    config.save_model=True
+    config.save_model=False
     config.stn_loss_weight=1.0
     config.motion_loss_weight=1.0
     config.pose_mask_reg=1.0
