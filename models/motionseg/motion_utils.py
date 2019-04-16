@@ -7,6 +7,13 @@ from dataset.segtrackv2_dataset import segtrackv2_dataset
 from dataset.bmcnet_dataset import bmcnet_dataset
 from dataset.dataset_generalize import image_normalizations
 from utils.augmentor import Augmentations
+from models.motionseg.motion_fcn import motion_fcn,motion_fcn2,motion_fcn_stn,motion_fcn2_flow,motion_fcn_flow
+from models.motionseg.motion_unet import motion_unet,motion_unet_stn,motion_unet_flow
+from models.motionseg.motion_panet import motion_panet,motion_panet_flow,motion_panet2,motion_panet2_flow,motion_panet2_stn
+from models.motionseg.motion_sparse import motion_sparse
+from models.motionseg.motion_psp import motion_psp
+from models.Anet.motion_anet import motion_anet
+from models.motionseg.motion_mix import motion_mix,motion_mix_flow
 from easydict import EasyDict as edict
 import os
 
@@ -190,7 +197,7 @@ def get_parser():
     parser.add_argument("--save_model",
                         help="save model or not",
                         type=str2bool,
-                        default=False)
+                        default=True)
     parser.add_argument("--stn_loss_weight",
                         help="stn loss weight (1.0)",
                         type=float,
@@ -230,8 +237,9 @@ def get_parser():
     
     parser.add_argument('--input_shape',
                         help='input shape for model',
+                        nargs=2,
                         type=int,
-                        default=224)
+                        default=[224,224])
     
     parser.add_argument('--main_panet',
                         help='use main panet or not(False) currently motion_panet2 support only',
@@ -303,7 +311,7 @@ def get_default_config():
     config.batch_size=4
     config.epoch=30
     config.app='train'
-    config.save_model=False
+    config.save_model=True
     config.stn_loss_weight=1.0
     config.motion_loss_weight=1.0
     config.pose_mask_reg=1.0
@@ -325,7 +333,7 @@ def get_default_config():
     config.min_channel_number=0
     return config
 
-def get_dataset_config(config):
+def get_other_config(config):
     if config.net_name.find('flow')>=0:
         config.use_optical_flow=True
         if config.share_backbone is None:
@@ -334,13 +342,9 @@ def get_dataset_config(config):
         config.use_optical_flow=False
         if config.share_backbone is None:
             config.share_backbone=True
-    
-    if not isinstance(config.input_shape,(list,tuple)):
-        config.input_shape=[config.input_shape,config.input_shape]
         
     if config.dataset=='FBMS':
-        config['train_path']=os.path.expanduser('~/cvdataset/FBMS/Trainingset')
-        config['test_path']=config['val_path']=os.path.expanduser('~/cvdataset/FBMS/Testset')
+        config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
     elif config.dataset=='cdnet2014':
         config['root_path']=os.path.expanduser('~/cvdataset/cdnet2014')
     elif config.dataset=='segtrackv2':
@@ -355,7 +359,7 @@ def get_dataset_config(config):
 def get_dataset(config,split):
     normer=image_normalizations(ways='-1,1')
     augmentations = Augmentations()
-    config=get_dataset_config(config)
+    config=get_other_config(config)
     if config.dataset=='FBMS':
         xxx_dataset=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
     elif config.dataset=='cdnet2014':
@@ -369,3 +373,7 @@ def get_dataset(config,split):
         assert False,'dataset={}'.format(config.dataset)
         
     return xxx_dataset
+
+def get_model(config):
+    model=globals()[config['net_name']](config)
+    return model

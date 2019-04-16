@@ -1,15 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import torch.utils.data as td
-from models.motion_stn import motion_stn, stn_loss, motion_net
-from models.motionseg.motion_fcn import motion_fcn,motion_fcn2,motion_fcn_stn,motion_fcn2_flow,motion_fcn_flow
-from models.motionseg.motion_unet import motion_unet,motion_unet_stn,motion_unet_flow
-from models.motionseg.motion_panet import motion_panet,motion_panet_flow,motion_panet2,motion_panet2_flow,motion_panet2_stn
-from models.motionseg.motion_sparse import motion_sparse
-from models.motionseg.motion_psp import motion_psp
-from models.Anet.motion_anet import motion_anet
-from models.motionseg.motion_mix import motion_mix,motion_mix_flow
-from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config,get_dataset,get_dataset_config
+from models.motion_stn import motion_stn, motion_net, stn_loss
+from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config,get_dataset,get_other_config,get_model
 from utils.torch_tools import init_writer
 import torch.nn.functional as F
 import os
@@ -46,7 +39,7 @@ if __name__ == '__main__':
             print('{} : unused keys {}'.format(key,args.__dict__[key]))
     
     # update config according to basic config
-    config=get_dataset_config(config)
+    config=get_other_config(config)
     
     if args.app=='dataset':
         for split in ['train','val']:
@@ -55,11 +48,12 @@ if __name__ == '__main__':
             for idx in range(dataset_size):
                 xxx_dataset.__getitem__(idx)
         sys.exit(0)
-        
+    
+    
     if config['net_name'] in ['motion_stn','motion_net']:
         model=globals()[config['net_name']]() 
     else:
-        model=globals()[config['net_name']](config)
+        model=get_model(config)
     
     # support for cpu/gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

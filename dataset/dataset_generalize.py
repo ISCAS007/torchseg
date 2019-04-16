@@ -369,6 +369,7 @@ class image_normalizations():
 
     def backward(self, x_rgb):
         x = np.zeros_like(x_rgb)
+        
         if x.ndim == 3:
             for i in range(3):
                 x[:, :, i] = x_rgb[:, :, i]*self.std_rgb[i]+self.mean_rgb[i]

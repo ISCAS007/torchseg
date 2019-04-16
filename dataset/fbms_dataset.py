@@ -16,10 +16,19 @@ class fbms_dataset(td.Dataset):
         self.augmentations=augmentations
         self.input_shape=tuple(config.input_shape)
         self.use_optical_flow=config.use_optical_flow
+        
         if split=='train':
-            self.gt_files=glob.glob(os.path.join(self.config['train_path'],'*','GroundTruth','*.png'),recursive=True)
+            self.gt_files=glob.glob(os.path.join(self.config['root_path'],
+                                                 'Trainingset',
+                                                 '*',
+                                                 'GroundTruth',
+                                                 '*.png'),recursive=True)
         else:
-            self.gt_files=glob.glob(os.path.join(self.config['val_path'],'*','GroundTruth','*.png'),recursive=True)
+            self.gt_files=glob.glob(os.path.join(self.config['root_path'],
+                                                 'Testset',
+                                                 '*',
+                                                 'GroundTruth',
+                                                 '*.png'),recursive=True)
         
         print('%s dataset size %d'%(split,len(self.gt_files)))
         self.gt_files.sort()
@@ -119,7 +128,7 @@ class fbms_dataset(td.Dataset):
         resize_gt_image=np.expand_dims(resize_gt_image,0)
         
         resize_gt_image=(resize_gt_image!=0).astype(np.uint8)
-
+        
         if self.use_optical_flow:
             flow_path=main2flow(frames[0])
             flow_file=open(flow_path,'r')
@@ -128,6 +137,18 @@ class fbms_dataset(td.Dataset):
             flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
             flow=np.clip(flow,a_min=-50,a_max=50)/50.0
             optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
-            return [resize_frame_images[0],optical_flow],resize_gt_image
+            if self.split=='test':
+                return {'images':[resize_frame_images[0],optical_flow],
+                        'gt':resize_gt_image,
+                        'gt_path':self.gt_files[index],
+                        'shape':frame_images[0].shape}
+            else:
+                return [resize_frame_images[0],optical_flow],resize_gt_image
         else:
-            return resize_frame_images,resize_gt_image
+            if self.split=='test':
+                return {'images':resize_frame_images,
+                        'gt':resize_gt_image,
+                        'gt_path':self.gt_files[index],
+                        'shape':frame_images[0].shape}
+            else:
+                return resize_frame_images,resize_gt_image

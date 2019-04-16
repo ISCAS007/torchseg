@@ -6,11 +6,6 @@ import torch.utils.data as td
 import numpy as np
 import random
 import cv2
-import sys
-#if '.' not in sys.path:
-#    sys.path.insert(0,'.')
-#from models.motionseg.motion_utils import main2flow
-
 
 def main2flow(main_path,
               dataset_root_dir=os.path.expanduser('~/cvdataset'),

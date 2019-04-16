@@ -38,12 +38,22 @@ def show_tensor_list(images_tensor,title,normer=None):
 
         print(idx,np.mean(batch_images),np.std(batch_images),np.max(batch_images),np.min(batch_images))
         if normer is not None:
-            batch_images=normer.backward(batch_images).astype(np.uint8)
+            if batch_images.shape[-1]==2:
+                pass
+            else:
+                batch_images=normer.backward(batch_images).astype(np.uint8)
         else:
             batch_images=np.clip(batch_images,a_min=0,a_max=1)
-            
-        image_list=np.split(batch_images,4)
+        
+        b,h,w,c=batch_images.shape
+        image_list=np.split(batch_images,b)
         image_list=[np.squeeze(img) for img in image_list]
+        for i,img in enumerate(image_list):
+            if img.shape[-1]==2:
+                h,w,c=img.shape
+                img_3=np.zeros((h,w,3),dtype=np.float)
+                img_3[:,:,0:2]=img
+                image_list[i]=img_3
         show_images(image_list,[title[idx] for img in image_list])
         
 def str2bool(s):
