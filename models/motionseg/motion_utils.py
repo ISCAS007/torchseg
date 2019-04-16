@@ -16,6 +16,7 @@ from models.Anet.motion_anet import motion_anet
 from models.motionseg.motion_mix import motion_mix,motion_mix_flow
 from models.motionseg.motion_filter import motion_filter,motion_filter_flow
 from easydict import EasyDict as edict
+import torch.utils.data as td
 import os
 
 class Metric_Acc():
@@ -111,7 +112,7 @@ def get_parser():
     
     parser.add_argument('--dataset',
                         help='dataset name (FBMS)',
-                        choices=['FBMS','cdnet2014','segtrackv2','BMCnet'],
+                        choices=['FBMS','cdnet2014','segtrackv2','BMCnet','all'],
                         default='cdnet2014')
     
     backbone_names=['vgg'+str(number) for number in [11,13,16,19,21]]
@@ -352,6 +353,8 @@ def get_other_config(config):
         config['root_path']=os.path.expanduser('~/cvdataset/SegTrackv2')
     elif config.dataset=='BMCnet':
         config['root_path']=os.path.expanduser('~/cvdataset/BMCnet')
+    elif config.dataset=='all':
+        pass
     else:
         assert False
         
@@ -370,6 +373,12 @@ def get_dataset(config,split):
         xxx_dataset=segtrackv2_dataset(config,split,normalizations=normer,augmentations=augmentations)
     elif config.dataset=='BMCnet':
         xxx_dataset=bmcnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
+    elif config.dataset=='all':
+        config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
+        fbms=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
+        config['root_path']=os.path.expanduser('~/cvdataset/cdnet2014')
+        cdnet=cdnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
+        xxx_dataset=td.ConcatDataset([fbms,cdnet])
     else:
         assert False,'dataset={}'.format(config.dataset)
         

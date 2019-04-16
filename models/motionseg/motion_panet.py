@@ -406,7 +406,7 @@ class motion_panet2(nn.Module):
             if none_backbones[key] is not None:
                 backbones[key]=none_backbones[key]
                 
-        self.midnet=transform_panet2(backbones,config)
+        self.midnet=transform_panet2(backbones,self.config)
         
     def forward(self,imgs):
         features={}
