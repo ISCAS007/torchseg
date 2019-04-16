@@ -14,6 +14,7 @@ from models.motionseg.motion_sparse import motion_sparse
 from models.motionseg.motion_psp import motion_psp
 from models.Anet.motion_anet import motion_anet
 from models.motionseg.motion_mix import motion_mix,motion_mix_flow
+from models.motionseg.motion_filter import motion_filter,motion_filter_flow
 from easydict import EasyDict as edict
 import os
 
@@ -105,7 +106,7 @@ def get_parser():
                                  'motion_psp','motion_fcn2_flow','motion_fcn_flow','motion_unet_flow',
 #                                 'motion_panet','motion_panet_flow','motion_anet',
                                  'motion_panet2','motion_panet2_flow','motion_mix','motion_mix_flow',
-                                 'motion_panet2_stn'],
+                                 'motion_panet2_stn','motion_filter','motion_filter_flow'],
                         default='motion_unet')
     
     parser.add_argument('--dataset',

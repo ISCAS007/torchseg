@@ -235,6 +235,7 @@ class motion_panet(nn.Module):
             self.midnet=transform_panet(self.backbone,self.panet,config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
         self.class_number=2
+        self.config=config
         
         self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
                                                      out_channels=self.class_number,
@@ -384,6 +385,17 @@ class motion_panet2(nn.Module):
             else:
                 self.aux_panet=panet(config,in_c=in_c)
         
+        
+        self.get_midnet()
+        self.midnet_out_channels=max(self.main_backbone.get_feature_map_channel(self.upsample_layer),
+                                     self.min_channel_number)
+        self.class_number=2
+        
+        self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
+                                                     out_channels=self.class_number,
+                                                     output_shape=self.input_shape[0:2])
+    
+    def get_midnet(self):
         keys=['main_backbone','aux_backbone','main_panet','aux_panet']
         none_backbones={'main_backbone':self.main_backbone,
                    'aux_backbone':self.aux_backbone,
@@ -395,14 +407,6 @@ class motion_panet2(nn.Module):
                 backbones[key]=none_backbones[key]
                 
         self.midnet=transform_panet2(backbones,config)
-        
-        self.midnet_out_channels=max(self.main_backbone.get_feature_map_channel(self.upsample_layer),
-                                     self.min_channel_number)
-        self.class_number=2
-        
-        self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
-                                                     out_channels=self.class_number,
-                                                     output_shape=self.input_shape[0:2])
         
     def forward(self,imgs):
         features={}

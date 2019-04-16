@@ -9,6 +9,9 @@ from models.motionseg.motion_backbone import (motion_backbone,
 from models.motionseg.motion_unet import get_decoder
 
 class motion_mix(nn.Module):
+    """
+    concat inputs early (fusion early)
+    """
     def __init__(self,config):
         super().__init__()
         self.config=config
