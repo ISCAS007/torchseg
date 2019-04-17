@@ -120,8 +120,7 @@ if __name__ == '__main__':
                 else:
                     mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(labels,dim=1))
                 
-                # config['net_name'].find('stn')>=0
-                if config['net_name'] in ['motion_stn','motion_fcn_stn','motion_unet_stn']:
+                if config['net_name'].find('_stn')>=0:
                     if config['stn_object']=='features':
                         stn_loss_value=stn_loss(outputs['features'],labels.float(),outputs['pose'],config['pose_mask_reg'])
                     elif config['stn_object']=='images':

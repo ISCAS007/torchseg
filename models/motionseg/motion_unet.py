@@ -40,6 +40,33 @@ class upsample_subclass(nn.Module):
                           mode='bilinear', align_corners=True)
         return x
     
+class upsample_smooth(nn.Module):
+    """
+    smooth the decrease of channel nummber
+    for example: in_c=512, out_c=2
+    smooth version: 512->64->8->2
+    normal version: 512->2
+    """
+    def __init__(self,in_c,out_c,output_shape,smooth_ratio=8):
+        super().__init__()    
+        self.output_shape=output_shape
+        self.class_number=out_c
+        self.smooth_ratio=smooth_ratio
+        
+        conv_layers=[]
+        while in_c//smooth_ratio>self.class_number:
+            conv_layers.append(conv_bn_relu(in_c,in_c//smooth_ratio))
+            in_c=in_c//smooth_ratio
+            
+        conv_layers.append(in_c,self.class_number)
+        self.midnet=nn.Sequential(*conv_layers)
+        
+    def forward(self,x):
+        x=self.midnet(x)
+        x=F.interpolate(x, size=self.output_shape,
+                          mode='bilinear', align_corners=True)
+        return x
+    
 class mid_decoder(nn.Module):
     def __init__(self,in_c,mid_c,config,ratio=10):
         """
@@ -83,6 +110,11 @@ def get_decoder(self):
                                  mid_c=self.class_number*8,
                                  config=self.config,
                                  ratio=8)
+    elif self.config.upsample_type=='smooth':
+        decoder=upsample_smooth(in_c=self.midnet_out_channels,
+                                out_c=self.class_number,
+                                output_shape=self.input_shape[0:2],
+                                smooth_ratio=self.config.smooth_ratio)
     else:
         assert False,'unknonw upsample type {}'.format(self.config.upsample_type)
         

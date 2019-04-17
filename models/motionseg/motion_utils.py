@@ -158,7 +158,7 @@ def get_parser():
     
     parser.add_argument('--upsample_type',
                         help='upsample type for motion_unet (bilinear)',
-                        choices=['bilinear','subclass','mid_decoder'],
+                        choices=['bilinear','subclass','mid_decoder','smooth'],
                         default='bilinear')
     
     parser.add_argument('--subclass_sigmoid',
@@ -278,6 +278,11 @@ def get_parser():
                         type=float,
                         default=1e-4)
     
+    parser.add_argument('--smooth_ratio',
+                        help='smooth ratio for smooth upsample, currently only motion_unet support',
+                        type=int,
+                        default=8)
+    
     return parser
 
 def get_default_config():
@@ -333,6 +338,7 @@ def get_default_config():
     config.fusion_type='all'
     config.decode_main_layer=1
     config.min_channel_number=0
+    config.smooth_ratio=8
     return config
 
 def get_other_config(config):
