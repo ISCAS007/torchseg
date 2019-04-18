@@ -58,7 +58,7 @@ class upsample_smooth(nn.Module):
             conv_layers.append(conv_bn_relu(in_c,in_c//smooth_ratio))
             in_c=in_c//smooth_ratio
             
-        conv_layers.append(in_c,self.class_number)
+        conv_layers.append(conv_bn_relu(in_c,self.class_number))
         self.midnet=nn.Sequential(*conv_layers)
         
     def forward(self,x):
