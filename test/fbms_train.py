@@ -89,7 +89,7 @@ if __name__ == '__main__':
     metric_mask_loss=Metric_Mean()
     metric_total_loss=Metric_Mean()
     
-    tqdm_epoch = trange(config['epoch'], desc='epochs', leave=True)
+    tqdm_epoch = trange(config['epoch'], desc='{} epochs'.format(config.note), leave=True)
     for epoch in tqdm_epoch:
         for split in ['train','val']:
             if split=='train':

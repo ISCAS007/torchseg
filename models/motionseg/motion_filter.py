@@ -19,6 +19,7 @@ class transform_filter(nn.Module):
         self.decode_main_layer=config.decode_main_layer
         self.min_channel_number=config.min_channel_number
         self.backbones=backbones
+        self.filter_type=config.filter_type
         if config.net_name.find('flow')>=0:
             self.use_flow=True
         else:
@@ -73,7 +74,8 @@ class transform_filter(nn.Module):
                         nn.Sigmoid()
                         ))
                 
-                merge_c=sum([value for key,value in channels.items() if key.find('main')>=0])+init_c
+                if self.filter_type=='main':
+                    merge_c=sum([value for key,value in channels.items() if key.find('main')>=0])+init_c
             else:
                 self.filter_layers.append(None)
                 
@@ -119,7 +121,11 @@ class transform_filter(nn.Module):
                 (self.fusion_type in ['last','LR'] and idx==self.deconv_layer) or \
                 self.fusion_type=='all':
                 
-                main_f_list=[value[idx] for key,value in features.items() if key.find('main')>=0]+[feature]
+                if self.filter_type=='main':
+                    main_f_list=[value[idx] for key,value in features.items() if key.find('main')>=0]+[feature]
+                else:
+                    main_f_list=f_list
+                    
                 main_f_list=[f for f in main_f_list if f is not None]
                 main_feature=torch.cat(main_f_list,dim=1)
                 if self.use_flow:

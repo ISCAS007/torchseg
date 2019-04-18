@@ -283,6 +283,11 @@ def get_parser():
                         type=int,
                         default=8)
     
+    parser.add_argument('--filter_type',
+                        help='filter type for motion_filter(main)',
+                        choices=['main','all'],
+                        default='main')
+    
     return parser
 
 def get_default_config():
@@ -339,6 +344,7 @@ def get_default_config():
     config.decode_main_layer=1
     config.min_channel_number=0
     config.smooth_ratio=8
+    config.filter_type='main'
     return config
 
 def get_other_config(config):
@@ -384,7 +390,11 @@ def get_dataset(config,split):
         fbms=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
         config['root_path']=os.path.expanduser('~/cvdataset/cdnet2014')
         cdnet=cdnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        xxx_dataset=td.ConcatDataset([fbms,cdnet])
+        config['root_path']=os.path.expanduser('~/cvdataset/SegTrackv2')
+        segtrackv2=segtrackv2_dataset(config,split,normalizations=normer,augmentations=augmentations)
+        config['root_path']=os.path.expanduser('~/cvdataset/BMCnet')
+        bmcnet=bmcnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
+        xxx_dataset=td.ConcatDataset([fbms,cdnet,segtrackv2,bmcnet])
     else:
         assert False,'dataset={}'.format(config.dataset)
         
