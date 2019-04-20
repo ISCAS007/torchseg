@@ -75,10 +75,12 @@ def merge_images(images,wgap=5,hgap=5,col_num=9,resize_img_w=48):
     return merge_img
         
 
-def showcase(config_file,output_root_path='output'):
+def showcase(config_file,output_root_path='output',generate_results=False):
     """
     run benchmark() first
     """
+    if generate_results:
+        benchmark(config_file,output_root_path)
     def get_fmeasure(gt_path,save_path):
         gt_img=cv2.imread(gt_path,cv2.IMREAD_GRAYSCALE)
         pred_img=cv2.imread(save_path,cv2.IMREAD_GRAYSCALE)        
@@ -123,16 +125,18 @@ def showcase(config_file,output_root_path='output'):
             images.append(cv2.cvtColor(cv2.imread(path),cv2.COLOR_BGR2RGB))
         
     merge_img=merge_images(images,col_num=9,resize_img_w=120)
-    save_merge_path=os.path.join(output_root_path,'{}_showcase_{}.jpg'.format(config.dataset,split))
+    save_merge_path=os.path.join(output_root_path,'{}_showcase_{}_{}.jpg'.format(config.dataset,split,config.net_name))
     cv2.imwrite(save_merge_path,merge_img)
     print(fmeasure_dict)
     plt.imshow(merge_img)
     plt.show()
     
-def evaluation(config_file,output_root_path='output'):
+def evaluation(config_file,output_root_path='output',generate_results=False):
     """
     run benchmark() first
     """
+    if generate_results:
+        benchmark(config_file,output_root_path)
     config=load_config(config_file)
     default_config=get_default_config()
     for key in default_config.keys():
@@ -143,7 +147,8 @@ def evaluation(config_file,output_root_path='output'):
     dataset=get_dataset(config,split)
     N=len(dataset)
     
-    tp=fp=tp=fn=0
+    sum_f=sum_p=sum_r=0
+    sum_tp=sum_fp=sum_tn=sum_fn=0
     for idx in trange(N):
         img1_path,img2_path,gt_path=dataset.__get_path__(idx)
         save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset))
@@ -156,14 +161,39 @@ def evaluation(config_file,output_root_path='output'):
         fp=np.sum(np.logical_and(gt_img==0,pred_img>0))
         fn=np.sum(np.logical_and(gt_img>0,pred_img==0))
         
-    precision=tp/(tp+fp+1e-5)
-    recall=tp/(tp+fn+1e-5)
-    fmeasure=2*precision*recall/(precision+recall+1e-5)
+        if tp+fn==0:
+            r=1
+        else:
+            r=tp/(tp+fn)
+        
+        if tp+fp==0:
+            p=1
+        else:
+            p=tp/(tp+fp)
+        
+        if p+r==0:
+            f=1
+        else:
+            f=2*p*r/(p+r)
+                
+        
+        sum_f+=f
+        sum_p+=p
+        sum_r+=r
+        
+        sum_tp+=tp
+        sum_fp+=fp
+        sum_tn+=tn
+        sum_fn+=fn
+    overall_precision=sum_tp/(sum_tp+sum_fp+1e-5)
+    overall_recall=sum_tp/(sum_tp+sum_fn+1e-5)
+    overall_fmeasure=2*overall_precision*overall_recall/(overall_precision+overall_recall+1e-5)
     
-    print('tp={},tn={},fp={},fn={}'.format(tp,tn,fp,fn))
-    print('precision={},recall={}'.format(precision,recall))
-    print('fmeasure is {}'.format(fmeasure))
+    print('tp={},tn={},fp={},fn={}'.format(sum_tp,sum_tn,sum_fp,sum_fn))
+    print('precision={},recall={}'.format(overall_precision,overall_recall))
+    print('overall fmeasure is {}'.format(overall_fmeasure))
     
+    print('mean precision={}, recall={}, fmeasure={}'.format(sum_p/N,sum_r/N,sum_f/N))
 if __name__ == '__main__':
     """
     python xxx/motion_benchmark.py benchmark xxx/xxx.txt

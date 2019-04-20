@@ -34,6 +34,12 @@ class Metric_Acc():
         self.fn=0
         self.count=0
         
+        ## compute avg_p,avg_r,avg_f
+        self.sum_p=0
+        self.sum_r=0
+        self.sum_f=0
+        self.img_count=0
+        
     def update(self,predicts,labels):
         # print(labels.shape,predicts.shape)
         if labels.shape != predicts.shape:
@@ -53,6 +59,35 @@ class Metric_Acc():
         'tp={}; fp={}; tn={}; fn={}; count={} \n pred {}, labels {}'.format(self.tp,
             self.fp,self.tn,self.fn,self.count,torch.unique(pred),torch.unique(labels))
         
+        b=pred.size(0)
+        for i in range(b):
+            tp=torch.sum(((pred[i]==1) & (labels[i]==1)).to(torch.float32))
+            fp=torch.sum(((pred[i]==1) & (labels[i]==0)).to(torch.float32))
+#            tn=torch.sum(((pred[i]==0) & (labels[i]==0)).to(torch.float32))
+            fn=torch.sum(((pred[i]==0) & (labels[i]==1)).to(torch.float32))
+            
+            if tp+fn==0:
+                r=1
+            else:
+                r=tp/(tp+fn)
+            
+            if tp+fp==0:
+                p=1
+            else:
+                p=tp/(tp+fp)
+            
+            if p+r==0:
+                f=1
+            else:
+                f=2*p*r/(p+r)
+            
+            self.sum_p+=p
+            self.sum_r+=r
+            self.sum_f+=f
+        self.img_count+=b
+    
+    def get_avg_metric(self):
+        return self.sum_p/self.img_count,self.sum_r/self.img_count,self.sum_f/self.img_count
     
     def get_acc(self):
         return (self.tp+self.tn).to(torch.float32)/(self.count.to(torch.float32)+1e-5)
@@ -74,6 +109,11 @@ class Metric_Acc():
         self.tn=0
         self.fn=0
         self.count=0
+        
+        self.sum_p=0
+        self.sum_r=0
+        self.sum_f=0
+        self.img_count=0
         
         
 class Metric_Mean():
