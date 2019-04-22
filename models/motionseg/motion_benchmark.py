@@ -3,6 +3,10 @@
 for test mode:
     1. no gt offered
     2. no use_part_number support
+for val_path mode:
+    1. gt offered
+    2. use_part_number support(better optical flow model support)
+    3. path support
 """
 from utils.config import load_config
 from utils.notebook import get_model_and_dataset
@@ -16,24 +20,37 @@ import fire
 import os
 import cv2
 import matplotlib.pyplot as plt
+import glob
 
 def get_save_path(gt_path,dataset_root_path,output_root_path):
-    return gt_path.replace(dataset_root_path,output_root_path)
+    save_path=gt_path.replace(dataset_root_path,output_root_path)
+    assert save_path!=gt_path,'cannot overwrite gt path'
+    
+    return save_path
 
 def benchmark(config_file,output_root_path='output'):
+    if not os.path.exists(config_file):
+        pattern=os.path.expanduser('~/tmp/logs/motion/**/config.txt')
+        config_files=glob.glob(pattern,recursive=True)
+        config_files=[f for f in config_files if f.find(config_file)>=0]
+        assert len(config_files)>0
+        config_file=config_files[0]
+        print(config_file)
+        
     model,dataset_loaders,normer=get_model_and_dataset(config_file)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.eval()
     
     config=model.config
-    split='test'
+    split='val_path'
     tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
     for data_dict in tqdm_step:
+        assert isinstance(data_dict,dict),'type is {}'.format(data_dict)
         images = [torch.autograd.Variable(img.to(device).float()) for img in data_dict['images']]
         gt_paths=data_dict['gt_path']
         assert len(gt_paths)==1
-        save_path=get_save_path(gt_paths[0],config.root_path,os.path.join(output_root_path,config.dataset))
-
+        save_path=get_save_path(gt_paths[0],config.root_path,os.path.join(output_root_path,config.dataset,config.note))
+        
         outputs=model.forward(images)
         shape=data_dict['shape']
         origin_mask=F.interpolate(outputs['masks'][0], size=shape[0:2],mode='nearest')
@@ -74,11 +91,18 @@ def merge_images(images,wgap=5,hgap=5,col_num=9,resize_img_w=48):
 
     return merge_img
         
-
-def showcase(config_file,output_root_path='output',generate_results=False):
+def showcase(config_file,output_root_path='output',generate_results=False,mode='best'):
     """
     run benchmark() first
     """
+    if not os.path.exists(config_file):
+        pattern=os.path.expanduser('~/tmp/logs/motion/**/config.txt')
+        config_files=glob.glob(pattern,recursive=True)
+        config_files=[f for f in config_files if f.find(config_file)>=0]
+        assert len(config_files)>0
+        config_file=config_files[0]
+        print(config_file)
+        
     if generate_results:
         benchmark(config_file,output_root_path)
     def get_fmeasure(gt_path,save_path):
@@ -101,26 +125,30 @@ def showcase(config_file,output_root_path='output',generate_results=False):
         if not hasattr(config,key):
             config[key]=default_config[key]
     config=get_other_config(config)
-    split='test'
+    split='val_path'
     dataset=get_dataset(config,split)
     N=len(dataset)
     category_dict={}
     fmeasure_dict={}
     for idx in trange(N):
         img1_path,img2_path,gt_path=dataset.__get_path__(idx)
-        save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset))
+        save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset,config.note))
         assert config.dataset=='FBMS'
         category=img1_path.split('/')[-2]
         fmeasure=get_fmeasure(gt_path,save_path)
         if category not in category_dict.keys():
             category_dict[category]=(img1_path,save_path,gt_path)
             fmeasure_dict[category]=fmeasure
-        elif fmeasure>fmeasure_dict[category]:
+        elif fmeasure>fmeasure_dict[category] and mode=='best':
+            category_dict[category]=(img1_path,save_path,gt_path)
+            fmeasure_dict[category]=fmeasure
+        elif fmeasure<fmeasure_dict[category] and mode=='worst':
             category_dict[category]=(img1_path,save_path,gt_path)
             fmeasure_dict[category]=fmeasure
 
     images=[]
     for key,value in category_dict.items():
+        print(value[2])
         for path in value:
             images.append(cv2.cvtColor(cv2.imread(path),cv2.COLOR_BGR2RGB))
         
@@ -131,10 +159,18 @@ def showcase(config_file,output_root_path='output',generate_results=False):
     plt.imshow(merge_img)
     plt.show()
     
-def evaluation(config_file,output_root_path='output',generate_results=False):
+def evaluation(config_file,output_root_path='output',generate_results=False,dataset_name=''):
     """
     run benchmark() first
     """
+    if not os.path.exists(config_file):
+        pattern=os.path.expanduser('~/tmp/logs/motion/**/config.txt')
+        config_files=glob.glob(pattern,recursive=True)
+        config_files=[f for f in config_files if f.find(config_file)>=0]
+        assert len(config_files)>0
+        config_file=config_files[0]
+        print(config_file)
+        
     if generate_results:
         benchmark(config_file,output_root_path)
     config=load_config(config_file)
@@ -143,7 +179,10 @@ def evaluation(config_file,output_root_path='output',generate_results=False):
         if not hasattr(config,key):
             config[key]=default_config[key]
     config=get_other_config(config)
-    split='test'
+    split='val_path'
+    if dataset_name!='':
+        config.dataset=dataset_name
+        
     dataset=get_dataset(config,split)
     N=len(dataset)
     
@@ -151,7 +190,7 @@ def evaluation(config_file,output_root_path='output',generate_results=False):
     sum_tp=sum_fp=sum_tn=sum_fn=0
     for idx in trange(N):
         img1_path,img2_path,gt_path=dataset.__get_path__(idx)
-        save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset))
+        save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset,config.note))
         
         gt_img=cv2.imread(gt_path,cv2.IMREAD_GRAYSCALE)
         pred_img=cv2.imread(save_path,cv2.IMREAD_GRAYSCALE)        

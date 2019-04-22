@@ -174,6 +174,18 @@ class segtrackv2_dataset(td.Dataset):
             flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
             flow=np.clip(flow,a_min=-50,a_max=50)/50.0
             optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
-            return [resize_frame_images[0],optical_flow],resize_gt_image
+            if self.split=='val_path':
+                return {'images':[resize_frame_images[0],optical_flow],
+                        'gt':resize_gt_image,
+                        'gt_path':gt_files[0],
+                        'shape':frame_images[0].shape}
+            else:
+                return [resize_frame_images[0],optical_flow],resize_gt_image
         else:
-            return resize_frame_images,resize_gt_image
+            if self.split=='val_path':
+                return {'images':resize_frame_images,
+                        'gt':resize_gt_image,
+                        'gt_path':gt_files[0],
+                        'shape':frame_images[0].shape}
+            else:
+                return resize_frame_images,resize_gt_image

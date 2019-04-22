@@ -59,7 +59,7 @@ def get_model_and_dataset(cfg):
 
     normer=image_normalizations(ways='-1,1')
     dataset_loaders={}
-    for split in ['train','val','test']:
+    for split in ['train','val','val_path']:
         xxx_dataset=get_dataset(config,split)
         batch_size=config.batch_size if split=='train' else 1
         xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=True,drop_last=False,num_workers=2)

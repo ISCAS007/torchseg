@@ -20,15 +20,18 @@ class cdnet_dataset(td.Dataset):
         self.train_set=set()
         self.val_set=set()
         self.img_path_pairs=self.get_img_path_pairs(self.config['root_path'])
-        
 
-        if self.split in ['train','val']:
+        
+        if self.split in ['train','val','val_path']:
             n=len(self.img_path_pairs)
             if n > self.config['use_part_number'] > 0:
                 gap=n//self.config['use_part_number']
                 self.img_path_pairs=self.img_path_pairs[::gap]
                 print('total dataset image %d, use %d'%(n,len(self.img_path_pairs)))
-                
+        elif self.split=='test':
+            pass
+        else:
+            assert False
         # random part
 #            if self.config['use_part_number'] > 0:
 #                n=len(self.img_path_pairs)
@@ -116,7 +119,7 @@ class cdnet_dataset(td.Dataset):
             if self.split=='train':
                 sub_category_list=sub_category_list[:-2]
                 self.train_set.update(set(sub_category_list))
-            elif self.split=='val':
+            elif self.split in ['val','val_path']:
                 sub_category_list=sub_category_list[-2:]
                 self.val_set.update(set(sub_category_list))
             elif self.split=='test':
@@ -139,7 +142,7 @@ class cdnet_dataset(td.Dataset):
                 number_list=[int(n) for n in number_list]
                 first_frame, last_frame=tuple(number_list)
                 
-                if self.split in ['train','val']:
+                if self.split in ['train','val','val_path']:
                     half_gt_categories = ['badWeather', 'lowFramerate', 'PTZ', 'nightVideos', 'turbulence']
                     if category in half_gt_categories:
                         last_frame = (first_frame + last_frame) // 2 - 1
@@ -151,7 +154,7 @@ class cdnet_dataset(td.Dataset):
                 elif self.split=='test':
                     input_root_path=os.path.join(root_path,category,sub_category,'input')
                     main_img_paths=[os.path.join(input_root_path,image_file) for image_file in os.listdir(input_root_path)
-                                        if image_file.lower().endswith('jpg','png','jpeg','bmp')]
+                                        if image_file.lower().endswith(('jpg','png','jpeg','bmp'))]
                     
                     
                     img_path_pairs+=[self.generate_img_path_pair(p) for p in main_img_paths]
@@ -214,7 +217,19 @@ class cdnet_dataset(td.Dataset):
             flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
             flow=np.clip(flow,a_min=-50,a_max=50)/50.0
             optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
-            return [resize_frame_images[0],optical_flow],labels
+            if self.split=='val_path':
+                return {'images':[resize_frame_images[0],optical_flow],
+                        'gt':labels,
+                        'gt_path':gt_img_path,
+                        'shape':frame_images[0].shape}
+            else:
+                return [resize_frame_images[0],optical_flow],labels
         else:
-            return resize_frame_images,labels
+            if self.split=='val_path':
+                return {'images':resize_frame_images,
+                        'gt':labels,
+                        'gt_path':gt_img_path,
+                        'shape':frame_images[0].shape}
+            else:
+                return resize_frame_images,labels
                 

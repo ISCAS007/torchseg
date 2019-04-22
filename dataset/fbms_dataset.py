@@ -32,12 +32,16 @@ class fbms_dataset(td.Dataset):
         
         print('%s dataset size %d'%(split,len(self.gt_files)))
         self.gt_files.sort()
-        if self.split in ['train','val']:
+        if self.split in ['train','val','val_path']:
             n=len(self.gt_files)
             if n > self.config['use_part_number'] > 0:
                 gap=n//self.config['use_part_number']
                 self.gt_files=self.gt_files[::gap]
                 print('total dataset image %d, use %d'%(n,len(self.gt_files)))
+        elif self.split =='test':
+            pass
+        else:
+            assert False
         
     def __len__(self):
         return len(self.gt_files)
@@ -137,7 +141,7 @@ class fbms_dataset(td.Dataset):
             flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
             flow=np.clip(flow,a_min=-50,a_max=50)/50.0
             optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
-            if self.split=='test':
+            if self.split=='val_path':
                 return {'images':[resize_frame_images[0],optical_flow],
                         'gt':resize_gt_image,
                         'gt_path':self.gt_files[index],
@@ -145,7 +149,7 @@ class fbms_dataset(td.Dataset):
             else:
                 return [resize_frame_images[0],optical_flow],resize_gt_image
         else:
-            if self.split=='test':
+            if self.split=='val_path':
                 return {'images':resize_frame_images,
                         'gt':resize_gt_image,
                         'gt_path':self.gt_files[index],
