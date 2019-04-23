@@ -378,8 +378,10 @@ class motion_panet2(nn.Module):
                 if config.aux_backbone is None:
                     self.aux_backbone=motion_backbone(config,use_none_layer=config.use_none_layer)
                 else:
+                    warnings.warn('use aux freeze layer (good!!!)')
                     aux_config=edict(config.copy())
                     aux_config.backbone_name=aux_config.aux_backbone
+                    aux_config.freeze_layer=config.aux_freeze
                     self.aux_backbone=motion_backbone(aux_config,use_none_layer=config.use_none_layer)
         
         self.main_panet=None

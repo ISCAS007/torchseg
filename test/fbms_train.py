@@ -2,7 +2,10 @@
 
 import torch.utils.data as td
 from models.motion_stn import motion_stn, motion_net, stn_loss
-from models.motionseg.motion_utils import Metric_Acc,Metric_Mean,get_parser,get_default_config,get_dataset,get_other_config,get_model
+from models.motionseg.motion_utils import (Metric_Acc,Metric_Mean,get_parser,
+                                           get_default_config,get_dataset,
+                                           get_other_config,get_model,
+                                           poly_lr_scheduler)
 from utils.torch_tools import init_writer
 import torch.nn.functional as F
 import os
@@ -81,8 +84,14 @@ if __name__ == '__main__':
     seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
     
     optimizer_params = [{'params': [p for p in model.parameters() if p.requires_grad]}]
-    optimizer = torch.optim.Adam(
-                optimizer_params, lr=config['init_lr'], amsgrad=False)
+    
+    if config.optimizer=='adam':
+        optimizer = torch.optim.Adam(
+                    optimizer_params, lr=config['init_lr'], amsgrad=False)
+    else:
+        assert config.init_lr>1e-3
+        optimizer = torch.optim.SGD(
+                    optimizer_params, lr=config['init_lr'], momentum=0.9, weight_decay=1e-4)
     
     metric_acc=Metric_Acc()
     metric_stn_loss=Metric_Mean()
@@ -103,12 +112,16 @@ if __name__ == '__main__':
             metric_total_loss.reset()
             
             tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
-            for frames,gt in tqdm_step:
+            N=len(dataset_loaders[split])
+            for step,(frames,gt) in enumerate(tqdm_step):
                 images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
                 origin_labels=torch.autograd.Variable(gt.to(device).long())
                 labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
                 
                 if split=='train':
+                    poly_lr_scheduler(config,optimizer,
+                              iter=epoch*N+step,
+                              max_iter=config.epoch*N)
                     optimizer.zero_grad()
                     
                 outputs=model.forward(images)

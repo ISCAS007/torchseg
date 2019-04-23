@@ -333,6 +333,16 @@ def get_parser():
                         choices=['main','all'],
                         default='main')
     
+    parser.add_argument('--aux_freeze',
+                        help='freeze layer for aux backbone',
+                        type=int,
+                        default=3)
+    
+    parser.add_argument('--optimizer',
+                        help='optimizer sgd/adam',
+                        choices=['adam','sgd'],
+                        default='adam')
+    
     return parser
 
 def get_default_config():
@@ -391,6 +401,8 @@ def get_default_config():
     config.smooth_ratio=8
     config.filter_type='main'
     config.aux_backbone=None
+    config.optimizer='adam'
+    config.aux_freeze=3
     return config
 
 def get_other_config(config):
@@ -449,3 +461,22 @@ def get_dataset(config,split):
 def get_model(config):
     model=globals()[config['net_name']](config)
     return model
+
+def poly_lr_scheduler(config, optimizer, iter,
+                      max_iter=100, power=0.9):
+    """Polynomial decay of learning rate
+        :param init_lr is base learning rate
+        :param iter is a current iteration
+        :param lr_decay_iter how frequently decay occurs, default is 1
+        :param max_iter is number of maximum iterations
+        :param power is a polymomial power
+
+    """
+    if config.optimizer=='adam':
+        pass
+    elif config.optimizer=='sgd':
+        assert iter<=max_iter
+        scale = (1 - iter/(1.0+max_iter))**power
+        for i, p in enumerate(optimizer.param_groups):
+            # optimizer.param_groups[i]['lr'] = optimizer.param_groups[i]['initial_lr'] * scale
+            optimizer.param_groups[i]['lr']=config.init_lr*scale
