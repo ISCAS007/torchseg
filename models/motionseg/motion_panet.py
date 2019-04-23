@@ -9,6 +9,7 @@ from models.motionseg.motion_backbone import (motion_backbone,
                                               conv_bn_relu
                                               )
 from models.psp_vgg import make_layers
+from models.motionseg.motion_unet import get_decoder
 from models.motionseg.motion_fcn import stn
 from easydict import EasyDict as edict
 
@@ -309,7 +310,7 @@ class transform_panet2(nn.Module):
                                                  padding=1,
                                                  inplace=inplace)]
                     
-            if idx==0 or (self.use_none_layer and idx>3):
+            if idx==0 or (self.use_none_layer and idx>3) or idx==self.upsample_layer:
                 pass
             else:
                 current_layer.append(nn.ConvTranspose2d(out_c,out_c,kernel_size=4,stride=2,padding=1,bias=False))
@@ -367,11 +368,19 @@ class motion_panet2(nn.Module):
         if self.share_backbone:
             if self.use_aux_input:
                 self.aux_backbone=self.main_backbone
+                
+            if config.aux_backbone is not None:
+                warnings.warn('aux backbone not worked when share_backbone')
         else:
             if self.use_flow:
                 self.aux_backbone=panet(config,in_c=2,network_mode=config.flow_backbone)
             elif self.use_aux_input:
-                self.aux_backbone=motion_backbone(config,use_none_layer=config.use_none_layer)
+                if config.aux_backbone is None:
+                    self.aux_backbone=motion_backbone(config,use_none_layer=config.use_none_layer)
+                else:
+                    aux_config=edict(config.copy())
+                    aux_config.backbone_name=aux_config.aux_backbone
+                    self.aux_backbone=motion_backbone(aux_config,use_none_layer=config.use_none_layer)
         
         self.main_panet=None
         if config.main_panet:
@@ -391,9 +400,7 @@ class motion_panet2(nn.Module):
                                      self.min_channel_number)
         self.class_number=2
         
-        self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
-                                                     out_channels=self.class_number,
-                                                     output_shape=self.input_shape[0:2])
+        self.decoder=get_decoder(self)
     
     def get_midnet(self):
         keys=['main_backbone','aux_backbone','main_panet','aux_panet']

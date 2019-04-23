@@ -77,6 +77,7 @@ class motion_backbone(TN.Module):
         if config.net_name.find('unet')>=0 or \
             config.net_name.find('motion_sparse')>=0 or \
             config.net_name.find('panet')>=0 or \
+            config.net_name.find('motion_filter')>=0 or \
             config.net_name in ['motion_anet','motion_mix','motion_mix_flow']:
             assert self.deconv_layer > self.upsample_layer,'deconv %d must > decoder %d'%(self.deconv_layer,self.upsample_layer)
         elif config.net_name.find('fcn')>=0 or config.net_name.find('motion_psp')>=0:

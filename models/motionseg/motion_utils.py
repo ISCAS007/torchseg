@@ -163,6 +163,11 @@ def get_parser():
                         choices=backbone_names,
                         default='vgg11')
     
+    parser.add_argument('--aux_backbone',
+                        help='backbone for aux, currently only motion_panet2,motion_filter',
+                        choices=backbone_names,
+                        default=None)
+    
     parser.add_argument('--flow_backbone',
                         help='backbone for flow network(vgg11), currently motion_panet2 support only',
                         choices=['vgg'+str(number) for number in [11,13,16,19]],
@@ -198,7 +203,7 @@ def get_parser():
     
     parser.add_argument('--upsample_type',
                         help='upsample type for motion_unet (bilinear)',
-                        choices=['bilinear','subclass','mid_decoder','smooth'],
+                        choices=['bilinear','subclass','mid_decoder','smooth','duc'],
                         default='bilinear')
     
     parser.add_argument('--subclass_sigmoid',
@@ -385,6 +390,7 @@ def get_default_config():
     config.min_channel_number=0
     config.smooth_ratio=8
     config.filter_type='main'
+    config.aux_backbone=None
     return config
 
 def get_other_config(config):

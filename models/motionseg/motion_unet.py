@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from models.motionseg.motion_backbone import (motion_backbone,
                                               transform_motionnet,
                                               motionnet_upsample_bilinear,
@@ -11,6 +12,36 @@ from models.motionseg.motion_backbone import (motion_backbone,
 
 from models.motionseg.motion_fcn import stn
 
+class upsample_duc(nn.Module):
+    def __init__(self, in_channels, out_channels, upsample_ratio, eps=1e-5, momentum=0.1):
+        """
+        out_channels: class number
+        upsample_ratio: 2**upsample_layer
+        """
+        super().__init__()
+
+        self.conv_bn_relu = conv_bn_relu(in_channels=in_channels,
+                                         out_channels=out_channels*upsample_ratio*upsample_ratio,
+                                         kernel_size=1,
+                                         padding=0,
+                                         stride=1,
+                                         eps=eps,
+                                         momentum=momentum)
+
+        self.duc = nn.PixelShuffle(upsample_ratio)
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        x = self.conv_bn_relu(x)
+        x = self.duc(x)
+        return x
+    
 class upsample_subclass(nn.Module):
     def __init__(self,in_channels, out_channels, output_shape,use_sigmoid):
         """
@@ -94,7 +125,7 @@ class mid_decoder(nn.Module):
         x=torch.sum(x,dim=-1).permute(0,3,1,2)
         
         return self.decoder(x)
-    
+
 def get_decoder(self):
     if self.config.upsample_type=='bilinear':
         decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
@@ -115,6 +146,10 @@ def get_decoder(self):
                                 out_c=self.class_number,
                                 output_shape=self.input_shape[0:2],
                                 smooth_ratio=self.config.smooth_ratio)
+    elif self.config.upsample_type=='duc':
+        decoder=upsample_duc(in_channels=self.midnet_out_channels,
+                             out_channels=self.class_number,
+                             upsample_ratio=2**self.config.upsample_layer)
     else:
         assert False,'unknonw upsample type {}'.format(self.config.upsample_type)
         

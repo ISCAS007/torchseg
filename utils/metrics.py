@@ -73,3 +73,28 @@ def get_scores(label_trues,label_preds):
             'FreqW IoU : \t': eval_segm.frequency_weighted_IU(label_preds_2d,label_trues_2d),
             'Mean IoU : \t': eval_segm.mean_IU(label_preds_2d,label_trues_2d),
             'Appeared cls: \t':n_cl}
+
+def get_fmeasure(gt,pred,fmeasure_only=True):
+    if isinstance(gt,str):
+        gt_img=cv2.imread(gt,cv2.IMREAD_GRAYSCALE)
+    else:
+        gt_img=gt
+     
+    if isinstance(pred,str):
+        pred_img=cv2.imread(pred,cv2.IMREAD_GRAYSCALE)
+    else:
+        pred_img=pred
+
+    tp=np.sum(np.logical_and(gt_img>0,pred_img>0))
+    tn=np.sum(np.logical_and(gt_img==0,pred_img==0))
+    fp=np.sum(np.logical_and(gt_img==0,pred_img>0))
+    fn=np.sum(np.logical_and(gt_img>0,pred_img==0))
+
+    precision=tp/(tp+fp+1e-5)
+    recall=tp/(tp+fn+1e-5)
+    fmeasure=2*precision*recall/(precision+recall+1e-5)
+    
+    if fmeasure_only:
+        return fmeasure
+    else:
+        return tp,tn,fp,fn,precision,recall,fmeasure
