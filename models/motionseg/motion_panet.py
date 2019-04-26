@@ -373,7 +373,16 @@ class motion_panet2(nn.Module):
                 warnings.warn('aux backbone not worked when share_backbone')
         else:
             if self.use_flow:
-                self.aux_backbone=panet(config,in_c=2,network_mode=config.flow_backbone)
+                if config.aux_backbone is None:
+                    config.aux_backbone=config.flow_backbone
+                    warnings.warn('use deprecated param flow_backbone, please use aux_backbone instead')
+
+                aux_config=edict(config.copy())
+                aux_config.backbone_name=aux_config.aux_backbone
+                aux_config.freeze_layer=0
+                aux_config.backbone_pretrained=False
+                self.aux_backbone=motion_backbone(aux_config,use_none_layer=config.use_none_layer,in_channels=2)
+                #self.aux_backbone=panet(config,in_c=2,network_mode=config.flow_backbone)
             elif self.use_aux_input:
                 if config.aux_backbone is None:
                     self.aux_backbone=motion_backbone(config,use_none_layer=config.use_none_layer)

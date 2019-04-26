@@ -169,8 +169,8 @@ def get_parser():
                         default=None)
     
     parser.add_argument('--flow_backbone',
-                        help='backbone for flow network(vgg11), currently motion_panet2 support only',
-                        choices=['vgg'+str(number) for number in [11,13,16,19]],
+                        help='deprecated backbone for flow network(vgg11), currently motion_panet2 support only',
+                        choices=backbone_names,
                         default='vgg11')
     
     parser.add_argument('--batch_size',

@@ -51,7 +51,7 @@ class conv_bn_relu(TN.Module):
         return x
     
 class motion_backbone(TN.Module):
-    def __init__(self,config,use_none_layer=False):
+    def __init__(self,config,use_none_layer=False,in_channels=3):
         """
         use_none_layer: use NoneLayer to replace MaxPool in backbone
         """
@@ -96,17 +96,11 @@ class motion_backbone(TN.Module):
         else:
             self.momentum=0.1
         
+        self.in_channels=in_channels
         self.get_layers()
         self.freeze_layers()
     
     def get_layers(self):
-        if self.config.net_name== 'motion_mix':
-            self.in_channels=6
-        elif self.config.net_name=='motion_mix_flow':
-            self.in_channels=5
-        else:
-            self.in_channels=3
-            
         if self.config.backbone_name.find('resnet')>=0:
             self.format='resnet'
         elif self.config.backbone_name.find('vgg')>=0 or \
@@ -299,6 +293,8 @@ class motion_backbone(TN.Module):
         return shapes
     
     def get_model(self):
+        if self.in_channels!=3:
+            pretrained=False
         if hasattr(self.config,'backbone_pretrained'):
             pretrained=self.config.backbone_pretrained
         else:
@@ -313,8 +309,9 @@ class motion_backbone(TN.Module):
             self.config.class_number=2
             self.config.batch_norm=False
             return Anet(self.config)
-        elif self.use_none_layer or self.config.net_name in ['motion_mix','motion_mix_flow']:
+        elif self.use_none_layer or self.in_channels !=3:
             print('use none layer'+'*'*30)
+            from models.MobileNetV2 import mobilenet2
             from models.psp_resnet import resnet50,resnet101
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
             
@@ -322,6 +319,8 @@ class motion_backbone(TN.Module):
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
                 return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum,in_channels=self.in_channels)
+            elif self.config.backbone_name == 'MobileNetV2':
+                return mobilenet2(pretrained=pretrained,in_c=self.in_channels)
             else:
                 return locals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
         else:
@@ -331,6 +330,7 @@ class motion_backbone(TN.Module):
             from models.MobileNetV2 import mobilenet2
             from pretrainedmodels import se_resnet50
             
+            assert self.in_channels==3
             if self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained)
             elif self.config.backbone_name.find('se_resnet')>=0:

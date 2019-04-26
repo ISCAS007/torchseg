@@ -62,7 +62,7 @@ class InvertedResidual(nn.Module):
 
 
 class MobileNetV2(nn.Module):
-    def __init__(self, n_class=1000, input_size=224, width_mult=1.):
+    def __init__(self, n_class=1000, input_size=224, width_mult=1.,in_c=3):
         super(MobileNetV2, self).__init__()
         block = InvertedResidual
         input_channel = 32
@@ -82,7 +82,7 @@ class MobileNetV2(nn.Module):
         assert input_size % 32 == 0
         input_channel = int(input_channel * width_mult)
         self.last_channel = int(last_channel * width_mult) if width_mult > 1.0 else last_channel
-        self.features = [conv_bn(3, input_channel, 2)]
+        self.features = [conv_bn(in_c, input_channel, 2)]
         # building inverted residual blocks
         for t, c, n, s in interverted_residual_setting:
             output_channel = int(c * width_mult)
@@ -126,8 +126,8 @@ class MobileNetV2(nn.Module):
                 m.weight.data.normal_(0, 0.01)
                 m.bias.data.zero_()
 
-def mobilenet2(pretrained=True):
-    model=MobileNetV2(n_class=1000)
+def mobilenet2(pretrained=True,in_c=3):
+    model=MobileNetV2(n_class=1000,in_c=in_c)
     if pretrained:
         path=os.path.expanduser('~/.torch/models/mobilenet_v2.pth')
         if not os.path.exists(path):

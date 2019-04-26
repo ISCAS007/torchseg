@@ -17,7 +17,14 @@ class motion_mix(nn.Module):
         self.config=config
         self.input_shape=config.input_shape
         self.upsample_layer=config['upsample_layer']
-        self.backbone=motion_backbone(config,use_none_layer=config['use_none_layer'])
+        if self.config.net_name== 'motion_mix':
+            self.in_channels=6
+        elif self.config.net_name=='motion_mix_flow':
+            self.in_channels=5
+        else:
+            assert False
+            
+        self.backbone=motion_backbone(config,use_none_layer=config['use_none_layer'],in_channels=self.in_channels)
         
         config.use_aux_input=False
         self.midnet=transform_motionnet(self.backbone,config)
