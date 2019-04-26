@@ -129,7 +129,14 @@ cfg = {
 def vgg(cfg_key,url_key,pretrained=True,group_norm=False,eps=1e-5,momentum=0.1,in_channels=3,**kwargs):
     if pretrained and in_channels==3:
         kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg[cfg_key],group_norm=group_norm,eps=eps,momentum=momentum,in_channels=in_channels), **kwargs)
+        
+    if group_norm is False and cfg_key.find('_bn')>=0:
+        batch_norm=True
+    else:
+        batch_norm=False
+    model = VGG(make_layers(cfg[cfg_key],batch_norm=batch_norm,
+                            group_norm=group_norm,eps=eps,
+                            momentum=momentum,in_channels=in_channels), **kwargs)
     if pretrained and in_channels==3:
         model.load_state_dict(model_zoo.load_url(model_urls[url_key]))
     elif pretrained:

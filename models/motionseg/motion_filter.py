@@ -86,7 +86,7 @@ class transform_filter(nn.Module):
                                                  padding=1,
                                                  inplace=inplace)]
                     
-            if idx==0 or (self.use_none_layer and idx>3):
+            if idx==0 or (self.use_none_layer and idx>3) or idx==self.upsample_layer:
                 pass
             else:
                 current_layer.append(nn.ConvTranspose2d(out_c,out_c,kernel_size=4,stride=2,padding=1,bias=False))
