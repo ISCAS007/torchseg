@@ -343,6 +343,10 @@ def get_parser():
                         choices=['adam','sgd'],
                         default='adam')
     
+    parser.add_argument('--filter_feature',
+                        help='filtered feature for motion_filter(aux for frame and flow, all for two frames)',
+                        choices=['aux','all'],
+                        default=None)
     return parser
 
 def get_default_config():
@@ -400,6 +404,7 @@ def get_default_config():
     config.min_channel_number=0
     config.smooth_ratio=8
     config.filter_type='main'
+    config.filter_feature=None
     config.aux_backbone=None
     config.optimizer='adam'
     config.aux_freeze=3

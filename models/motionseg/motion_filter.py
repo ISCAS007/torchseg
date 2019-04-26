@@ -20,10 +20,15 @@ class transform_filter(nn.Module):
         self.min_channel_number=config.min_channel_number
         self.backbones=backbones
         self.filter_type=config.filter_type
+        self.filter_feature=config.filter_feature
+        
         if config.net_name.find('flow')>=0:
             self.use_flow=True
         else:
             self.use_flow=False
+        
+        if self.filter_feature is None:
+            self.filter_feature='aux' if self.use_flow else 'all'
             
         self.layers=[]
         self.filter_layers=[]
@@ -59,7 +64,7 @@ class transform_filter(nn.Module):
             if (self.fusion_type in ['first','HR'] and idx==self.upsample_layer) or \
                 (self.fusion_type in ['last','LR'] and idx==self.deconv_layer) or \
                 self.fusion_type=='all':
-                if self.use_flow:
+                if self.filter_feature=='aux':
                     filter_c=sum([value for key,value in channels.items() if key.find('aux')>=0])
                 else:
                     filter_c=merge_c
@@ -128,7 +133,7 @@ class transform_filter(nn.Module):
                     
                 main_f_list=[f for f in main_f_list if f is not None]
                 main_feature=torch.cat(main_f_list,dim=1)
-                if self.use_flow:
+                if self.filter_feature=='aux':
                     aux_f_list=[value[idx] for key,value in features.items() if key.find('aux')>=0]
                     aux_feature=torch.cat(aux_f_list,dim=1)
                     feature=main_feature * self.filter_layers[idx](aux_feature)
