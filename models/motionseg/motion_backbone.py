@@ -21,23 +21,33 @@ class conv_bn_relu(TN.Module):
                  stride=1,
                  eps=1e-5,
                  momentum=0.1,
-                 inplace=False):
+                 inplace=False,
+                 use_relu=True,
+                 use_bn=True,
+                 bias = False):
         """
         out_channels: class number
         upsample_ratio: 2**upsample_layer
         """
         super().__init__()
-        bias = False
-        self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
-                                                    out_channels=out_channels,
-                                                    kernel_size=kernel_size,
-                                                    padding=padding,
-                                                    stride=stride,
-                                                    bias=bias),
-                                          TN.BatchNorm2d(num_features=out_channels,
+        
+        layers=[TN.Conv2d(in_channels=in_channels,
+                            out_channels=out_channels,
+                            kernel_size=kernel_size,
+                            padding=padding,
+                            stride=stride,
+                            bias=bias),
+                ]
+        if use_bn:
+            layers.append(TN.BatchNorm2d(num_features=out_channels,
                                                    eps=eps,
-                                                   momentum=momentum),
-                                          TN.ReLU(inplace=inplace))
+                                                   momentum=momentum))
+        
+        if use_relu:
+            layers.append(TN.ReLU(inplace=inplace))
+            
+        self.conv_bn_relu = TN.Sequential(*layers)
+        
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
                 TN.init.kaiming_normal_(

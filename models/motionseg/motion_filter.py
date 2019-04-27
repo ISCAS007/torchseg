@@ -75,7 +75,10 @@ class transform_filter(nn.Module):
                                      inplace=inplace),
                         conv_bn_relu(in_channels=32,
                                      out_channels=1,
-                                     inplace=inplace),
+                                     inplace=inplace,
+                                     use_relu=False,
+                                     use_bn=False,
+                                     bias=True),
                         nn.Sigmoid()
                         ))
                 
