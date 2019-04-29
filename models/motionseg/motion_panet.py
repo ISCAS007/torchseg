@@ -371,6 +371,7 @@ class motion_panet2(nn.Module):
                 
             if config.aux_backbone is not None:
                 warnings.warn('aux backbone not worked when share_backbone')
+                assert False
         else:
             if self.use_flow:
                 if config.aux_backbone is None:

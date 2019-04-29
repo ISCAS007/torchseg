@@ -21,6 +21,7 @@ class transform_filter(nn.Module):
         self.backbones=backbones
         self.filter_type=config.filter_type
         self.filter_feature=config.filter_feature
+        self.filter_relu=config.filter_relu
         
         if config.net_name.find('flow')>=0:
             self.use_flow=True
@@ -76,9 +77,9 @@ class transform_filter(nn.Module):
                         conv_bn_relu(in_channels=32,
                                      out_channels=1,
                                      inplace=inplace,
-                                     use_relu=False,
-                                     use_bn=False,
-                                     bias=True),
+                                     use_relu=self.filter_relu,
+                                     use_bn=self.filter_relu,
+                                     bias=not self.filter_relu),
                         nn.Sigmoid()
                         ))
                 

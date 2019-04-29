@@ -347,6 +347,11 @@ def get_parser():
                         help='filtered feature for motion_filter(aux for frame and flow, all for two frames)',
                         choices=['aux','all'],
                         default=None)
+    
+    parser.add_argument('--filter_relu',
+                        help='use relu in motion_filter or not',
+                        type=str2bool,
+                        default=True)
     return parser
 
 def get_default_config():
@@ -408,6 +413,7 @@ def get_default_config():
     config.aux_backbone=None
     config.optimizer='adam'
     config.aux_freeze=3
+    config.filter_relu=True
     return config
 
 def get_other_config(config):
