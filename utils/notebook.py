@@ -9,7 +9,7 @@ import os
 from utils.config import load_config
 from dataset.dataset_generalize import image_normalizations
 from utils.torch_tools import get_ckpt_path,load_ckpt
-from models.motionseg.motion_utils import get_other_config,get_model
+from models.motionseg.motion_utils import fine_tune_config,get_model
 from models.motion_stn import motion_stn, motion_net
 
 def get_model_and_dataset(cfg):
@@ -46,7 +46,7 @@ def get_model_and_dataset(cfg):
     else:
         config=cfg
 
-    config=get_other_config(config)
+    config=fine_tune_config(config)
     
     if config['net_name'] in ['motion_stn','motion_net']:
         model=globals()[config['net_name']]() 

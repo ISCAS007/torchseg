@@ -4,7 +4,7 @@ import torch.utils.data as td
 from models.motion_stn import motion_stn, motion_net, stn_loss
 from models.motionseg.motion_utils import (Metric_Acc,Metric_Mean,get_parser,
                                            get_default_config,get_dataset,
-                                           get_other_config,get_model,
+                                           fine_tune_config,get_model,
                                            poly_lr_scheduler)
 from utils.torch_tools import init_writer
 import torch.nn.functional as F
@@ -42,7 +42,7 @@ if __name__ == '__main__':
             print('{} : unused keys {}'.format(key,args.__dict__[key]))
     
     # update config according to basic config
-    config=get_other_config(config)
+    config=fine_tune_config(config)
     
     if args.app=='dataset':
         for split in ['train','val']:

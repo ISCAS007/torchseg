@@ -235,7 +235,7 @@ class motion_panet(nn.Module):
             self.use_flow=False
             self.midnet=transform_panet(self.backbone,self.panet,config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
-        self.class_number=2
+        self.class_number=config.class_number
         self.config=config
         
         self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
@@ -410,7 +410,7 @@ class motion_panet2(nn.Module):
         self.get_midnet()
         self.midnet_out_channels=max(self.main_backbone.get_feature_map_channel(self.upsample_layer),
                                      self.min_channel_number)
-        self.class_number=2
+        self.class_number=config.class_number
         
         self.decoder=get_decoder(self)
     

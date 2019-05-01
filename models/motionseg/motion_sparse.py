@@ -20,7 +20,7 @@ class motion_sparse(nn.Module):
         self.backbone=motion_backbone(config,use_none_layer=config['use_none_layer'])
         
         self.midnet=transform_sparse(self.backbone,config)
-        self.class_number=2
+        self.class_number=config.class_number
         self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet.concat_channels,
                                                          out_channels=self.class_number,
                                                          output_shape=self.config.input_shape[0:2])

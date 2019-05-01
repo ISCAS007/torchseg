@@ -140,12 +140,14 @@ class transform_filter(nn.Module):
                 if self.filter_feature=='aux':
                     aux_f_list=[value[idx] for key,value in features.items() if key.find('aux')>=0]
                     aux_feature=torch.cat(aux_f_list,dim=1)
-                    feature=main_feature * self.filter_layers[idx](aux_feature)
+                    self.attention=self.filter_layers[idx](aux_feature)
+                    feature=main_feature * self.attention
                 else:
                     f_list=[f for f in f_list if f is not None]
                     feature=torch.cat(f_list,dim=1)
                     
-                    feature=main_feature * self.filter_layers[idx](feature)
+                    self.attention=self.filter_layers[idx](feature)
+                    feature=main_feature * self.attention
             else:
                 f_list=[f for f in f_list if f is not None]
                 feature=torch.cat(f_list,dim=1)

@@ -416,7 +416,7 @@ def get_default_config():
     config.filter_relu=True
     return config
 
-def get_other_config(config):
+def fine_tune_config(config):
     if config.net_name.find('flow')>=0:
         config.use_optical_flow=True
         if config.share_backbone is None:
@@ -425,7 +425,8 @@ def get_other_config(config):
         config.use_optical_flow=False
         if config.share_backbone is None:
             config.share_backbone=True
-        
+            
+    config.class_number=2
     if config.dataset=='FBMS':
         config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
     elif config.dataset=='cdnet2014':
@@ -444,7 +445,7 @@ def get_other_config(config):
 def get_dataset(config,split):
     normer=image_normalizations(ways='-1,1')
     augmentations = Augmentations()
-    config=get_other_config(config)
+    config=fine_tune_config(config)
     if config.dataset=='FBMS':
         xxx_dataset=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
     elif config.dataset=='cdnet2014':

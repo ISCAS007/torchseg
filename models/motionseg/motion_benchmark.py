@@ -11,7 +11,7 @@ for val_path mode:
 from utils.config import load_config
 from utils.notebook import get_model_and_dataset
 from models.motionseg.motion_utils import get_parser,get_default_config,get_dataset
-from models.motionseg.motion_utils import get_other_config
+from models.motionseg.motion_utils import fine_tune_config
 import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm,trange
@@ -128,7 +128,7 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
     for key in default_config.keys():
         if not hasattr(config,key):
             config[key]=default_config[key]
-    config=get_other_config(config)
+    config=fine_tune_config(config)
     split='val_path'
     dataset=get_dataset(config,split)
     N=len(dataset)
@@ -182,7 +182,7 @@ def evaluation(config_file,output_root_path='output',generate_results=False,data
     for key in default_config.keys():
         if not hasattr(config,key):
             config[key]=default_config[key]
-    config=get_other_config(config)
+    config=fine_tune_config(config)
     split='val_path'
     if dataset_name!='':
         config.dataset=dataset_name

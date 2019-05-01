@@ -30,7 +30,7 @@ class motion_psp(nn.Module):
                                          midnet_scale,
                                          self.midnet_input_shape,
                                          self.midnet_out_channels)
-        self.class_number=2
+        self.class_number=config.class_number
         self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
                                                      out_channels=self.class_number,
                                                      output_shape=self.input_shape[0:2])

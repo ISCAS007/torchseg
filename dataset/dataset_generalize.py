@@ -250,8 +250,9 @@ class dataset_generalize(TD.Dataset):
                         img = self.augmentations.transform(img)
                 else:
                     img = self.augmentations.transform(img)
-    
-                img, ann = self.augmentations.transform(img, ann)
+                
+                if hasattr(self.config,'aug'):
+                    img, ann = self.augmentations.transform(img, ann)
                 
                 assert hasattr(
                     self.config, 'resize_shape'), 'augmentations may change image to random size by random crop'

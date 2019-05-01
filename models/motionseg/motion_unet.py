@@ -107,7 +107,7 @@ class mid_decoder(nn.Module):
         super().__init__()
         self.config=config
         self.input_shape=config.input_shape
-        self.class_number=2
+        self.class_number=config.class_number
         self.midnet=conv_bn_relu(in_c,mid_c*ratio)
         self.midnet_out_channels=mid_c
         self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
@@ -166,7 +166,7 @@ class motion_unet(nn.Module):
         
         self.midnet=transform_motionnet(self.backbone,config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
-        self.class_number=2
+        self.class_number=config.class_number
         self.decoder=get_decoder(self)
         
     def forward(self,imgs):
@@ -202,7 +202,7 @@ class motion_unet_flow(nn.Module):
         
         self.midnet=transform_motionnet_flow(self.backbone,config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
-        self.class_number=2
+        self.class_number=config.class_number
         
         self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
                                                      out_channels=self.class_number,

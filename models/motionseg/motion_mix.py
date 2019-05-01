@@ -29,7 +29,7 @@ class motion_mix(nn.Module):
         config.use_aux_input=False
         self.midnet=transform_motionnet(self.backbone,config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer,)
-        self.class_number=2
+        self.class_number=config.class_number
         self.decoder=get_decoder(self)
         
     def forward(self,imgs):

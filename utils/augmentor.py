@@ -120,7 +120,7 @@ class ImageTransformer(object):
     def transform_image_and_mask(self, image, mask):
         config=self.config
         
-        if config.aug.use_rotate:
+        if self.config.aug.use_rotate:
             a = np.random.rand()
             angle = a * config.aug.rotate_max_angle
         else:

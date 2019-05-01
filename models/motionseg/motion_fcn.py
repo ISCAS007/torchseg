@@ -36,7 +36,7 @@ class motion_fcn(nn.Module):
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=2*self.midnet_input_shape[1]
         self.concat_size=self.midnet_input_shape[2:]
-        self.class_number=2
+        self.class_number=config.class_number
         self.decoder=get_suffix_net(decoder_config,
                                     self.midnet_out_channels,
                                     self.class_number)
@@ -59,7 +59,7 @@ class motion_fcn_flow(nn.Module):
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=2+self.midnet_input_shape[1]
         self.concat_size=self.midnet_input_shape[2:]
-        self.class_number=2
+        self.class_number=config.class_number
         self.decoder=get_suffix_net(decoder_config,
                                     self.midnet_out_channels,
                                     self.class_number)
@@ -81,7 +81,7 @@ class motion_fcn2(nn.Module):
         self.backbone=motion_backbone(config,use_none_layer=config['use_none_layer'])
         
         self.midnet_out_channels=2*self.backbone.get_feature_map_channel(self.upsample_layer)
-        self.class_number=2
+        self.class_number=config.class_number
         
         self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
                                                      out_channels=self.class_number,
@@ -103,7 +103,7 @@ class motion_fcn2_flow(nn.Module):
         
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=2+self.midnet_input_shape[1]
-        self.class_number=2
+        self.class_number=config.class_number
         
         self.decoder=motionnet_upsample_bilinear(in_channels=self.midnet_out_channels,
                                                      out_channels=self.class_number,
