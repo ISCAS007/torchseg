@@ -123,69 +123,83 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
 # In[77]:
 
 def dump_tasks(notes,
-	delete_nan=False,
-	dump_group=True,
-	dump_dir=True,
-	tags=['train/fmeasure','val/fmeasure'],
-	rootpath=os.path.expanduser('~/tmp/logs/motion'),
-	invalid_param_list=['dir','log_time','root_path',
+    delete_nan=False,
+    dump_group=True,
+    dump_dir=True,
+    tags=['train/fmeasure','val/fmeasure'],
+    rootpath=os.path.expanduser('~/tmp/logs/motion'),
+    invalid_param_list=['dir','log_time','root_path',
                     'test_path', 'train_path', 'val_path',
                     'use_optical_flow']):
 
-	dump(tags=tags,rootpath=rootpath,notes=notes,
-		descripe=['note','epoch'],
-     		invalid_param_list=invalid_param_list,
-		delete_nan=delete_nan,
-		dump_group=dump_group,
-		dump_dir=dump_dir)
+    dump(tags=tags,rootpath=rootpath,notes=notes,
+        descripe=['note','epoch'],
+             invalid_param_list=invalid_param_list,
+        delete_nan=delete_nan,
+        dump_group=dump_group,
+        dump_dir=dump_dir)
 
 
 # In[63]:
 
 def dump_recent(
-	tags=['train/fmeasure','val/fmeasure'],
-	rootpath=os.path.expanduser('~/tmp/logs/motion'),
-	notes=['today','recent'],
-	dump_dir=True,
-	note_gtags=[['dataset','log_time','net_name'],
-          	 ['dataset','log_time','net_name']]):
-	dump(tags=tags,rootpath=rootpath,notes=notes,
-		note_gtags=note_gtags,sort_tags=['dataset','val/fmeasure'],
-     		descripe=['note','epoch'],delete_nan=False,dump_group=False,
-		dump_dir=dump_dir)
+    tags=['train/fmeasure','val/fmeasure'],
+    rootpath=os.path.expanduser('~/tmp/logs/motion'),
+    notes=['today','recent'],
+    dump_dir=True,
+    note_gtags=[['dataset','log_time','net_name'],
+               ['dataset','log_time','net_name']]):
+    dump(tags=tags,rootpath=rootpath,notes=notes,
+        note_gtags=note_gtags,sort_tags=['dataset','val/fmeasure'],
+             descripe=['note','epoch'],delete_nan=False,dump_group=False,
+        dump_dir=dump_dir)
 
 
 if __name__ == '__main__':
-	parser=argparse.ArgumentParser()
-	parser.add_argument('--delete_nan',
-			    action='store_true')
-	parser.add_argument('--dump_group',
-			     action='store_true')
-	parser.add_argument('--notes',
-				nargs='*')
-	parser.add_argument('--ignore_params',
-				nargs='*',
-				default=[])
-	parser.add_argument('--recent_log_number',
-				type=int,
-				default=100)
-	parser.add_argument('--dump_dir',
-				action='store_true')
-	parser.add_argument('--app',
-				default='dump_recent',
-				choices=['dump_tasks','dump_recent'])
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--delete_nan',
+                action='store_true')
+    parser.add_argument('--dump_group',
+                 action='store_true')
+    parser.add_argument('--notes',
+                nargs='*')
+    parser.add_argument('--ignore_params',
+                nargs='*',
+                default=[])
+    parser.add_argument('--recent_log_number',
+                type=int,
+                default=100)
+    parser.add_argument('--dump_dir',
+                action='store_true')
+    parser.add_argument('--app',
+                default='dump_recent',
+                choices=['dump_tasks','dump_recent'])
+    
+    parser.add_argument('--tags',
+                       choices=['f','iou'],
+                       default='f')
 
-	args=parser.parse_args()
-	if args.app=='dump_recent':
-		recent_log_number=args.recent_log_number
-		dump_recent(dump_dir=args.dump_dir)
-	else:
-		invalid_param_list=['dir','log_time','root_path',
+    args=parser.parse_args()
+    
+    if args.tags=='f':
+        tags=['train/fmeasure','val/fmeasure']
+        rootpath=os.path.expanduser('~/tmp/logs/motion')
+    elif args.tags=='iou':
+        tags=['train/iou','val/iou']
+        rootpath=os.path.expanduser('~/tmp/logs/pytorch')
+    
+    if args.app=='dump_recent':
+        recent_log_number=args.recent_log_number
+        dump_recent(dump_dir=args.dump_dir,rootpath=rootpath,tags=tags)
+    else:
+        invalid_param_list=['dir','log_time','root_path',
                     'test_path', 'train_path', 'val_path',
                     'use_optical_flow']+args.ignore_params
-		print('notes={},delete_nan={},dump_group={}'.format(args.notes,args.delete_nan,args.dump_group))
-		dump_tasks(notes=args.notes,
-			delete_nan=args.delete_nan,
-			dump_group=args.dump_group,
-			dump_dir=args.dump_dir,
-			invalid_param_list=invalid_param_list)	
+        print('notes={},delete_nan={},dump_group={}'.format(args.notes,args.delete_nan,args.dump_group))
+        dump_tasks(notes=args.notes,
+            delete_nan=args.delete_nan,
+            dump_group=args.dump_group,
+            dump_dir=args.dump_dir,
+            invalid_param_list=invalid_param_list,
+            tags=tags,
+            rootpath=rootpath)    
