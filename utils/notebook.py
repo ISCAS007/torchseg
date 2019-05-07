@@ -12,7 +12,7 @@ from utils.torch_tools import get_ckpt_path,load_ckpt
 from models.motionseg.motion_utils import fine_tune_config,get_model
 from models.motion_stn import motion_stn, motion_net
 
-def get_model_and_dataset(cfg):
+def get_model_and_dataset(cfg,filter_relu=None):
     if isinstance(cfg,(tuple,list)):
         parser=get_parser()
         args = parser.parse_args(cfg)
@@ -47,6 +47,9 @@ def get_model_and_dataset(cfg):
         config=cfg
 
     config=fine_tune_config(config)
+    
+    if filter_relu is not None:
+        config.filter_relu=filter_relu
     
     if config['net_name'] in ['motion_stn','motion_net']:
         model=globals()[config['net_name']]() 
