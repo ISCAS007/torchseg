@@ -186,7 +186,7 @@ if __name__ == '__main__':
         rootpath=os.path.expanduser('~/tmp/logs/motion')
     elif args.tags=='iou':
         tags=['train/iou','val/iou']
-        rootpath=os.path.expanduser('~/tmp/logs/motion/motion_net/cdnet2014')
+        rootpath=os.path.expanduser('~/tmp/logs/motion')
     
     if args.app=='dump_recent':
         recent_log_number=args.recent_log_number
