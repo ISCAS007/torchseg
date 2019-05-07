@@ -105,7 +105,7 @@ if __name__ == '__main__':
     
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
     log_dir = os.path.join(config['log_dir'], config['net_name'],
-                           config['dataset'], config['note'], time_str)
+                           config['semantic_dataset'], config['note'], time_str)
     checkpoint_path = os.path.join(log_dir, 'model-last-%d.pkl' % config['epoch'])
     
     writer=init_writer(config,log_dir)
@@ -133,6 +133,8 @@ if __name__ == '__main__':
             
             metric_mask_loss.reset()
             metric_total_loss.reset()
+            running_metrics.reset()
+            
             tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
             N=len(dataset_loaders[split])
             for step,(img,gt) in enumerate(tqdm_step):
