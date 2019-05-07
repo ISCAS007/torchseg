@@ -28,6 +28,10 @@ def summary(rootpath,tags,filter_str=None,):
     elif filter_str is not None:
         config_files=[f for f in config_files if f.find(filter_str)>=0]
     
+    if len(config_files)==0:
+        print('empty config_files, \n \
+              rootpath={},tags={},filter_str={}'.format(rootpath,tags,filter_str))
+        
     tasks=pd.DataFrame()
     for cfg in config_files:
         log=config_to_log(cfg)
