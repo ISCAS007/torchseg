@@ -212,16 +212,8 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                 losses_dict[k].append(v.data.cpu().numpy())
             else:
                 losses_dict[k] = [v.data.cpu().numpy()]
-
-        if loader_name == 'train':
-            
-            if accumulate >= config.model.accumulate:
-                optimizer.zero_grad()
-                if config.args.center_loss is not None:
-                    center_optimizer.zero_grad()
                     
         if loader_name == 'train':
-            accumulate+=1
             # loss backward and update weight (train only)
             loss_dict['%s/total_loss' % loader_name].backward()
             
@@ -241,7 +233,9 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                 grads_dict['last_grad_max'].append(
                     optimizer.param_groups[-1]['params'][-1].grad.max().data.cpu().numpy())
             
+            accumulate+=1
             if accumulate >= config.model.accumulate:
+                accumulate=0
                 optimizer.step()
                 if config.args.center_loss is not None:
                     for param in center_loss_model.parameters():
