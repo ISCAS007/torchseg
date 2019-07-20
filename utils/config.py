@@ -18,6 +18,7 @@ def get_default_config():
     config.model.backbone_name='vgg16'
     config.model.layer_preference='last'
     config.model.input_shape=(224,224)
+    config.model.accumulate=4
     
     config.dataset=edict()
     config.dataset.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
@@ -69,6 +70,7 @@ def get_config(args=None):
     config.model.momentum = args.momentum
     config.model.learning_rate = args.learning_rate
     config.model.optimizer = args.optimizer
+    config.model.accumulate = args.accumulate
     config.model.scheduler = args.scheduler
     config.model.lr_weight_decay=args.lr_weight_decay
     config.model.lr_momentum=args.lr_momentum
@@ -239,6 +241,11 @@ def get_parser():
                         help="batch size",
                         type=int,
                         default=2)
+    
+    parser.add_argument('--accumulate',
+                        type=int,
+                        default=4,
+                        help='accumulate graident for batch')
 
     parser.add_argument("--learning_rate",
                         help="learning rate",

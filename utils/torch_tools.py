@@ -145,7 +145,8 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
         metric_fn_dict[k].reset()
 
     grads_dict = {}
-
+    
+    accumulate=0
     tqdm_step = tqdm(loader, desc='steps', leave=False)
     for i, (datas) in enumerate(tqdm_step):
         if loader_name == 'train' and scheduler is None:
@@ -170,10 +171,6 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
         else:
             assert False, 'unexcepted loader output size %d' % len(datas)
 
-        if loader_name == 'train':
-            optimizer.zero_grad()
-            if config.args.center_loss is not None:
-                center_optimizer.zero_grad()
         outputs = model.forward(images)
 
         if isinstance(outputs, dict):
@@ -217,13 +214,16 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                 losses_dict[k] = [v.data.cpu().numpy()]
 
         if loader_name == 'train':
+            
+            if accumulate >= config.model.accumulate:
+                optimizer.zero_grad()
+                if config.args.center_loss is not None:
+                    center_optimizer.zero_grad()
+                    
+        if loader_name == 'train':
+            accumulate+=1
             # loss backward and update weight (train only)
             loss_dict['%s/total_loss' % loader_name].backward()
-            optimizer.step()
-            if config.args.center_loss is not None:
-                for param in center_loss_model.parameters():
-                    param.grad.data *= (1. / config.args.center_loss_weight)
-                center_optimizer.step()
             
             # record grad for summary (train only)
             for key_prefix in ['first_grad', 'last_grad']:
@@ -240,7 +240,17 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                     optimizer.param_groups[-1]['params'][-1].grad.mean().data.cpu().numpy())
                 grads_dict['last_grad_max'].append(
                     optimizer.param_groups[-1]['params'][-1].grad.max().data.cpu().numpy())
-
+            
+            if accumulate >= config.model.accumulate:
+                optimizer.step()
+                if config.args.center_loss is not None:
+                    for param in center_loss_model.parameters():
+                        param.grad.data *= (1. / config.args.center_loss_weight)
+                    center_optimizer.step()
+                optimizer.zero_grad()
+                if config.args.center_loss is not None:
+                    center_optimizer.zero_grad()
+                    
         if summary_metric:
             # summary_all other metric for edge and aux, not run for each epoch to save time
             running_metrics, metric_fn_dict = update_metric(outputs_dict,

@@ -30,7 +30,7 @@ use pytorch to do image semantic segmentation
 - for detail version see [requirements.txt](requirements.txt)
 - test on python3
 ```
-conda install pytorch torchvision -c pytorch
+conda install pytorch=0.4 torchvision -c pytorch
 pip install opencv-python
 pip install tensorboardX
 pip install easydict
