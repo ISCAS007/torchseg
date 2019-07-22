@@ -1,4 +1,5 @@
 # torchseg
+### tag v0.4 use pytorch0.4
 use pytorch to do image semantic segmentation
 - train+val pspnet ```python test/pspnet_test.py --batch_size=8 --net_name=pspnet --augmentation=False --learning_rate=0.01 --optimizer=sgd --backbone_name=resnet101 --midnet_scale=10 --upsample_type=bilinear --backbone_pretrained=True```
 
