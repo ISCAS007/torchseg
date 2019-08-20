@@ -435,7 +435,7 @@ def fine_tune_config(config):
         config['root_path']=os.path.expanduser('~/cvdataset/SegTrackv2')
     elif config.dataset=='BMCnet':
         config['root_path']=os.path.expanduser('~/cvdataset/BMCnet')
-    elif config.dataset=='all':
+    elif config.dataset in ['all','all2','all3']:
         pass
     else:
         assert False
