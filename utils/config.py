@@ -9,8 +9,7 @@ import argparse
 from utils.disc_tools import str2bool
 from utils.augmentor import get_default_augmentor_config
 from dataset.dataset_generalize import get_dataset_generalize_config
-
-
+    
 def get_default_config():
     config=edict()
     config.model=edict()
