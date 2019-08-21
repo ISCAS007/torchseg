@@ -137,7 +137,7 @@ def get_parser():
 
     parser.add_argument('--app',
                         help='application name',
-                        choices=['train','summary','dataset'],
+                        choices=['train','summary','dataset','viz'],
                         default='train')
 
     parser.add_argument("--net_name",
@@ -318,6 +318,11 @@ def get_parser():
                         type=int,
                         default=0)
 
+    parser.add_argument('--max_channel_number',
+                        help='the max channel number for decode layers, currently only motion_panet2 support',
+                        type=int,
+                        default=1024)
+
     parser.add_argument('--init_lr',
                         help='the learing rate for trainning model',
                         type=float,
@@ -407,6 +412,7 @@ def get_default_config():
     config.fusion_type='all'
     config.decode_main_layer=1
     config.min_channel_number=0
+    config.max_channel_number=1024
     config.smooth_ratio=8
     config.filter_type='main'
     config.filter_feature=None
