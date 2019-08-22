@@ -16,7 +16,7 @@ from models.motionseg.motion_utils import get_dataset
 from dataset.segtrackv2_dataset import main2flow
 from tqdm import trange
 import os
-                
+
 if __name__ == '__main__':
     config=edict()
     config.dataset='cdnet2014'
@@ -24,17 +24,19 @@ if __name__ == '__main__':
     config.input_shape=[224,224]
     config.use_part_number=1000
     config.ignore_outOfRoi=True
-    
+    config.net_name='motion_panet2'
+    config.share_backbone=False
+
     flow_execute_dir=os.path.expanduser('~/git/gnu/pytorch-liteflownet')
     os.chdir(flow_execute_dir)
-    
+
     for dataset in ['cdnet2014','FBMS','segtrackv2','BMCnet']:
         if dataset == 'cdnet2014':
             continue
         for split in ['train','val']:
             config.dataset=dataset
             xxx_dataset=get_dataset(config,split)
-            
+
             n=len(xxx_dataset)
             for idx in trange(n):
                 main_path,aux_path,gt_path=xxx_dataset.__get_path__(idx)
@@ -42,4 +44,7 @@ if __name__ == '__main__':
                 dir_out_path=os.path.dirname(out_path)
                 os.makedirs(dir_out_path,exist_ok=True)
                 cmd='python run.py --model default --first {} --second {} --out {}'.format(aux_path,main_path,out_path)
-                os.system(cmd)
+#                os.system(cmd)
+
+                if not os.path.exists(out_path):
+                    print(dataset,out_path)
