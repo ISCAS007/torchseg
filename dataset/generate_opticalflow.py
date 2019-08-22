@@ -16,6 +16,7 @@ from models.motionseg.motion_utils import get_dataset
 from dataset.segtrackv2_dataset import main2flow
 from tqdm import trange
 import os
+import cv2
 
 if __name__ == '__main__':
     config=edict()
@@ -46,5 +47,10 @@ if __name__ == '__main__':
                 cmd='python run.py --model default --first {} --second {} --out {}'.format(aux_path,main_path,out_path)
 
                 if not os.path.exists(out_path):
-                    os.system(cmd)
+                    img1=cv2.imread(aux_path)
+                    img2=cv2.imread(main_path)
+                    if min(img1.shape)>0 and min(img2.shape)>0:
+                        os.system(cmd)
+                    else:
+                        print(dataset,aux_path,main_path)
                     print(dataset,out_path)
