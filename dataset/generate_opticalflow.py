@@ -44,7 +44,7 @@ if __name__ == '__main__':
                 dir_out_path=os.path.dirname(out_path)
                 os.makedirs(dir_out_path,exist_ok=True)
                 cmd='python run.py --model default --first {} --second {} --out {}'.format(aux_path,main_path,out_path)
-#                os.system(cmd)
 
                 if not os.path.exists(out_path):
+                    os.system(cmd)
                     print(dataset,out_path)
