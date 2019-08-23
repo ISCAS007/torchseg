@@ -23,9 +23,9 @@ class CALayer(nn.Module):
         # feature channel downscale and upscale --> channel weight
         mid_c=max(8,main_channel//reduction)
         self.conv_du = nn.Sequential(
-                nn.Conv2d(main_channel, mid_c, 1, padding=0, bias=True),
+                nn.Conv2d(attention_channel, mid_c, 1, padding=0, bias=True),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(mid_c, attention_channel, 1, padding=0, bias=True),
+                nn.Conv2d(mid_c, main_channel, 1, padding=0, bias=True),
                 nn.Sigmoid()
         )
 
