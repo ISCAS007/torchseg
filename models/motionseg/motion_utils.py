@@ -15,6 +15,7 @@ from models.motionseg.motion_psp import motion_psp
 from models.Anet.motion_anet import motion_anet
 from models.motionseg.motion_mix import motion_mix,motion_mix_flow
 from models.motionseg.motion_filter import motion_filter,motion_filter_flow
+from models.motionseg.motion_attention import motion_attention,motion_attention_flow
 from easydict import EasyDict as edict
 import torch.utils.data as td
 import os
@@ -147,7 +148,8 @@ def get_parser():
                                  'motion_psp','motion_fcn2_flow','motion_fcn_flow','motion_unet_flow',
 #                                 'motion_panet','motion_panet_flow','motion_anet',
                                  'motion_panet2','motion_panet2_flow','motion_mix','motion_mix_flow',
-                                 'motion_panet2_stn','motion_filter','motion_filter_flow'],
+                                 'motion_panet2_stn','motion_filter','motion_filter_flow',
+                                 'motion_attention','motion_attention_flow'],
                         default='motion_unet')
 
     parser.add_argument('--dataset',
@@ -338,6 +340,16 @@ def get_parser():
                         choices=['main','all'],
                         default='main')
 
+    parser.add_argument('--filter_feature',
+                        help='filtered feature for motion_filter(aux for frame and flow, all for two frames)',
+                        choices=['aux','all'],
+                        default=None)
+
+    parser.add_argument('--attention_type',
+                        help='attention type for motion_attention, s for spatial attention, c for channel attention',
+                        choices=['s','c','sc','cs'],
+                        default='c')
+
     parser.add_argument('--aux_freeze',
                         help='freeze layer for aux backbone',
                         type=int,
@@ -348,10 +360,7 @@ def get_parser():
                         choices=['adam','sgd'],
                         default='adam')
 
-    parser.add_argument('--filter_feature',
-                        help='filtered feature for motion_filter(aux for frame and flow, all for two frames)',
-                        choices=['aux','all'],
-                        default=None)
+
 
     parser.add_argument('--filter_relu',
                         help='use relu in motion_filter or not',
@@ -416,6 +425,7 @@ def get_default_config():
     config.smooth_ratio=8
     config.filter_type='main'
     config.filter_feature=None
+    config.attention_type='c'
     config.aux_backbone=None
     config.optimizer='adam'
     config.aux_freeze=3
