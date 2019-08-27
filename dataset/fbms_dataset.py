@@ -16,6 +16,7 @@ class fbms_dataset(td.Dataset):
         self.augmentations=augmentations
         self.input_shape=tuple(config.input_shape)
         self.use_optical_flow=config.use_optical_flow
+        self.frame_gap=config.frame_gap
 
         if split=='train':
             self.gt_files=glob.glob(os.path.join(self.config['root_path'],

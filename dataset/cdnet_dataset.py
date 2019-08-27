@@ -17,6 +17,7 @@ class cdnet_dataset(td.Dataset):
         self.input_shape=tuple(config.input_shape)
         self.ignore_outOfRoi=self.config['ignore_outOfRoi']
         self.use_optical_flow=config.use_optical_flow
+        self.frame_gap=config.frame_gap
         self.train_set=set()
         self.val_set=set()
         self.img_path_pairs=self.get_img_path_pairs(self.config['root_path'])
@@ -75,7 +76,7 @@ class cdnet_dataset(td.Dataset):
         if self.frame_gap==0:
             frame_gap=random.randint(1,10)
         else:
-            frame_gap=self.config['frame_gap']
+            frame_gap=self.frame_gap
         x=random.random()
         if x>0.5:
             aux_img_path=self.get_image_path(root_path,category,sub_category,'in',frame_number+frame_gap)
