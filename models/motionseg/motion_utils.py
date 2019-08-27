@@ -219,7 +219,7 @@ def get_parser():
                         default=1000)
 
     parser.add_argument('--frame_gap',
-                        help='the frame gap for dataset(5)',
+                        help='the frame gap for dataset, 0 for random frame gap (5)',
                         type=int,
                         default=5)
 
@@ -434,6 +434,7 @@ def get_default_config():
 
 def fine_tune_config(config):
     if config.net_name.find('flow')>=0:
+        assert config.frame_gap>0
         config.use_optical_flow=True
         if config.share_backbone is None:
             config.share_backbone=False
