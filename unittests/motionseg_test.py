@@ -7,6 +7,7 @@ from dataset.segtrackv2_dataset import segtrackv2_dataset
 from dataset.bmcnet_dataset import bmcnet_dataset
 import unittest
 import cv2
+from tqdm import trange
 
 def get_dataset(config,split,normer=None,augmentations=None):
     if config.dataset=='FBMS':
@@ -39,7 +40,7 @@ class Test(unittest.TestCase):
     config.dataset='FBMS'
     config.frame_gap=0
     config.input_shape=(224,224)
-    config.use_part_number=1000
+    config.use_part_number=2000
     config.use_optical_flow=False
     config.ignore_outOfRoi=True
     def test_dataset(self):
@@ -49,20 +50,22 @@ class Test(unittest.TestCase):
             except Exception as e:
                 print(dataset,p,e)
             else:
-                self.assertTrue(min(img.shape)>0,p)
+                self.assertIsNotNone(img,p)
 
-        for dataset in ['FBMS','cdnet2014','segtrackv2','BMCnet']:
+        # 'FBMS','cdnet2014','segtrackv2',
+        for dataset in ['BMCnet']:
             self.config.dataset=dataset
-            xxx_dataset=get_dataset(self.config,'train')
-            N=len(xxx_dataset)
-            for i in range(N):
-                main,aux,gt=xxx_dataset.__get_path__(i)
-                for p in [main,aux,gt]:
-                    if isinstance(p,str):
-                        test_img(p)
-                    else:
-                        for x in p:
-                            test_img(x)
+            for split in ['train','val']:
+                xxx_dataset=get_dataset(self.config,split)
+                N=len(xxx_dataset)
+                for i in trange(N):
+                    main,aux,gt=xxx_dataset.__get_path__(i)
+                    for p in [main,aux,gt]:
+                        if isinstance(p,str):
+                            test_img(p)
+                        else:
+                            for x in p:
+                                test_img(x)
 
 
 if __name__ == '__main__':

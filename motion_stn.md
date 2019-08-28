@@ -10,6 +10,7 @@
 ## dataset
 - dataset in ['FBMS','cdnet2014','segtrackv2','BMCnet','all','all2','all3']
 - frame_gap can be zero for random frame gap, but cannot use random frame gap with optical flow
+- use_part_number should be 0 when used for benchmark
 - attention
 there are still room for resdual attention, merge method for spatial and channel attention, share the weight for all attention networks or not
 

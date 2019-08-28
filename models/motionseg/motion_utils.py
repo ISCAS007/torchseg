@@ -175,6 +175,11 @@ def get_parser():
                         choices=backbone_names,
                         default='vgg11')
 
+    parser.add_argument('--accumulate',
+                        help='batch size accumulate (1)',
+                        type=int,
+                        default=1)
+
     parser.add_argument('--batch_size',
                         help='batch size for experiment',
                         type=int,
@@ -399,6 +404,7 @@ def get_default_config():
     config.upsample_type='bilinear'
     config.note='test'
     config.batch_size=4
+    config.accumulate=1
     config.epoch=30
     config.app='train'
     config.save_model=True
