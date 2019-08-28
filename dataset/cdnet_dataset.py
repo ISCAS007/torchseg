@@ -140,8 +140,9 @@ class cdnet_dataset(td.Dataset):
                 if not os.path.exists(roi_txt_path):
                     assert False,'%s not exists'%roi_txt_path
 
-                f=open(roi_txt_path,'r')
-                line=f.readline()
+                with open(roi_txt_path,'r') as f:
+                    line=f.readline()
+
                 number_list=line.split(' ')
                 number_list=[int(n) for n in number_list]
                 first_frame, last_frame=tuple(number_list)
