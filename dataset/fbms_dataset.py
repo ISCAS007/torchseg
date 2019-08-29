@@ -6,18 +6,12 @@ import torch.utils.data as td
 import random
 import numpy as np
 import cv2
-from dataset.segtrackv2_dataset import main2flow
+from dataset.segtrackv2_dataset import main2flow,motionseg_dataset
 
-class fbms_dataset(td.Dataset):
+class fbms_dataset(motionseg_dataset):
     def __init__(self,config,split='train',normalizations=None,augmentations=None):
-        self.config=config
-        self.split=split
-        self.normalizations=normalizations
-        self.augmentations=augmentations
-        self.input_shape=tuple(config.input_shape)
-        self.use_optical_flow=config.use_optical_flow
-        self.frame_gap=config.frame_gap
-
+        super().__init__(config,split,normalizations,augmentations)
+        
         if split=='train':
             self.gt_files=glob.glob(os.path.join(self.config['root_path'],
                                                  'Trainingset',
@@ -111,53 +105,9 @@ class fbms_dataset(td.Dataset):
     def __get_path__(self,index):
         frames=self.get_frames(self.gt_files[index])
         return frames[0],frames[1],self.gt_files[index]
-
-    def __getitem__(self,index):
-        frames=self.get_frames(self.gt_files[index])
-        frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in frames]
+    
+    def __get_image__(self,index):
+        main_file,aux_file,gt_file=self.__get_path__(index)
+        frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
         gt_image=cv2.imread(self.gt_files[index],cv2.IMREAD_GRAYSCALE)
-
-        # augmentation dataset
-        if self.split=='train' and self.augmentations is not None:
-            frame_images=[self.augmentations.transform(img) for img in frame_images]
-
-        # resize image
-        resize_frame_images=[cv2.resize(img,self.input_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
-        if self.split=='train':
-            resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)
-        else:
-            resize_gt_image=gt_image
-
-        # normalize image
-        if self.normalizations is not None:
-            resize_frame_images = [self.normalizations.forward(img) for img in resize_frame_images]
-
-        # bchw
-        resize_frame_images=[img.transpose((2,0,1)) for img in resize_frame_images]
-        resize_gt_image=np.expand_dims(resize_gt_image,0)
-
-        resize_gt_image=(resize_gt_image!=0).astype(np.uint8)
-
-        if self.use_optical_flow:
-            flow_path=main2flow(frames[0])
-            flow_file=open(flow_path,'r')
-            a=np.fromfile(flow_file,np.uint8,count=4)
-            b=np.fromfile(flow_file,np.int32,count=2)
-            flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
-            flow=np.clip(flow,a_min=-50,a_max=50)/50.0
-            optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
-            if self.split=='val_path':
-                return {'images':[resize_frame_images[0],optical_flow],
-                        'gt':resize_gt_image,
-                        'gt_path':self.gt_files[index],
-                        'shape':frame_images[0].shape}
-            else:
-                return [resize_frame_images[0],optical_flow],resize_gt_image
-        else:
-            if self.split=='val_path':
-                return {'images':resize_frame_images,
-                        'gt':resize_gt_image,
-                        'gt_path':self.gt_files[index],
-                        'shape':frame_images[0].shape}
-            else:
-                return resize_frame_images,resize_gt_image
+        return frame_images,gt_image,main_file,aux_file,gt_file

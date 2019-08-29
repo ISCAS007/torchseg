@@ -222,6 +222,11 @@ def get_parser():
                         help='the dataset size, 0 for total dataset',
                         type=int,
                         default=1000)
+    
+    parser.add_argument('--ignore_pad_area',
+                        help='ignore pad area in loss function',
+                        type=int,
+                        default=0)
 
     parser.add_argument('--frame_gap',
                         help='the frame gap for dataset, 0 for random frame gap (5)',
@@ -242,11 +247,6 @@ def get_parser():
                         help='@deprecated merge flow at every deconv layer or not (False)',
                         type=str2bool,
                         default=False)
-
-    parser.add_argument('--ignore_outOfRoi',
-                        help='padding for out of roi or not, false for padding',
-                        type=str2bool,
-                        default=True)
 
     parser.add_argument("--save_model",
                         help="save model or not",
@@ -392,7 +392,7 @@ def get_default_config():
     config.use_aux_input=True
 
     config.use_part_number=1000
-    config.ignore_outOfRoi=True
+    config.ignore_pad_area=0
     config.dataset='cdnet2014'
     config.frame_gap=5
     config.log_dir=os.path.expanduser('~/tmp/logs/motion')

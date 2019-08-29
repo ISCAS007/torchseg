@@ -24,7 +24,6 @@ if __name__ == '__main__':
     config.frame_gap=5
     config.input_shape=[224,224]
     config.use_part_number=1000
-    config.ignore_outOfRoi=True
     config.net_name='motion_panet2'
     config.share_backbone=False
 
