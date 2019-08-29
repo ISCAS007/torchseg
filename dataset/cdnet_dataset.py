@@ -97,7 +97,7 @@ class cdnet_dataset(motionseg_dataset):
         frame_str = frame_str[2:]
         frame_number=int(frame_str)
 
-        root_path=os.path.dirname(main_img_path)
+        root_path=os.path.dirname(os.path.dirname(main_img_path))
         category=sub_category=''
 
         return self.get_img_path_pair(root_path,category,sub_category,frame_number)
