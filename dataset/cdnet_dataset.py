@@ -94,7 +94,7 @@ class cdnet_dataset(motionseg_dataset):
         """
         basename = os.path.basename(main_img_path)
         frame_str = basename.split('.')[0]
-        frame_str = frame_str.replace('in', '')
+        frame_str = frame_str[2:]
         frame_number=int(frame_str)
 
         root_path=os.path.dirname(main_img_path)
@@ -148,7 +148,7 @@ class cdnet_dataset(motionseg_dataset):
 #                        print('category %s  subcategory %s with groundtruth image, roi is %d to %d' % (
 #                            category, sub_category, first_frame, last_frame))
 
-                    main_files+=[self.get_image_path(root_path,category,sub_category,'gt',frame_number)
+                    main_files+=[self.get_image_path(root_path,category,sub_category,'in',frame_number)
                                         for frame_number in range(first_frame,last_frame+1)]
                 elif self.split=='test':
                     input_root_path=os.path.join(root_path,category,sub_category,'input')
