@@ -73,8 +73,10 @@ class motionseg_dataset(td.Dataset):
         # bchw
         resize_frame_images=[img.transpose((2,0,1)) for img in resize_frame_images]
         resize_gt_image=np.expand_dims(resize_gt_image,0)
-
+        
+        ignore_area=(resize_gt_image==255)
         resize_gt_image=(resize_gt_image!=0).astype(np.uint8)
+        resize_gt_image[ignore_area]=255
 
         if self.use_optical_flow:
             flow_path=main2flow(main_path)
