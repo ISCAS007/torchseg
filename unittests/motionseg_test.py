@@ -43,6 +43,7 @@ class Test(unittest.TestCase):
     config.input_shape=(224,224)
     config.use_part_number=2000
     config.use_optical_flow=False
+    config.ignore_pad_area=3
     def test_dataset(self):
         def test_img(p):
             try:
