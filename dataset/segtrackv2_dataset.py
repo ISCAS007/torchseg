@@ -56,16 +56,25 @@ class motionseg_dataset(td.Dataset):
 
         # resize image
         resize_frame_images=[cv2.resize(img,self.input_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
+    
         if self.split=='train':
             resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)
-            if self.ignore_pad_area>0:
-                resize_gt_image[0:self.ignore_pad_area,:]=255
-                resize_gt_image[-self.ignore_pad_area:,:]=255
-                resize_gt_image[:,0:self.ignore_pad_area]=255
-                resize_gt_image[:,-self.ignore_pad_area:]=255
         else:
             resize_gt_image=gt_image
-
+        
+        # ignore_area, 0 for not ignore, 255 for ignore
+        ignore_area=np.zeros_like(resize_gt_image)
+        if self.split=='train':
+            if self.ignore_pad_area>0:
+                ignore_area[0:self.ignore_pad_area,:]=255
+                ignore_area[-self.ignore_pad_area:,:]=255
+                ignore_area[:,0:self.ignore_pad_area]=255
+                ignore_area[:,-self.ignore_pad_area:]=255
+        
+        # only in cdnet2014, 255(85 in gt image) stands for ignore add
+        if self.config.dataset=='cdnet2014':
+            ignore_area[resize_gt_image==255]=255
+            
         # normalize image
         if self.normalizations is not None:
             resize_frame_images = [self.normalizations.forward(img) for img in resize_frame_images]
@@ -74,9 +83,8 @@ class motionseg_dataset(td.Dataset):
         resize_frame_images=[img.transpose((2,0,1)) for img in resize_frame_images]
         resize_gt_image=np.expand_dims(resize_gt_image,0)
         
-        ignore_area=(resize_gt_image==255)
         resize_gt_image=(resize_gt_image!=0).astype(np.uint8)
-        resize_gt_image[ignore_area]=255
+        resize_gt_image[ignore_area==255]=255
 
         if self.use_optical_flow:
             flow_path=main2flow(main_path)
