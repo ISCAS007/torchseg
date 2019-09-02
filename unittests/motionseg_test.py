@@ -85,12 +85,13 @@ class Test(unittest.TestCase):
                 for i in trange(N):
                     main,aux,gt=xxx_dataset.__get_path__(i)
                     if isinstance(gt,str):
-                        test_img(gt,pixels)
+                        pixels=test_img(gt,pixels)
                     else:
                         for x in gt:
-                            test_img(x,pixels)
+                            pixels=test_img(x,pixels)
                             
                 print(dataset,split,pixels)
+        self.assertTrue(True)
 
 if __name__ == '__main__':
     unittest.main()
