@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     tqdm_epoch = trange(config['epoch'], desc='{} epochs'.format(config.note), leave=True)
 
-    acc=0
+    step_acc=0
     for epoch in tqdm_epoch:
         for split in ['train','val']:
             if split=='train':
@@ -137,11 +137,11 @@ if __name__ == '__main__':
                     poly_lr_scheduler(config,optimizer,
                               iter=epoch*N+step,
                               max_iter=config.epoch*N)
-                    if (acc+1)>=config.accumulate:
+                    if (step_acc+1)>=config.accumulate:
                         optimizer.zero_grad()
-                        acc=0
+                        step_acc=0
                     else:
-                        acc+=1
+                        step_acc+=1
 
                 outputs=model.forward(images)
                 if config.net_name=='motion_anet':
@@ -173,11 +173,11 @@ if __name__ == '__main__':
                 metric_total_loss.update(total_loss_value.item())
                 if split=='train':
                     total_loss_value.backward()
-                    if (acc+1)>=config.accumulate:
+                    if (step_acc+1)>=config.accumulate:
                         optimizer.step()
-                        acc=0
+                        step_acc=0
                     else:
-                        acc+=1
+                        step_acc+=1
             acc=metric_acc.get_acc()
             precision=metric_acc.get_precision()
             recall=metric_acc.get_recall()
