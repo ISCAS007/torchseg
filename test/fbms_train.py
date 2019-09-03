@@ -137,11 +137,6 @@ if __name__ == '__main__':
                     poly_lr_scheduler(config,optimizer,
                               iter=epoch*N+step,
                               max_iter=config.epoch*N)
-                    if (step_acc+1)>=config.accumulate:
-                        optimizer.zero_grad()
-                        step_acc=0
-                    else:
-                        step_acc+=1
 
                 outputs=model.forward(images)
                 if config.net_name=='motion_anet':
@@ -175,6 +170,7 @@ if __name__ == '__main__':
                     total_loss_value.backward()
                     if (step_acc+1)>=config.accumulate:
                         optimizer.step()
+                        optimizer.zero_grad()
                         step_acc=0
                     else:
                         step_acc+=1
