@@ -106,7 +106,7 @@ if __name__ == '__main__':
         optimizer = torch.optim.SGD(
                     optimizer_params, lr=config['init_lr'], momentum=0.9, weight_decay=1e-4)
 
-    metric_acc=Metric_Acc()
+    metric_acc=Metric_Acc(config.exception_value)
     metric_stn_loss=Metric_Mean()
     metric_mask_loss=Metric_Mean()
     metric_total_loss=Metric_Mean()

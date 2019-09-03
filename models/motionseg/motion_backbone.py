@@ -30,7 +30,7 @@ class conv_bn_relu(TN.Module):
         upsample_ratio: 2**upsample_layer
         """
         super().__init__()
-        
+
         layers=[TN.Conv2d(in_channels=in_channels,
                             out_channels=out_channels,
                             kernel_size=kernel_size,
@@ -42,12 +42,12 @@ class conv_bn_relu(TN.Module):
             layers.append(TN.BatchNorm2d(num_features=out_channels,
                                                    eps=eps,
                                                    momentum=momentum))
-        
+
         if use_relu:
             layers.append(TN.ReLU(inplace=inplace))
-            
+
         self.conv_bn_relu = TN.Sequential(*layers)
-        
+
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
                 TN.init.kaiming_normal_(
@@ -59,7 +59,7 @@ class conv_bn_relu(TN.Module):
     def forward(self, x):
         x = self.conv_bn_relu(x)
         return x
-    
+
 class motion_backbone(TN.Module):
     def __init__(self,config,use_none_layer=False,in_channels=3):
         """
@@ -72,44 +72,45 @@ class motion_backbone(TN.Module):
             assert self.use_none_layer==use_none_layer,'I donot known why!'
         else:
             self.use_none_layer=use_none_layer
-        
+
         os.environ['use_none_layer']=str(self.use_none_layer)
-        
+
         if hasattr(config,'modify_resnet_head'):
             os.environ['modify_resnet_head']=str(config.modify_resnet_head)
         else:
             os.environ['modify_resnet_head']=str(False)
-        
-        
+
+
         self.upsample_layer=self.config.upsample_layer
         self.deconv_layer=self.config.deconv_layer
-        
+
         if config.net_name.find('unet')>=0 or \
             config.net_name.find('motion_sparse')>=0 or \
             config.net_name.find('panet')>=0 or \
             config.net_name.find('motion_filter')>=0 or \
-            config.net_name in ['motion_anet','motion_mix','motion_mix_flow']:
+            config.net_name in ['motion_anet','motion_mix','motion_mix_flow',
+                                'motion_attention','motion_attention_flow']:
             assert self.deconv_layer > self.upsample_layer,'deconv %d must > decoder %d'%(self.deconv_layer,self.upsample_layer)
         elif config.net_name.find('fcn')>=0 or config.net_name.find('motion_psp')>=0:
             self.deconv_layer = self.upsample_layer
         else:
             warnings.warn('unknown net name {} for max extracted layer index'.format(config.net_name))
             assert self.deconv_layer > self.upsample_layer
-    
+
         if hasattr(self.config,'eps'):
             self.eps=self.config.eps
         else:
             self.eps=1e-5
-        
+
         if hasattr(self.config,'momentum'):
             self.momentum=self.config.momentum
         else:
             self.momentum=0.1
-        
+
         self.in_channels=in_channels
         self.get_layers()
         self.freeze_layers()
-    
+
     def get_layers(self):
         if self.config.backbone_name.find('resnet')>=0:
             self.format='resnet'
@@ -119,7 +120,7 @@ class motion_backbone(TN.Module):
             self.format='vgg'
         else:
             assert False,'unknown backbone name %s'%self.config.backbone_name
-            
+
         if self.use_none_layer == False:
             model=self.get_model()
             if self.format=='vgg':
@@ -134,7 +135,7 @@ class motion_backbone(TN.Module):
                                                 model.bn1,
                                                 model.relu,
                                                 model.maxpool)
-                
+
                 self.layer1=model.layer1
                 self.layer2=model.layer2
                 self.layer3=model.layer3
@@ -150,7 +151,7 @@ class motion_backbone(TN.Module):
             elif self.format=='resnet':
                 # the output size of resnet layer is different from stand model!
                 # raise NotImplementedError
-                
+
                 self.prefix_net = model.prefix_net
                 self.layer1=model.layer1
                 self.layer2=model.layer2
@@ -158,12 +159,12 @@ class motion_backbone(TN.Module):
                 self.layer4=model.layer4
             else:
                 assert False,'unknown backbone format %s'%self.format
-    
-    def freeze_layers(self):       
+
+    def freeze_layers(self):
         if self.config.backbone_freeze:
             for param in self.parameters():
                 param.requrires_grad=False
-        
+
         if self.config.freeze_layer > 0:
             if self.config.backbone_freeze:
                 warnings.warn("it's not good to use freeze layer with backbone_freeze")
@@ -171,7 +172,7 @@ class motion_backbone(TN.Module):
             freeze_layer=self.config.freeze_layer
             if self.format=='vgg':
                 for idx,layer in enumerate(self.features):
-                    if idx <= self.layer_depths[str(freeze_layer)]:                        
+                    if idx <= self.layer_depths[str(freeze_layer)]:
                         for param in layer.parameters():
                             param.requires_grad = False
             else:
@@ -190,12 +191,12 @@ class motion_backbone(TN.Module):
                 if freeze_layer>4:
                     for param in self.layer4.parameters():
                         param.requires_grad = False
-        
+
         # if modify resnet head worked, train the modified resnet head
         if self.config.modify_resnet_head and self.config.use_none_layer and self.format=='resnet':
             for param in self.prefix_net.parameters():
                 param.requires_grad = True
-    
+
     def forward_layers(self,x):
         features=[]
         if self.format=='vgg':
@@ -211,7 +212,7 @@ class motion_backbone(TN.Module):
                     layer_num+=1
                 if layer_num>=6:
                     break
-                
+
         elif self.format=='resnet':
             features.append(x)
             for idx,layer in enumerate(self.prefix_net):
@@ -219,7 +220,7 @@ class motion_backbone(TN.Module):
                 if name.find('Pool2d')>=0:
                     features.append(x)
                 x=layer(x)
-                
+
             x = self.layer1(x)
             features.append(x)
             x = self.layer2(x)
@@ -230,10 +231,10 @@ class motion_backbone(TN.Module):
             features.append(x)
         else:
             assert False,'unexpected format %s'%(self.format)
-        
+
         return features
-        
-    def forward(self,x,level):        
+
+    def forward(self,x,level):
         if self.format=='vgg':
             if not hasattr(self.layer_depths,str(level)):
                 return x
@@ -242,7 +243,7 @@ class motion_backbone(TN.Module):
                 x=layer(x)
                 if idx == self.layer_depths[str(level)]:
                     return x
-            
+
         elif self.format=='resnet':
             if level==0:
                 return x
@@ -252,7 +253,7 @@ class motion_backbone(TN.Module):
                     if level==1:
                         return x
                 x=layer(x)
-            
+
             x = self.layer1(x)
             # layer 1 not change feature map height and width
             if level==2:
@@ -266,9 +267,9 @@ class motion_backbone(TN.Module):
             x = self.layer4(x)
             if level==5:
                 return x
-            
+
         assert False,'unexpected level %d for format %s'%(level,self.format)
-        
+
     def get_feature_map_channel(self,level):
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
@@ -276,7 +277,7 @@ class motion_backbone(TN.Module):
         x=Variable(x.to(device).float())
         x=self.forward(x,level)
         return x.shape[1]
-    
+
     def get_feature_map_size(self,level,input_size):
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
@@ -284,7 +285,7 @@ class motion_backbone(TN.Module):
         x=Variable(x.to(device).float())
         x=self.forward(x,level)
         return x.shape[2:4]
-    
+
     def get_output_shape(self,level,input_size):
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
@@ -292,7 +293,7 @@ class motion_backbone(TN.Module):
         x=torch.autograd.Variable(x.to(device).float())
         x=self.forward(x,level)
         return x.shape
-    
+
     def get_layer_shapes(self,input_size):
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
@@ -301,7 +302,7 @@ class motion_backbone(TN.Module):
         features=self.forward_layers(x)
         shapes=[f.shape for f in features]
         return shapes
-    
+
     def get_model(self):
         if self.in_channels!=3:
             pretrained=False
@@ -310,7 +311,7 @@ class motion_backbone(TN.Module):
         else:
             print('warning: backbone is not pretrained!!!')
             pretrained=False
-        
+
         # use_none_layer is a mark for feature map size. true for [224,112,56,28,28,28], false for [224,112,56,28,14,7]
         if self.config.backbone_name == 'Anet':
             self.config.a_depth_mode='increase'
@@ -324,7 +325,7 @@ class motion_backbone(TN.Module):
             from models.MobileNetV2 import mobilenet2
             from models.psp_resnet import resnet50,resnet101
             from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
-            
+
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
@@ -339,7 +340,7 @@ class motion_backbone(TN.Module):
             from models.psp_vgg import vgg16_gn,vgg19_gn,vgg21,vgg21_bn
             from models.MobileNetV2 import mobilenet2
             from pretrainedmodels import se_resnet50
-            
+
             assert self.in_channels==3
             if self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained)
@@ -351,7 +352,7 @@ class motion_backbone(TN.Module):
             else:
                 assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
                 return locals()[self.config.backbone_name](pretrained=pretrained)
-    
+
     def get_dataframe(self):
         assert self.format=='vgg','only vgg models have features'
         df=pd.DataFrame(columns=['level','layer_depth','layer_name'])
@@ -371,11 +372,11 @@ class motion_backbone(TN.Module):
                     if l_name in ['Conv2d'] or l_name.find('Pool2d')>=0:
                         if l.stride==2 or l.stride==(2,2):
                             level=level+1
-            
+
             df=df.append({'level':level,
                        'layer_depth':idx,
                        'layer_name':name},ignore_index=True)
-    
+
         return df
 
     def get_layer_depths(self):
@@ -390,17 +391,17 @@ class motion_backbone(TN.Module):
             elif self.config.layer_preference=='last':
                 d=df[df.level==level].tail(n=1)
                 depth=d.layer_depth.tolist()[0]
-            elif self.config.layer_preference in ['random','rand']:    
+            elif self.config.layer_preference in ['random','rand']:
                 d=df[df.level==level]
                 depth=np.random.choice(d.layer_depth.tolist())
             else:
                 print('undefined layer preference',self.config.layer_preference)
                 assert False
-            
+
             layer_depths[str(level)]=depth
-        
+
         return layer_depths
-    
+
     def get_layer_outputs(self,x):
         assert self.format=='vgg','only vgg models have features'
         layer_outputs=[]
@@ -408,9 +409,9 @@ class motion_backbone(TN.Module):
             x=layer(x)
             if idx in self.layer_depths.values():
                 layer_outputs.append(x)
-        
-        return layer_outputs        
-    
+
+        return layer_outputs
+
     def show_layers(self):
         if self.format=='vgg':
             for idx,layer in enumerate(self.features):
@@ -434,11 +435,11 @@ class transform_motionnet(TN.Module):
         self.deconv_layer=self.config.deconv_layer
         self.merge_type=self.config.merge_type
         self.use_aux_input=self.config.use_aux_input
-        
+
         self.layers=[]
         self.concat_layers=[]
         self.get_layers(backbone)
-    
+
     def get_layers(self,backbone):
         inplace=True
         in_c=out_c=0
@@ -462,7 +463,7 @@ class transform_motionnet(TN.Module):
                         self.concat_layers.append(None)
                 else:
                     assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
-                    
+
                 if self.use_none_layer and idx>3:
                     layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
@@ -479,7 +480,7 @@ class transform_motionnet(TN.Module):
                                                      padding=1,
                                                      inplace=inplace))
                 self.layers.append(layer)
-                
+
             else:
                 in_c=backbone.get_feature_map_channel(idx+1)
                 out_c=backbone.get_feature_map_channel(idx)
@@ -494,7 +495,7 @@ class transform_motionnet(TN.Module):
                                                     inplace=inplace))
                 else:
                     assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
-                    
+
                 if (self.use_none_layer and idx>3) or idx==0:
                     layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
@@ -511,19 +512,19 @@ class transform_motionnet(TN.Module):
                                                      padding=1,
                                                      inplace=inplace))
                 self.layers.append(layer)
-                
+
         self.model_layers=TN.ModuleList([layer for layer in self.layers if layer is not None])
         if self.merge_type=='concat':
             self.merge_layers=TN.ModuleList([layer for layer in self.concat_layers if layer is not None])
         else:
             assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
-                    
+
     def forward(self,main,aux=None):
         if self.use_aux_input:
             for x in [main,aux]:
                 assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
                 assert len(x)==6
-            
+
             for idx in range(self.deconv_layer,self.upsample_layer-1,-1):
                 if idx==self.deconv_layer:
                     if self.merge_type=='concat':
@@ -534,14 +535,14 @@ class transform_motionnet(TN.Module):
                         feature=main[idx]+aux[idx]
                     feature=self.layers[idx](feature)
                 else:
-                    
+
                     if self.merge_type=='concat':
                         feature=torch.cat([feature,main[idx],aux[idx]],dim=1)
                         feature=self.concat_layers[idx](feature)
                     else:
                         assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
                         feature+=main[idx]+aux[idx]
-                    
+
                     feature=self.layers[idx](feature)
             return feature
         else:
@@ -558,26 +559,26 @@ class transform_motionnet(TN.Module):
                     else:
                         assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
                         feature+=main[idx]
-                        
+
                 feature=self.layers[idx](feature)
-                
+
             return feature
 
 class upsample_merge(TN.Module):
     def __init__(self,config):
         super().__init__()
         self.merge_type=config.merge_type
-        
-    def forward(self,features):        
+
+    def forward(self,features):
         s=features[0].shape
-        
+
         y=[]
         for f in features:
             if f.shape[2:4]!=s[2:4]:
                 f=F.interpolate(f, size=s[2:4],
                                 mode='bilinear', align_corners=True)
             y.append(f)
-        
+
         if self.merge_type=='concat':
                 merge_feature=torch.cat(y,dim=1)
         else:
@@ -587,9 +588,9 @@ class upsample_merge(TN.Module):
                     merge_feature=y[idx]
                 else:
                     merge_feature+=y[idx]
-        
+
         return merge_feature
-    
+
 class transform_motionnet_flow(TN.Module):
     def __init__(self,backbone,config):
         super().__init__()
@@ -599,7 +600,7 @@ class transform_motionnet_flow(TN.Module):
         self.deconv_layer=self.config.deconv_layer
         self.merge_type=self.config.merge_type
         self.fusion_type=config.fusion_type
-        
+
         assert self.deconv_layer > self.upsample_layer
         assert self.merge_type=='concat'
         self.upsample_merge_layers=[]
@@ -628,9 +629,9 @@ class transform_motionnet_flow(TN.Module):
                                                                 stride=1,
                                                                 padding=0,
                                                                 inplace=inplace))
-                
-                
-                
+
+
+
                 if self.use_none_layer and idx>3:
                     layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
@@ -652,12 +653,12 @@ class transform_motionnet_flow(TN.Module):
                 out_c=backbone.get_feature_map_channel(idx)
 #                print('idx,in_c,out_c',idx,in_c,out_c)
                 merge_c=in_c+out_c
-                
+
                 if self.fusion_type == 'all':
                     merge_c+=2
                 elif self.fusion_type in ['first','HR'] and idx==self.upsample_layer:
                     merge_c+=2
-                
+
                 self.upsample_merge_layers.append(TN.Sequential(upsample_merge(config),
                                                                conv_bn_relu(in_channels=merge_c,
                                                                 out_channels=in_c,
@@ -681,10 +682,10 @@ class transform_motionnet_flow(TN.Module):
                                                      padding=1,
                                                      inplace=inplace))
                 self.deconv_layers.append(layer)
-                
+
         self.model_layers=TN.ModuleList([layer for layer in self.deconv_layers if layer is not None])
         self.merge_layers=TN.ModuleList([layer for layer in self.upsample_merge_layers if layer is not None])
-            
+
     def forward(self,main,flow):
         assert isinstance(main,(list,tuple)),'main input for segnet should be list or tuple'
         assert len(main)==6
@@ -702,7 +703,7 @@ class transform_motionnet_flow(TN.Module):
                     feature=self.upsample_merge_layers[idx]((main[idx],feature))
             feature=self.deconv_layers[idx](feature)
         return feature
-    
+
 
 class motionnet_upsample_bilinear(TN.Module):
     def __init__(self, in_channels, out_channels, output_shape, eps=1e-5, momentum=0.1):
@@ -732,7 +733,7 @@ class motionnet_upsample_bilinear(TN.Module):
                           mode='bilinear', align_corners=True)
 
         return x
-    
+
 class transform_sparse(TN.Module):
     """
     midnet of motion_sparse
@@ -745,7 +746,7 @@ class transform_sparse(TN.Module):
         self.sparse_ratio=self.config.sparse_ratio
         self.sparse_conv=self.config.sparse_conv
         self.concat_size=backbone.get_feature_map_size(self.upsample_layer,self.config.input_shape)
-        
+
         self.concat_channels=0
         sparse_convs=[]
         shapes=backbone.get_layer_shapes(self.config.input_shape)
@@ -761,13 +762,13 @@ class transform_sparse(TN.Module):
             self.concat_channels+=out_channels
         self.concat_channels*=2
         self.sparse_convs=TN.ModuleList(sparse_convs)
-            
-        
+
+
     def forward(self,main,aux):
         for x in [main,aux]:
             assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
             assert len(x)==6
-        
+
         features=[]
         for idx in range(self.upsample_layer,self.deconv_layer+1):
             channels=int(main[idx].shape[1]*self.sparse_ratio)
@@ -781,10 +782,10 @@ class transform_sparse(TN.Module):
                 features+=[F.interpolate(x, size=self.concat_size,
                               mode='bilinear', align_corners=True) \
                             for x in [main[idx][:,0:channels],aux[idx][:,0:channels]]]
-        
+
         concat_feature=torch.cat(features,dim=1)
         return concat_feature
-    
+
 class transform_motion_psp(TN.Module):
     """x->4x[pool->conv->bn->relu->upsample]->concat
     input_shape[batch_size,channel,height,width]
@@ -812,7 +813,7 @@ class transform_motion_psp(TN.Module):
         self.input_shape = input_shape
         b, in_channels, height, width = input_shape
         in_channels*=2
-        
+
         path_out_c_list = []
         N = len(pool_sizes)
 
@@ -826,7 +827,7 @@ class transform_motion_psp(TN.Module):
             path_out_c_list.append(mean_c)
 
         path_out_c_list.append(pool_out_channels+mean_c-mean_c*N)
-        
+
         self.pool_sizes = pool_sizes
         self.scale = scale
         pool_paths = []
@@ -866,7 +867,7 @@ class transform_motion_psp(TN.Module):
 
         x = torch.cat(output_slices, dim=1)
         return x
-    
+
 if __name__ == '__main__':
     config=edict()
     config.backbone_name='resnet152'
@@ -878,7 +879,7 @@ if __name__ == '__main__':
     config.modify_resnet_head=False
     config.use_none_layer=False
     config.net_name='motion_unet'
-    
+
     for name in ['resnet50','vgg19_bn']:
         print(name+'*'*50)
         config.backbone_name=name
