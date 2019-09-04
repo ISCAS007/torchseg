@@ -358,8 +358,7 @@ def get_parser():
                         default=None)
 
     parser.add_argument('--attention_type',
-                        help='attention type for motion_attention, s for spatial attention, c for channel attention',
-                        choices=['s','c','sc','cs'],
+                        help='attention type for motion_attention, s for spatial attention, c for channel attention, g for global attention, choices like s,c,g,sc,cs,sg,gs,cg,gc,scg,...',
                         default='c')
 
     parser.add_argument('--aux_freeze',
