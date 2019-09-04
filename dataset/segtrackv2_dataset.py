@@ -40,7 +40,7 @@ class motionseg_dataset(td.Dataset):
         self.frame_gap=config.frame_gap
         self.use_optical_flow=config.use_optical_flow
         self.ignore_pad_area=config.ignore_pad_area
-        
+
     def __get_image__(self,index):
         """
         return frame_images,gt_image,main_path,aux_path,gt_path
@@ -56,12 +56,12 @@ class motionseg_dataset(td.Dataset):
 
         # resize image
         resize_frame_images=[cv2.resize(img,self.input_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
-    
+
         if self.split=='train':
             resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)
         else:
             resize_gt_image=gt_image
-        
+
         # ignore_area, 0 for not ignore, 255 for ignore
         ignore_area=np.zeros_like(resize_gt_image)
         if self.split=='train':
@@ -70,23 +70,23 @@ class motionseg_dataset(td.Dataset):
                 ignore_area[-self.ignore_pad_area:,:]=255
                 ignore_area[:,0:self.ignore_pad_area]=255
                 ignore_area[:,-self.ignore_pad_area:]=255
-        
+
         # only in cdnet2014, 255(85 in gt image) stands for ignore add
         if self.config.dataset=='cdnet2014':
             ignore_area[resize_gt_image==255]=255
-            
+
         # normalize image
         if self.normalizations is not None:
             resize_frame_images = [self.normalizations.forward(img) for img in resize_frame_images]
 
         # bchw
         resize_frame_images=[img.transpose((2,0,1)) for img in resize_frame_images]
-        
+
         resize_gt_image=(resize_gt_image!=0).astype(np.uint8)
         resize_gt_image[ignore_area==255]=255
         resize_gt_image=np.expand_dims(resize_gt_image,0)
-        
-        
+
+
         if self.use_optical_flow:
             flow_path=main2flow(main_path)
             flow_file=open(flow_path,'r')
@@ -117,7 +117,7 @@ class segtrackv2_dataset(motionseg_dataset):
     """
     def __init__(self,config,split='train',normalizations=None,augmentations=None):
         super().__init__(config,split,normalizations,augmentations)
-        
+
         self.main_files=self.get_main_files()
 
         print('dataset size = {}',len(self.main_files))
@@ -216,7 +216,7 @@ class segtrackv2_dataset(motionseg_dataset):
         gt_files=self.get_gt_files(main_file)
 
         return main_file,aux_file,gt_files
-    
+
     def __get_image__(self,index):
         main_file,aux_file,gt_files=self.__get_path__(index)
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
@@ -224,5 +224,7 @@ class segtrackv2_dataset(motionseg_dataset):
         gt_image=np.zeros_like(gt_images[0])
         for gt in gt_images:
             gt_image+=gt
-        
-        return frame_images,gt_image,main_file,aux_file,gt_files[0]
+
+        labels=np.zeros_like(gt_image)
+        labels[gt_image>0]=1
+        return frame_images,labels,main_file,aux_file,gt_files[0]

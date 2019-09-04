@@ -46,7 +46,7 @@ class bmcnet_dataset(motionseg_dataset):
     """
     def __init__(self,config,split='train',normalizations=None,augmentations=None):
         super().__init__(config,split,normalizations,augmentations)
-        
+
         self.main_files=self.get_main_files()
         print('dataset size = {}',len(self.main_files))
         n=len(self.main_files)
@@ -109,7 +109,7 @@ class bmcnet_dataset(motionseg_dataset):
         gt_file=self.get_gt_file(main_file)
 
         return main_file,aux_file,gt_file
-    
+
     def __get_image__(self,index):
         main_file,aux_file,gt_file=self.__get_path__(index)
         main_file=self.main_files[index]
@@ -117,5 +117,8 @@ class bmcnet_dataset(motionseg_dataset):
         gt_file=self.get_gt_file(main_file)
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
         gt_image=cv2.imread(gt_file,cv2.IMREAD_GRAYSCALE)
-        
-        return frame_images,gt_image,main_file,aux_file,gt_file
+
+        labels=np.zeros_like(gt_image)
+        labels[gt_image>0]=1
+
+        return frame_images,labels,main_file,aux_file,gt_file
