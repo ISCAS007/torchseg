@@ -79,6 +79,7 @@ if __name__ == '__main__':
         y=model([main,flow])['masks'][0]
         make_dot(y,params=dict(list(model.named_parameters())))
         sys.exit(0)
+        
 
     dataset_loaders={}
     for split in ['train','val']:
@@ -86,7 +87,19 @@ if __name__ == '__main__':
         batch_size=args.batch_size if split=='train' else 1
         xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=True,drop_last=False,num_workers=2)
         dataset_loaders[split]=xxx_loader
-
+    
+    # todo, not finished
+    if args.app=='image':
+        assert False
+        model.eval()
+        for split in ['train','val']:
+            for epoch in trange(10):
+                for frames,gt in dataset_loaders[split]:
+                    images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
+                    origin_labels=torch.autograd.Variable(gt.to(device).long())
+                    labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
+                    outputs=model.forward(images)
+                    
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
     log_dir = os.path.join(config['log_dir'], config['net_name'],
                            config['dataset'], config['note'], time_str)
