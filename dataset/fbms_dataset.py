@@ -11,7 +11,7 @@ from dataset.segtrackv2_dataset import main2flow,motionseg_dataset
 class fbms_dataset(motionseg_dataset):
     def __init__(self,config,split='train',normalizations=None,augmentations=None):
         super().__init__(config,split,normalizations,augmentations)
-        
+
         if split=='train':
             self.gt_files=glob.glob(os.path.join(self.config['root_path'],
                                                  'Trainingset',
@@ -105,9 +105,13 @@ class fbms_dataset(motionseg_dataset):
     def __get_path__(self,index):
         frames=self.get_frames(self.gt_files[index])
         return frames[0],frames[1],self.gt_files[index]
-    
+
     def __get_image__(self,index):
         main_file,aux_file,gt_file=self.__get_path__(index)
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
         gt_image=cv2.imread(self.gt_files[index],cv2.IMREAD_GRAYSCALE)
-        return frame_images,gt_image,main_file,aux_file,gt_file
+
+        labels=np.zeros_like(gt_image)
+        labels[gt_image>0]=1
+
+        return frame_images,labels,main_file,aux_file,gt_file

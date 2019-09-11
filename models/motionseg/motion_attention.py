@@ -11,52 +11,7 @@ from models.motionseg.motion_backbone import conv_bn_relu
 from models.motionseg.motion_fcn import stn
 from models.motionseg.motion_panet import motion_panet2
 from easydict import EasyDict as edict
-
-## Channel Attention (CA) Layer
-class CALayer(nn.Module):
-    def __init__(self, main_channel,reduction=16,attention_channel=None):
-        super(CALayer, self).__init__()
-        if attention_channel is None:
-            attention_channel=main_channel
-        # global average pooling: feature --> point
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        # feature channel downscale and upscale --> channel weight
-        mid_c=max(8,main_channel//reduction)
-        self.conv_du = nn.Sequential(
-                nn.Conv2d(attention_channel, mid_c, 1, padding=0, bias=True),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(mid_c, main_channel, 1, padding=0, bias=True),
-                nn.Sigmoid()
-        )
-
-    def forward(self, main_feature,attention_feature=None):
-        if attention_feature is None:
-            attention_feature=main_feature
-        y = self.avg_pool(attention_feature)
-        y = self.conv_du(y)
-        return main_feature * y
-
-## Residual Channel Attention Block (RCAB)
-class RCAB(nn.Module):
-    def __init__(
-        self, n_feat, kernel_size, reduction,
-        bias=True, bn=False, act=nn.ReLU(True), res_scale=1):
-
-        super(RCAB, self).__init__()
-        modules_body = []
-        for i in range(2):
-            modules_body.append(nn.Conv2d(n_feat, n_feat, kernel_size, padding=kernel_size//2,bias=bias))
-            if bn: modules_body.append(nn.BatchNorm2d(n_feat))
-            if i == 0: modules_body.append(act)
-        modules_body.append(CALayer(n_feat, reduction))
-        self.body = nn.Sequential(*modules_body)
-        self.res_scale = res_scale
-
-    def forward(self, x):
-        res = self.body(x)
-        #res = self.body(x).mul(self.res_scale)
-        res += x
-        return res
+from models.custom_layers import CALayer,SALayer,GALayer
 
 class transform_attention(nn.Module):
     def __init__(self,backbones,config):
@@ -85,6 +40,7 @@ class transform_attention(nn.Module):
         self.layers=[]
         self.spatial_filter_layers=[]
         self.channel_filter_layers=[]
+        self.global_filter_layers=[]
         self.keys=['main_backbone','aux_backbone','main_panet','aux_panet']
         channels={}
         inplace=True
@@ -93,6 +49,7 @@ class transform_attention(nn.Module):
                 self.layers.append(None)
                 self.spatial_filter_layers.append(None)
                 self.channel_filter_layers.append(None)
+                self.global_filter_layers.append(None)
                 continue
             elif idx==self.deconv_layer:
                 init_c=merge_c=0
@@ -125,29 +82,22 @@ class transform_attention(nn.Module):
                     # merge_c = main_c + aux_c
                     filter_c=merge_c
 
-                if 's' in self.attention_type:
-                    self.spatial_filter_layers.append(nn.Sequential(
-                            conv_bn_relu(in_channels=filter_c,
-                                         out_channels=32,
-                                         inplace=inplace),
-                            conv_bn_relu(in_channels=32,
-                                         out_channels=1,
-                                         inplace=inplace,
-                                         use_relu=self.filter_relu,
-                                         use_bn=self.filter_relu,
-                                         bias=not self.filter_relu),
-                            nn.Sigmoid()
-                            ))
-
                 if self.filter_type=='main':
                     merge_c=sum([value for key,value in channels.items() if key.find('main')>=0])+init_c
+
+                if 's' in self.attention_type:
+                    self.spatial_filter_layers.append(SALayer(main_channel=merge_c,attention_channel=filter_c))
 
                 if 'c' in self.attention_type:
                     self.channel_filter_layers.append(CALayer(main_channel=merge_c,attention_channel=filter_c))
 
+                if 'g' in self.attention_type:
+                    self.global_filter_layers.append(GALayer(main_channel=merge_c,attention_channel=filter_c))
+
             else:
                 self.spatial_filter_layers.append(None)
                 self.channel_filter_layers.append(None)
+                self.global_filter_layers.append(None)
 
             current_layer=[conv_bn_relu(in_channels=merge_c,
                                                  out_channels=out_c,
@@ -173,6 +123,8 @@ class transform_attention(nn.Module):
         self.model_layers=nn.ModuleList([layer for layer in self.layers if layer is not None])
         self.model_sfilter_layers=nn.ModuleList([layer for layer in self.spatial_filter_layers if layer is not None])
         self.model_cfilter_layers=nn.ModuleList([layer for layer in self.channel_filter_layers if layer is not None])
+        self.model_gfilter_layers=nn.ModuleList([layer for layer in
+                                                 self.global_filter_layers if layer is not None])
 
     def forward(self,features):
         assert isinstance(features,dict)
@@ -210,19 +162,19 @@ class transform_attention(nn.Module):
                     feature=torch.cat(f_list,dim=1)
                     filter_feature=feature
 
-                if self.attention_type=='s':
-                    self.attention=self.spatial_filter_layers[idx](filter_feature)
-                    feature=main_feature * self.attention
-                elif self.attention_type=='c':
-                    feature=self.channel_filter_layers[idx](main_feature,filter_feature)
-                elif self.attention_type=='sc':
-                    self.attention=self.spatial_filter_layers[idx](filter_feature)
-                    feature=main_feature * self.attention
-                    feature=self.channel_filter_layers[idx](feature,filter_feature)
-                elif self.attention_type=='cs':
-                    feature=self.channel_filter_layers[idx](main_feature,filter_feature)
-                    self.attention=self.spatial_filter_layers[idx](filter_feature)
-                    feature=feature * self.attention
+                for c in self.attention_type:
+                    if c=='s':
+                        feature=self.spatial_filter_layers[idx](main_feature,filter_feature)
+                    elif c=='c':
+                        feature=self.channel_filter_layers[idx](main_feature,filter_feature)
+                    elif c=='g':
+                        feature=self.global_filter_layers[idx](main_feature,filter_feature)
+                    elif c=='n':
+                        feature=main_feature
+                    else:
+                        assert False,'unknonw attention type {}'.format(self.attention_type)
+
+                    main_feature=feature
             else:
                 f_list=[f for f in f_list if f is not None]
                 feature=torch.cat(f_list,dim=1)

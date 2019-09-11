@@ -19,9 +19,10 @@ from models.motionseg.motion_attention import motion_attention,motion_attention_
 from easydict import EasyDict as edict
 import torch.utils.data as td
 import os
+import warnings
 
 class Metric_Acc():
-    def __init__(self):
+    def __init__(self,exception_value=1):
 #        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.dtype=torch.int64
 #        self.tp=torch.tensor(0,dtype=self.dtype,device=device)
@@ -40,6 +41,9 @@ class Metric_Acc():
         self.sum_r=0
         self.sum_f=0
         self.img_count=0
+
+        ## when no gt, f=0/1???
+        self.exception_value=exception_value
 
     def update(self,predicts,labels):
         # print(labels.shape,predicts.shape)
@@ -68,17 +72,20 @@ class Metric_Acc():
             fn=torch.sum(((pred[i]==0) & (labels[i]==1)).to(torch.float32))
 
             if tp+fn==0:
-                r=1
+                warnings.warn('tp+fn==0')
+                r=self.exception_value
             else:
                 r=tp/(tp+fn)
 
             if tp+fp==0:
-                p=1
+                warnings.warn('tp+fp==0')
+                p=self.exception_value
             else:
                 p=tp/(tp+fp)
 
             if p+r==0:
-                f=1
+                warnings.warn('p+r==0')
+                f=self.exception_value
             else:
                 f=2*p*r/(p+r)
 
@@ -222,7 +229,7 @@ def get_parser():
                         help='the dataset size, 0 for total dataset',
                         type=int,
                         default=1000)
-    
+
     parser.add_argument('--ignore_pad_area',
                         help='ignore pad area in loss function',
                         type=int,
@@ -351,8 +358,7 @@ def get_parser():
                         default=None)
 
     parser.add_argument('--attention_type',
-                        help='attention type for motion_attention, s for spatial attention, c for channel attention',
-                        choices=['s','c','sc','cs'],
+                        help='attention type for motion_attention, s for spatial attention, c for channel attention, g for global attention, n for no attention, choices like s,c,g,sc,cs,sg,gs,cg,gc,scg,...',
                         default='c')
 
     parser.add_argument('--aux_freeze',
@@ -365,12 +371,16 @@ def get_parser():
                         choices=['adam','sgd'],
                         default='adam')
 
-
-
     parser.add_argument('--filter_relu',
                         help='use relu in motion_filter or not',
                         type=str2bool,
                         default=True)
+
+    parser.add_argument('--exception_value',
+                        help='exception value for FBMS F-Measure',
+                        type=float,
+                        default=1.0)
+
     return parser
 
 def get_default_config():
@@ -436,6 +446,7 @@ def get_default_config():
     config.optimizer='adam'
     config.aux_freeze=3
     config.filter_relu=True
+    config.exception_value=1.0
     return config
 
 def fine_tune_config(config):
