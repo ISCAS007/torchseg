@@ -625,7 +625,7 @@ def get_parser():
                         default=os.path.expanduser('~/tmp/logs/pytorch'))
 
     # attention 2019/09/16
-    parser.add_argument('--attention_tyep',
+    parser.add_argument('--attention_type',
                         help='attention type for motionnet 2019/09/16, {s,c,g,h,n}* ',
                         default='n')
     return parser
