@@ -11,7 +11,7 @@ from models.motionseg.motion_backbone import conv_bn_relu
 from models.motionseg.motion_fcn import stn
 from models.motionseg.motion_panet import motion_panet2
 from easydict import EasyDict as edict
-from models.custom_layers import CALayer,SALayer,GALayer
+from models.custom_layers import AttentionLayer
 
 class transform_attention(nn.Module):
     def __init__(self,backbones,config):
@@ -38,18 +38,14 @@ class transform_attention(nn.Module):
             self.filter_feature='aux' if self.use_flow else 'all'
 
         self.layers=[]
-        self.spatial_filter_layers=[]
-        self.channel_filter_layers=[]
-        self.global_filter_layers=[]
+        self.attention_layers=[]
         self.keys=['main_backbone','aux_backbone','main_panet','aux_panet']
         channels={}
         inplace=True
         for idx in range(self.deconv_layer+1):
             if idx<self.upsample_layer:
                 self.layers.append(None)
-                self.spatial_filter_layers.append(None)
-                self.channel_filter_layers.append(None)
-                self.global_filter_layers.append(None)
+                self.attention_layers.append(None)
                 continue
             elif idx==self.deconv_layer:
                 init_c=merge_c=0
@@ -85,19 +81,10 @@ class transform_attention(nn.Module):
                 if self.filter_type=='main':
                     merge_c=sum([value for key,value in channels.items() if key.find('main')>=0])+init_c
 
-                if 's' in self.attention_type:
-                    self.spatial_filter_layers.append(SALayer(main_channel=merge_c,attention_channel=filter_c))
-
-                if 'c' in self.attention_type:
-                    self.channel_filter_layers.append(CALayer(main_channel=merge_c,attention_channel=filter_c))
-
-                if 'g' in self.attention_type:
-                    self.global_filter_layers.append(GALayer(main_channel=merge_c,attention_channel=filter_c))
+                self.attention_layers.append(AttentionLayer(config,merge_c,filter_c))
 
             else:
-                self.spatial_filter_layers.append(None)
-                self.channel_filter_layers.append(None)
-                self.global_filter_layers.append(None)
+                self.attention_layers.append(None)
 
             current_layer=[conv_bn_relu(in_channels=merge_c,
                                                  out_channels=out_c,
@@ -121,10 +108,7 @@ class transform_attention(nn.Module):
             self.layers.append(nn.Sequential(*current_layer))
 
         self.model_layers=nn.ModuleList([layer for layer in self.layers if layer is not None])
-        self.model_sfilter_layers=nn.ModuleList([layer for layer in self.spatial_filter_layers if layer is not None])
-        self.model_cfilter_layers=nn.ModuleList([layer for layer in self.channel_filter_layers if layer is not None])
-        self.model_gfilter_layers=nn.ModuleList([layer for layer in
-                                                 self.global_filter_layers if layer is not None])
+        self.model_attention_layers=nn.ModuleList([layer for layer in self.attention_layers if layer is not None])
 
     def forward(self,features):
         assert isinstance(features,dict)
@@ -163,17 +147,7 @@ class transform_attention(nn.Module):
                     filter_feature=feature
 
                 for c in self.attention_type:
-                    if c=='s':
-                        feature=self.spatial_filter_layers[idx](main_feature,filter_feature)
-                    elif c=='c':
-                        feature=self.channel_filter_layers[idx](main_feature,filter_feature)
-                    elif c=='g':
-                        feature=self.global_filter_layers[idx](main_feature,filter_feature)
-                    elif c=='n':
-                        feature=main_feature
-                    else:
-                        assert False,'unknonw attention type {}'.format(self.attention_type)
-
+                    feature=self.attention_layers[idx](main_feature,filter_feature)
                     main_feature=feature
             else:
                 f_list=[f for f in f_list if f is not None]

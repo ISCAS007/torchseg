@@ -86,6 +86,43 @@ class GALayer(nn.Module):
         y = torch.cat([main_feature,y],dim=1)
         y = self.ga_conv(y)
         return y
+    
+## Global Attention Layer 2, like spatial attention + global attention
+class HALayer(nn.Module):
+    def __init__(self,main_channel,ga_channel=1,reduction=16,attention_channel=None):
+        super().__init__()
+        if attention_channel is None:
+            attention_channel=main_channel
+
+        # global average pooling: feature --> point
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        
+        assert main_channel > ga_channel
+        
+        mid_c=max(8,main_channel//reduction)
+        self.conv = nn.Sequential(
+                        nn.Conv2d(main_channel, mid_c, 1, padding=0, bias=True),
+                        nn.ReLU(inplace=True),
+                        nn.Conv2d(mid_c, main_channel-ga_channel, 1, padding=0, bias=True),
+                        nn.ReLU(inplace=True)
+                    )
+        
+        mid_c=max(8,attention_channel//reduction)
+        self.ga_conv = nn.Sequential(
+                        nn.Conv2d(attention_channel, mid_c, 1, padding=0, bias=True),
+                        nn.ReLU(inplace=True),
+                        nn.Conv2d(mid_c, ga_channel, 1, padding=0, bias=True),
+                        nn.Sigmoid()
+                        )
+
+    def forward(self, main_feature,attention_feature=None):
+        if attention_feature is None:
+            attention_feature=main_feature
+        
+        x1=self.conv(main_feature)
+        x2=self.ga_conv(attention_feature)
+        y = torch.cat([x1,x2],dim=1)
+        return y
 
 ## Residual Channel Attention Block (RCAB)
 class RCAB(nn.Module):
@@ -109,10 +146,12 @@ class RCAB(nn.Module):
         res += x
         return res
 
-class transform_attention(nn.Module):
+class AttentionLayer(nn.Module):
     def __init__(self,config,main_c,filter_c=None):
         super().__init__()
         self.config=config
+        
+        self.attention_type=config.attention_type
         if filter_c is None:
             filter_c=main_c
 
@@ -124,15 +163,23 @@ class transform_attention(nn.Module):
 
         if 'g' in self.attention_type:
             self.global_filter=GALayer(main_channel=main_c,attention_channel=filter_c)
-
-    def forward(self,x):
+        
+        if 'h' in self.attention_type:
+            self.global2_filter=HALayer(main_channel=main_c,attention_channel=filter_c)
+    
+    def forward(self,x,y=None):
+        if y is None:
+            y=x
+        
         for c in self.attention_type:
             if c=='s':
-                x=self.spatial_filter(x)
+                x=self.spatial_filter(x,y)
             elif c=='c':
-                x=self.channel_filter(x)
+                x=self.channel_filter(x,y)
             elif c=='g':
-                x=self.global_filter(x)
+                x=self.global_filter(x,y)
+            elif c=='h':
+                x=self.global2_filter(x,y)
             elif c=='n':
                 pass
             else:
