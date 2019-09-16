@@ -12,7 +12,7 @@ class pspnet(TN.Module):
         super().__init__()
         self.config = config
         self.name=self.__class__.__name__
-        
+
         use_none_layer=config.model.use_none_layer
         self.backbone = backbone(config.model, use_none_layer=use_none_layer)
 
@@ -34,7 +34,7 @@ class pspnet(TN.Module):
         self.decoder = get_suffix_net(config,
                                       self.midnet_out_channels,
                                       self.class_number)
-        
+
         self.center_channels=self.decoder.center_channels
 
         # for pretrained module, use small lr_mult=1
@@ -52,7 +52,7 @@ class pspnet(TN.Module):
                                                                          unchanged_lr_mult=config.model.pre_lr_mult,
                                                                          changed_lr_mult=config.model.changed_lr_mult,
                                                                          new_lr_mult=config.model.new_lr_mult)
-                
+
             else:
                 warnings.warn('config.model.use_lr_mult is True but not fully wored')
                 backbone_optmizer_params = [{'params': [
@@ -65,7 +65,7 @@ class pspnet(TN.Module):
                                      {'params': self.midnet.parameters(),
                                       'lr_mult': 1},
                                      {'params': self.decoder.parameters(), 'lr_mult': 1}]
-            
+
 
     def forward(self, x):
         feature_map = self.backbone.forward(x, self.upsample_layer)

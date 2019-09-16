@@ -1,3 +1,5 @@
+import numpy as np
+
 def merge_image(images,wgap=5,hgap=5,col_num=9,resize_img_w=48):
     N=len(images)
     max_resize_img_h=0
@@ -25,7 +27,7 @@ def merge_image(images,wgap=5,hgap=5,col_num=9,resize_img_w=48):
         merge_img[y_top:y_top+resize_img_h,x_left:x_left+resize_img_w,:]=resize_img
         col=col+1
         max_resize_img_h=max(max_resize_img_h,resize_img_h)
-        if col==col_num: 
+        if col==col_num:
             col=0
             y=y+max_resize_img_h+hgap
             max_resize_img_h=0

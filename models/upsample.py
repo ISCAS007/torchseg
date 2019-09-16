@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch
 import os
 from utils.disc_tools import str2bool
-
+from models.custom_layers import AttentionLayer
 
 class local_bn(TN.Module):
     def __init__(self, num_features, eps=1e-5, momentum=0.1):
@@ -863,7 +863,9 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
                                 eps=eps,
                                 momentum=momentum)
 
-    return midnet
+    attention=AttentionLayer(config,midnet_out_channels)
+    final_net=TN.Sequential(midnet,attention)
+    return final_net
 
 
 def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
