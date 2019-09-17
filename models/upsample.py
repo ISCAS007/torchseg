@@ -682,14 +682,14 @@ class transform_segnet(TN.Module):
         self.layers=[]
 
         self.concat_layers=[]
-        if not hasattr(self.config.model,'merge_type'):
+        if not hasattr(self.config,'merge_type'):
             self.merge_type='mean'
         else:
-            self.merge_type=self.config.model.merge_type
+            self.merge_type=self.config.merge_type
 
         in_c=out_c=0
         for idx in range(6):
-            if idx<self.config.model.upsample_layer:
+            if idx<self.config.upsample_layer:
                 self.layers.append(None)
                 self.concat_layers.append(None)
             elif idx==5:
@@ -720,7 +720,7 @@ class transform_segnet(TN.Module):
                 out_c=backbone.get_feature_map_channel(idx)
 #                print('idx,in_c,out_c',idx,in_c,out_c)
 
-                if self.config.model.use_none_layer and idx>3:
+                if self.config.use_none_layer and idx>3:
                     layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,
@@ -766,7 +766,7 @@ class transform_segnet(TN.Module):
 
 #        for idx in range(6):
 #            print(idx,x[idx].shape)
-        for idx in range(5,self.config.model.upsample_layer-1,-1):
+        for idx in range(5,self.config.upsample_layer-1,-1):
             if idx==5:
                 feature=x[idx]
                 feature=self.layers[idx](feature)
@@ -786,7 +786,7 @@ class transform_segnet(TN.Module):
             assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
             assert len(x)==6
 
-        for idx in range(5,self.config.model.upsample_layer-1,-1):
+        for idx in range(5,self.config.upsample_layer-1,-1):
             if idx==5:
                 if self.merge_type=='concat':
                     feature=torch.cat([main[idx],aux[idx]],dim=1)
@@ -821,24 +821,24 @@ class GlobalAvgPool2d(TN.Module):
 
 
 def get_midnet(config, midnet_input_shape, midnet_out_channels):
-    if hasattr(config.model, 'midnet_name'):
-        midnet_name = config.model.midnet_name
+    if hasattr(config, 'midnet_name'):
+        midnet_name = config.midnet_name
     else:
         midnet_name = 'psp'
 
-    if hasattr(config.model, 'eps'):
-        eps = config.model.eps
+    if hasattr(config, 'eps'):
+        eps = config.eps
     else:
         eps = 1e-5
 
-    if hasattr(config.model, 'momentum'):
-        momentum = config.model.momentum
+    if hasattr(config, 'momentum'):
+        momentum = config.momentum
     else:
         momentum = 0.1
 
-    os.environ['torchseg_use_bn'] = str(config.model.use_bn)
-    os.environ['torchseg_use_dropout'] = str(config.model.use_dropout)
-    os.environ['torchseg_use_bias'] = str(config.model.use_bias)
+    os.environ['torchseg_use_bn'] = str(config.use_bn)
+    os.environ['torchseg_use_dropout'] = str(config.use_dropout)
+    os.environ['torchseg_use_bias'] = str(config.use_bias)
 
     print('use_bn',os.environ['torchseg_use_bn'])
     print('use_dropout',os.environ['torchseg_use_dropout'])
@@ -846,8 +846,8 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
 
     if midnet_name == 'psp':
         #        print('midnet is psp'+'*'*50)
-        midnet_pool_sizes = config.model.midnet_pool_sizes
-        midnet_scale = config.model.midnet_scale
+        midnet_pool_sizes = config.midnet_pool_sizes
+        midnet_scale = config.midnet_scale
         midnet = transform_psp(midnet_pool_sizes,
                                midnet_scale,
                                midnet_input_shape,
@@ -856,7 +856,7 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
                                momentum=momentum)
     elif midnet_name == 'aspp':
         #        print('midnet is aspp'+'*'*50)
-        output_stride = 2**config.model.upsample_layer
+        output_stride = 2**config.upsample_layer
         midnet = transform_aspp(output_stride=output_stride,
                                 input_shape=midnet_input_shape,
                                 out_channels=midnet_out_channels,
@@ -870,30 +870,30 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
 
 def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
     if aux:
-        upsample_type = config.model.auxnet_type
-        upsample_layer = config.model.auxnet_layer
+        upsample_type = config.auxnet_type
+        upsample_layer = config.auxnet_layer
     else:
-        upsample_type = config.model.upsample_type
-        upsample_layer = config.model.upsample_layer
+        upsample_type = config.upsample_type
+        upsample_layer = config.upsample_layer
 
-    input_shape = config.model.input_shape
-    if hasattr(config.model, 'eps'):
-        eps = config.model.eps
+    input_shape = config.input_shape
+    if hasattr(config, 'eps'):
+        eps = config.eps
     else:
         eps = 1e-5
 
-    if hasattr(config.model, 'momentum'):
-        momentum = config.model.momentum
+    if hasattr(config, 'momentum'):
+        momentum = config.momentum
     else:
         momentum = 0.1
 
-    os.environ['torchseg_use_bn'] = str(config.model.use_bn)
-    os.environ['torchseg_use_dropout'] = str(config.model.use_dropout)
-    os.environ['torchseg_use_bias'] = str(config.model.use_bias)
+    os.environ['torchseg_use_bn'] = str(config.use_bn)
+    os.environ['torchseg_use_dropout'] = str(config.use_dropout)
+    os.environ['torchseg_use_bias'] = str(config.use_bias)
 
     if upsample_type == 'duc':
         #        print('upsample is duc'+'*'*50)
-        r = 2**3 if config.model.use_none_layer else 2**upsample_layer
+        r = 2**3 if config.use_none_layer else 2**upsample_layer
         decoder = upsample_duc(midnet_out_channels,
                                class_number, r, eps=eps, momentum=momentum)
     elif upsample_type == 'bilinear':
@@ -904,7 +904,7 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
         decoder = upsample_fcn(midnet_out_channels,
                                class_number, input_shape[0:2])
     elif upsample_type == 'subclass':
-        use_sigmoid=config.model.subclass_sigmoid
+        use_sigmoid=config.subclass_sigmoid
         decoder = upsample_subclass(midnet_out_channels,class_number,input_shape[0:2],use_sigmoid)
     else:
         assert False, 'unknown upsample type %s' % upsample_type

@@ -22,25 +22,25 @@ class psp_fractal(TN.Module):
         super().__init__()
         self.config = config
         self.name = self.__class__.__name__
-        self.backbone = backbone(config.model)
+        self.backbone = backbone(config)
 
-        if hasattr(self.config.model, 'backbone_lr_ratio'):
-            backbone_lr_raio = self.config.model.backbone_lr_ratio
+        if hasattr(self.config, 'backbone_lr_ratio'):
+            backbone_lr_raio = self.config.backbone_lr_ratio
             if backbone_lr_raio == 0:
                 freeze_layer(self.backbone)
 
-        self.upsample_type = self.config.model.upsample_type
-        self.upsample_layer = self.config.model.upsample_layer
-        self.class_number = self.config.model.class_number
-        self.input_shape = self.config.model.input_shape
+        self.upsample_type = self.config.upsample_type
+        self.upsample_layer = self.config.upsample_layer
+        self.class_number = self.config.class_number
+        self.input_shape = self.config.input_shape
         self.dataset_name = self.config.dataset.name
-#        self.midnet_type = self.config.model.midnet_type
-        self.midnet_pool_sizes = self.config.model.midnet_pool_sizes
-        self.midnet_scale = self.config.model.midnet_scale
+#        self.midnet_type = self.config.midnet_type
+        self.midnet_pool_sizes = self.config.midnet_pool_sizes
+        self.midnet_scale = self.config.midnet_scale
 
         self.midnet_in_channels = self.backbone.get_feature_map_channel(
             self.upsample_layer)
-        self.midnet_out_channels = self.config.model.midnet_out_channels
+        self.midnet_out_channels = self.config.midnet_out_channels
         self.midnet_out_size = self.backbone.get_feature_map_size(
             self.upsample_layer, self.input_shape[0:2])
 
@@ -49,10 +49,10 @@ class psp_fractal(TN.Module):
                                     self.midnet_in_channels,
                                     self.midnet_out_channels,
                                     self.midnet_out_size)
-        
-        self.before_upsample=self.config.model.before_upsample
-        self.fractal_depth=self.config.model.fractal_depth
-        self.fractal_fusion_type=self.config.model.fractal_fusion_type
+
+        self.before_upsample=self.config.before_upsample
+        self.fractal_depth=self.config.fractal_depth
+        self.fractal_fusion_type=self.config.fractal_fusion_type
         if self.before_upsample:
             self.fractal_net=transform_fractal(in_channels=2*self.midnet_out_channels,
                                                depth=self.fractal_depth,
@@ -80,7 +80,7 @@ class psp_fractal(TN.Module):
                     2*self.midnet_out_channels, self.class_number, self.input_shape[0:2])
             else:
                 assert False, 'unknown upsample type %s' % self.upsample_type
-    
+
             self.fractal_net=transform_fractal(in_channels=self.class_number,
                                                depth=self.fractal_depth,
                                                class_number=self.class_number,

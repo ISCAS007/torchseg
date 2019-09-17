@@ -36,50 +36,50 @@ if __name__ == '__main__':
     parser=get_parser()
     args = parser.parse_args()
     config = get_config(args)
-    
+
     if args.test == 'convert':
         input_shape = tuple(
             psp_convert_config[args.dataset_name]['input_size'])
-        config.model.input_shape = input_shape
-        config.dataset.resize_shape = input_shape
+        config.input_shape = input_shape
+        config.resize_shape = input_shape
         print('convert input shape is',input_shape,'*'*30)
 
-    if config.dataset.norm_ways is None:
+    if config.norm_ways is None:
         normalizations = None
     else:
-        normalizations = image_normalizations(config.dataset.norm_ways)
-        
-    if config.args.augmentation:
+        normalizations = image_normalizations(config.norm_ways)
+
+    if config.augmentation:
         augmentations = Augmentations(config)
     else:
         augmentations = None
-    
+
     # must change batch size here!!!
-    batch_size = args.batch_size      
-    
+    batch_size = args.batch_size
+
     train_dataset = dataset_generalize(
-        config.dataset, split='train',
+        config, split='train',
         augmentations=augmentations,
         normalizations=normalizations)
     train_loader = TD.DataLoader(
-        dataset=train_dataset, 
-        batch_size=batch_size, 
+        dataset=train_dataset,
+        batch_size=batch_size,
         shuffle=True,
         drop_last=True,
         num_workers=4)
 
-    val_dataset = dataset_generalize(config.dataset, 
+    val_dataset = dataset_generalize(config,
                                      split='val',
                                      augmentations=None,
                                      normalizations=normalizations)
     val_loader = TD.DataLoader(
         dataset=val_dataset,
-        batch_size=batch_size, 
-        shuffle=True, 
-        drop_last=False, 
+        batch_size=batch_size,
+        shuffle=True,
+        drop_last=False,
         num_workers=2)
-    
-    note = config.args.note
+
+    note = config.note
     test = args.test
 
     if test == 'naive':
@@ -87,66 +87,66 @@ if __name__ == '__main__':
         best_val_iou=keras_fit(net,train_loader,val_loader)
         print('best val iou is %0.3f'%best_val_iou)
     elif test == 'edge':
-        config.dataset.with_edge = True
+        config.with_edge = True
         net = psp_edge(config)
         keras_fit(net, train_loader, val_loader)
     elif test == 'global':
-        config.model.gnet_dilation_sizes = [16, 8, 4]
-        config.args.note = note
+        config.gnet_dilation_sizes = [16, 8, 4]
+        config.note = note
         net = psp_global(config)
         keras_fit(net, train_loader, val_loader)
     elif test == 'dict':
-        config.args.note = 'dict'
-        dict_number = config.model.class_number*5+1
-        dict_lenght = config.model.class_number*2+1
-        config.model.dict_number = dict_number
-        config.model.dict_length = dict_lenght
-        config.args.note = '_'.join(
-            [config.args.note, '%dx%d' % (dict_number, dict_lenght)])
+        config.note = 'dict'
+        dict_number = config.class_number*5+1
+        dict_lenght = config.class_number*2+1
+        config.dict_number = dict_number
+        config.dict_length = dict_lenght
+        config.note = '_'.join(
+            [config.note, '%dx%d' % (dict_number, dict_lenght)])
         net = psp_dict(config)
         keras_fit(net, train_loader, val_loader)
     elif test == 'fractal':
         before_upsample = True
         fractal_depth = 8
         fractal_fusion_type = 'mean'
-        config.model.before_upsample = before_upsample
-        config.model.fractal_depth = fractal_depth
-        config.model.fractal_fusion_type = fractal_fusion_type
+        config.before_upsample = before_upsample
+        config.fractal_depth = fractal_depth
+        config.fractal_fusion_type = fractal_fusion_type
 
         location_str = 'before' if before_upsample else 'after'
-        config.args.note = '_'.join([config.args.note, location_str, 'depth', str(
+        config.note = '_'.join([config.note, location_str, 'depth', str(
             fractal_depth), 'fusion', fractal_fusion_type])
         net = psp_fractal(config)
         keras_fit(net, train_loader, val_loader)
     elif test == 'coarse':
         net = globals()[args.net_name](config)
         for dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
-            config.dataset = get_dataset_generalize_config(
-                config.dataset, dataset_name)
-            config.dataset.name = dataset_name.lower()
+            config = get_dataset_generalize_config(
+                config, dataset_name)
+            config.dataset_name = dataset_name.lower()
 
             coarse_train_dataset = dataset_generalize(
-                config.dataset, 
+                config,
                 split='train',
                 augmentations=augmentations,
                 normalizations=normalizations)
             coarse_train_loader = TD.DataLoader(
-                dataset=train_dataset, 
+                dataset=train_dataset,
                 batch_size=batch_size,
                 shuffle=True,
                 drop_last=True,
                 num_workers=8)
 
             coarse_val_dataset = dataset_generalize(
-                    config.dataset, 
+                    config,
                     split='val',
                     augmentations=augmentations,
                     normalizations=normalizations)
             coarse_val_loader = TD.DataLoader(
                 dataset=val_dataset,
-                batch_size=batch_size, 
-                shuffle=True, 
-                drop_last=False, 
+                batch_size=batch_size,
+                shuffle=True,
+                drop_last=False,
                 num_workers=8)
             keras_fit(net,coarse_train_loader, coarse_val_loader)
     elif test == 'convert':
@@ -160,7 +160,7 @@ if __name__ == '__main__':
         else:
             net.load_state_dict(torch.load(
                 psp_convert_config[args.dataset_name]['params']))
-            keras_fit(model=net, 
+            keras_fit(model=net,
                             train_loader=train_loader, val_loader=val_loader, config=config)
 
     elif test == 'summary':
@@ -174,10 +174,10 @@ if __name__ == '__main__':
         torchsummary.summary(net.to(device), (3, height, width))
     elif test == 'hyperopt':
         from utils.model_hyperopt import psp_opt
-        config.args.log_dir = os.path.expanduser('~/tmp/logs/hyperopt')
+        config.log_dir = os.path.expanduser('~/tmp/logs/hyperopt')
         psp_model=globals()[args.net_name]
-        config.args.n_calls=args.hyperopt_calls
-        config.args.hyperkey=args.hyperkey
+        config.n_calls=args.hyperopt_calls
+        config.hyperkey=args.hyperkey
         hyperopt=psp_opt(psp_model,config,train_loader=None,val_loader=None)
         if args.hyperopt=='tpe':
             hyperopt.tpe()
@@ -190,8 +190,8 @@ if __name__ == '__main__':
         else:
             assert False,'unknown hyperopt %s'%args.hyperopt
     elif test == 'benchmark':
-        config.dataset.with_path=True
-        config.args.augmentation=False
+        config.with_path=True
+        config.augmentation=False
         net = globals()[args.net_name](config)
 #        test_loader=get_loader(config,'val')
         test_loader=None
@@ -204,18 +204,18 @@ if __name__ == '__main__':
         n_epoch=args.n_epoch
         net = globals()[args.net_name](config)
         for times in range(3):
-            config.args.n_epoch=n_epoch*2**times
-            config.args.note = note+'_%d'%times
-            assert net.config.args.n_epoch==config.args.n_epoch
+            config.n_epoch=n_epoch*2**times
+            config.note = note+'_%d'%times
+            assert net.config.n_epoch==config.n_epoch
             keras_fit(model=net,train_loader=train_loader,val_loader=val_loader)
             # only load weight in the first time
-            config.args.checkpoint_path=None
+            config.checkpoint_path=None
     else:
         raise NotImplementedError
-    
+
     cmd_log_file=os.path.join(args.log_dir,'cmd_log.txt')
     with open(cmd_log_file, "a") as myfile:
-        
+
         time_str = time.strftime("%Y-%m-%d  %H-%M-%S", time.localtime())
         myfile.write(time_str+'\n')
         myfile.write(" ".join(sys.argv)+'\n')

@@ -91,20 +91,20 @@ class psp_caffe(TN.Module):
         self.config = config
         self.name = self.__class__.__name__
 
-        self.class_number = self.config.model.class_number
-        self.input_shape = self.config.model.input_shape
+        self.class_number = self.config.class_number
+        self.input_shape = self.config.input_shape
         self.ignore_index = self.config.dataset.ignore_index
         self.dataset_name = self.config.dataset.name
-        self.momentum = self.config.model.momentum
-        if self.config.model.backbone_name == 'resnet50':
-            self.backbone = resnet50(momentum=self.config.model.momentum,
-                                     upsample_layer=self.config.model.upsample_layer)
+        self.momentum = self.config.momentum
+        if self.config.backbone_name == 'resnet50':
+            self.backbone = resnet50(momentum=self.config.momentum,
+                                     upsample_layer=self.config.upsample_layer)
         else:
-            self.backbone = resnet101(momentum=self.config.model.momentum,
-                                      upsample_layer=self.config.model.upsample_layer)
+            self.backbone = resnet101(momentum=self.config.momentum,
+                                      upsample_layer=self.config.upsample_layer)
 
-        if hasattr(self.config.model, 'midnet_name'):
-            self.midnet_name = self.config.model.midnet_name
+        if hasattr(self.config, 'midnet_name'):
+            self.midnet_name = self.config.midnet_name
         else:
             self.midnet_name = 'psp'
         self.midnet = self.get_midnet()
@@ -151,7 +151,7 @@ class psp_caffe(TN.Module):
 
     def conv_bn_relu(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False):
         config = {}
-        config = self.update_config(config, self.config.model, 'momentum', 0.1)
+        config = self.update_config(config, self.config, 'momentum', 0.1)
         seq = TN.Sequential(TN.Conv2d(in_channels=in_channels,
                                       out_channels=out_channels,
                                       kernel_size=kernel_size,
@@ -167,12 +167,12 @@ class psp_caffe(TN.Module):
     def get_midnet(self):
         if self.midnet_name == 'psp':
             # [1,2,3,6]
-            midnet_pool_sizes = self.config.model.midnet_pool_sizes
+            midnet_pool_sizes = self.config.midnet_pool_sizes
             #10 or 15
-            midnet_scale = self.config.model.midnet_scale
+            midnet_scale = self.config.midnet_scale
 
-            midnet_in_channels = self.config.model.midnet_in_channels
-            midnet_out_channels = self.config.model.midnet_out_channels
+            midnet_in_channels = self.config.midnet_in_channels
+            midnet_out_channels = self.config.midnet_out_channels
 
             min_in_size = max(midnet_pool_sizes)*midnet_scale
             midnet_out_size = [min_in_size, min_in_size]
@@ -184,16 +184,16 @@ class psp_caffe(TN.Module):
                                  out_size=midnet_out_size,
                                  momentum=self.momentum)
         elif self.midnet_name == 'aspp':
-            output_stride = 2**self.config.model.upsample_layer
+            output_stride = 2**self.config.upsample_layer
             batch_size = None
-            midnet_in_channels = self.config.model.midnet_in_channels
-            midnet_out_channels = self.config.model.midnet_out_channels
+            midnet_in_channels = self.config.midnet_in_channels
+            midnet_out_channels = self.config.midnet_out_channels
             midnet_input_size = [
                 a//output_stride for a in self.input_shape[0:2]]
             input_shape = (batch_size, midnet_in_channels,
                            midnet_input_size[0], midnet_input_size[1])
-            if hasattr(self.config.model, 'eps'):
-                eps = self.config.model.eps
+            if hasattr(self.config, 'eps'):
+                eps = self.config.eps
             else:
                 eps = 1e-5
 
@@ -210,8 +210,8 @@ class psp_caffe(TN.Module):
         """
         the last conv: bias=True or False ?
         """
-        midnet_out_channels = self.config.model.midnet_out_channels
-        suffix_out_channels = self.config.model.suffix_out_channels
+        midnet_out_channels = self.config.midnet_out_channels
+        suffix_out_channels = self.config.suffix_out_channels
         seq = TN.Sequential(self.conv_bn_relu(in_channels=midnet_out_channels,
                                               out_channels=suffix_out_channels,
                                               kernel_size=3,

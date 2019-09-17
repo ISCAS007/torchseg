@@ -41,7 +41,7 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
     session = tf.Session(config=gpu_config)
     KTF.set_session(session)
     session.run(tf.global_variables_initializer())
-    
+
     if args is None:
         args=net.config.training
     metrics = net.get_metrics(net.class_number)
@@ -49,16 +49,16 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
     net.model.compile(loss='categorical_crossentropy',
                            optimizer=opt,
                            metrics=metrics)
-    
+
     if train_loader is None and val_loader is None:
         train_dataset=dataset_generalize(net.config.dataset,split='train',bchw=False)
         train_loader=TD.DataLoader(dataset=train_dataset,batch_size=net.config.dataset.batch_size, shuffle=True,drop_last=False)
-        
+
         val_dataset=dataset_generalize(net.config.dataset,split='val',bchw=False)
         val_loader=TD.DataLoader(dataset=val_dataset,batch_size=net.config.dataset.batch_size, shuffle=True,drop_last=False)
-    
+
     running_metrics = runningScore(net.class_number)
-    
+
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
     log_dir=os.path.join(args.log_dir,net.name,args.dataset_name,args.note,time_str)
     checkpoint_path=os.path.join(log_dir,"{}_{}_best_model.pkl".format(net.name, args.dataset_name))
@@ -74,26 +74,26 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
     config_file = open(config_path, 'w')
     json.dump(config, config_file, sort_keys=True)
     config_file.close()
-    
-    
+
+
     best_iou=0.6
-    
+
     loaders=[train_loader,val_loader]
     loader_names=['train','val']
     for epoch in range(args.n_epoch):
         for loader,loader_name in zip(loaders,loader_names):
             if loader is None:
                 continue
-            
+
             if loader_name == 'val':
                 if epoch % 5 != 0:
                     continue
-        
+
             print(loader_name+'.'*50)
             n_step=len(loader)
             losses=[]
-            
-            for i, (images, labels) in enumerate(loader):   
+
+            for i, (images, labels) in enumerate(loader):
                 x=images.data.numpy()
                 trues=labels.data.numpy()
                 y=to_categorical(trues,net.class_number)
@@ -101,34 +101,34 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
                     outputs = net.model.train_on_batch(x,y)
                 else:
                     outputs = net.model.test_on_batch(x,y)
-                    
+
                 predict_outputs = net.model.predict_on_batch(x)
                 predicts=np.argmax(predict_outputs,axis=-1)
-                
+
                 losses.append(outputs[0])
                 if epoch % 5 == 0:
                     print('keras metrics as follow:','*'*30)
                     print("%s Epoch [%d/%d] Step [%d/%d]" % (loader_name,epoch+1, args.n_epoch, i, n_step))
                     for name,value in zip(net.model.metrics_names,outputs):
                         print(name,value)
-                    
+
                     print('running metrics as follow:','*'*30)
                     running_metrics.update(trues,predicts)
                     score, class_iou = running_metrics.get_scores()
                     for k, v in score.items():
                         print(k, v)
-                    
+
             if epoch % 5 == 0:
                 writer.add_scalar('%s/loss'%loader_name, np.mean(losses), epoch)
                 writer.add_scalar('%s/acc'%loader_name, score['Overall Acc: \t'], epoch)
                 writer.add_scalar('%s/iou'%loader_name, score['Mean IoU : \t'], epoch)
-            
+
             running_metrics.reset()
             if loader_name == 'val':
                 if score['Mean IoU : \t'] >= best_iou:
                     best_iou = score['Mean IoU : \t']
                     net.model.save(checkpoint_path)
-                
+
 #                if epoch % (1+args.n_epoch//10) == 0:
 #                    print('write image to tensorboard'+'.'*50)
 #                    idx=np.random.choice(predicts.shape[0])
@@ -137,51 +137,51 @@ def do_train_or_val(net,args=None,train_loader=None,val_loader=None):
 #                    writer.add_image('val/trues', torch.from_numpy(trues[idx,:,:]), epoch)
 #                    diff_img=(predicts[idx,:,:]==trues[idx,:,:]).astype(np.uint8)
 #                    writer.add_image('val/difference', torch.from_numpy(diff_img), epoch)
-    
+
     print('best iou is',best_iou)
     writer.close()
-    
+
 class SS():
     def __init__(self,config):
         self.config=config
-    
+
     @staticmethod
     def get_default_config():
         config=get_config()
-        
+
         return config
 
     def get_base_model(self):
-        h, w = self.config.model['input_shape']
+        h, w = self.config['input_shape']
 
         assert h is not None
-        if self.config.model.backbone_type=='standard':
+        if self.config.backbone_type=='standard':
             bb_config=edict()
-            bb_config.application=self.config.model.backbone
-            h,w=self.config.model.input_shape[0:2]
+            bb_config.application=self.config.backbone
+            h,w=self.config.input_shape[0:2]
             bb_config.input_shape=(h,w,3)
-            if self.config.model.load_imagenet_weights:
+            if self.config.load_imagenet_weights:
                 bb_config.weights='imagenet'
             else:
                 bb_config.weights=None
-            bb_config.layer_preference=self.config.model.layer_preference
-        
+            bb_config.layer_preference=self.config.layer_preference
+
             main_backbone = BackBone_Standard(bb_config)
             main_layers = main_backbone.get_layers()
             main_base_model = main_backbone.model
         else:
-            print('unknown backbone type',self.config.model.backbone_type)
+            print('unknown backbone type',self.config.backbone_type)
             assert False
-        
-        if self.config.model['trainable_ratio']>0:
-            ratio=1.0-self.config.model['trainable_ratio']
+
+        if self.config['trainable_ratio']>0:
+            ratio=1.0-self.config['trainable_ratio']
             min_trainable_idx=int(ratio*len(main_base_model.layers))
             for idx,layer in enumerate(main_base_model.layers):
                 layer.trainable=(idx>min_trainable_idx)
                 layer.name = 'main_'+layer.name
         else:
             for layer in main_base_model.layers:
-                if self.config.model.load_imagenet_weights:
+                if self.config.load_imagenet_weights:
                     layer.trainable = False
                 layer.name = 'main_'+layer.name
 

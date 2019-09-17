@@ -12,114 +12,137 @@ from dataset.dataset_generalize import get_dataset_generalize_config
 
 def get_default_config():
     config=edict()
-    config.model=edict()
-    config.model.class_number=20
-    config.model.backbone_name='vgg16'
-    config.model.layer_preference='last'
-    config.model.input_shape=(224,224)
-    config.model.accumulate=4
+    config.class_number=20
 
-    config.dataset=edict()
-    config.dataset.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
-    config.dataset.cityscapes_split=random.choice(['test','val','train'])
-    config.dataset.resize_shape=(224,224)
-    config.dataset.name='cityscapes'
+    config.layer_preference='last'
+    config.input_shape=(224,224)
+    config.accumulate=4
 
-    config.training=edict()
-    config.training.n_epoch=300
-    config.training.batch_size=4
-    config.training.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
-    config.training.note='default'
+    config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+    config.cityscapes_split=random.choice(['test','val','train'])
+    config.resize_shape=(224,224)
+
+    config.batch_size=4
+    config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
+    config.note='default'
+    config.test='naive'
+    config.learning_rate=1e-4
+    config.optimizer='adam'
+    config.scheduler=None
+    config.lr_weight_decay=1e-4
+    config.lr_momentum=0.9
+    config.use_bn=True
+    config.use_bias=True
+    config.use_dropout=False
+    config.use_lr_mult=False
+    config.center_loss=None
+    config.center_loss_weight=1.0
+    config.use_class_weight=False
+    config.class_weight_alpha=0.0
+    config.focal_loss_gamma=1.0
+    config.focal_loss_alpha=1.0
+    config.focal_loss_grad=True
+    config.pre_lr_mult=1.0
+    config.changed_lr_mult=1.0
+    config.new_lr_mult=1.0
+    config.use_reg=False
+    config.l1_reg=1e-7
+    config.l2_reg=1e-5
+    config.dataset_name='Cityscapes'
+    config.dataset_use_part=0
+    config.backbone_name='vgg16'
+    config.backbone_pretrained=True
+    config.backbone_freeze=False
+    config.freeze_layer=3
+    config.freeze_ratio=0.0
+    config.modify_resnet_head=False
+    config.net_name='pspnet'
+    config.midnet_scale=5
+    config.midnet_name='psp'
+    config.n_epoch=100
+    config.upsample_type='bilinear'
+    config.subclass_sigmoid=True
+    config.auxnet_type='bilinear'
+    config.upsample_layer=3
+    config.deconv_layer=5
+    config.auxnet_layer=4
+    config.edge_bg_weight=0.01
+    config.edge_base_weight=1.0
+    config.aux_base_weight=1.0
+    config.edge_power=0.9
+    config.edge_class_num=2
+    config.edge_width=10
+    config.edge_seg_order='same'
+    config.edge_with_gray=False
+    config.cross_merge_times=1
+    config.use_none_layer=False
+    config.momentum=0.1
+    config.input_shape=0
+    config.augmentation=True
+    config.augmentations_blur=True
+    config.use_rotate=True
+    config.keep_crop_ratio=True
+    config.min_crop_size=None
+    config.max_crop_size=None
+    config.crop_size_step=0
+    config.pad_for_crop=False
+    config.norm_ways='pytorch'
+    config.hyperopt='loop'
+    config.hyperkey='model.l2_reg'
+    config.hyperopt_calls=3
+    config.summary_image=False
+    config.note=None
+    config.save_model=False
+    config.iou_save_threshold=0.6
+    config.checkpoint_path=None
+    config.predict_save_path=None
+    config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
+    config.attention_type='n'
 
     return config
 
 def get_config(args=None):
+    config=get_default_config()
+
     # for test some function
     if args is None:
-        return get_default_config()
+        return config
 
-    config = edict()
-    config.model = edict()
-    config.model.upsample_type = args.upsample_type
-    config.model.auxnet_type = args.auxnet_type
-    config.model.upsample_layer = args.upsample_layer
-    config.model.use_none_layer = args.use_none_layer
-    if config.model.upsample_layer > 3:
-        config.model.use_none_layer = args.use_none_layer = True
-    os.environ['use_none_layer'] = str(config.model.use_none_layer)
+    sort_keys=sorted(list(config.keys()))
+    for key in sort_keys:
+        if hasattr(args,key):
+            print('{} = {} (default: {})'.format(key,args.__dict__[key],config[key]))
+            config[key]=args.__dict__[key]
+        else:
+            print('{} : (default:{})'.format(key,config[key]))
 
-    config.model.deconv_layer=args.deconv_layer
-    config.model.auxnet_layer = args.auxnet_layer
-    config.model.cross_merge_times=args.cross_merge_times
+    for key in args.__dict__.keys():
+        if key not in config.keys():
+            print('{} : unknown keys {}'.format(key,args.__dict__[key]))
+            config[key]=args.__dict__[key]
 
-    config.model.backbone_pretrained = args.backbone_pretrained
-    config.model.use_bn=args.use_bn
+    if config.upsample_layer > 3:
+        config.use_none_layer = args.use_none_layer = True
+    os.environ['use_none_layer'] = str(config.use_none_layer)
+
     # use_bn,use_dropout will change the variable in local_bn,local_dropout
     # use_bias will affect the bias in upsample
     os.environ['torchseg_use_bn']=str(args.use_bn)
-    config.model.use_dropout=args.use_dropout
     os.environ['torchseg_use_dropout']=str(args.use_dropout)
-    config.model.use_bias=args.use_bias
     os.environ['torchseg_use_bias']=str(args.use_bias)
     # when use resnet and use_none_layer=True
-    config.model.modify_resnet_head=args.modify_resnet_head
     os.environ['modify_resnet_head']=str(args.modify_resnet_head)
 
-    config.model.eps = 1e-5
-    config.model.momentum = args.momentum
-    config.model.learning_rate = args.learning_rate
-    config.model.optimizer = args.optimizer
-    config.model.accumulate = args.accumulate
-    config.model.scheduler = args.scheduler
-    config.model.lr_weight_decay=args.lr_weight_decay
-    config.model.lr_momentum=args.lr_momentum
-    config.model.use_lr_mult = args.use_lr_mult
-    config.model.pre_lr_mult = args.pre_lr_mult
-    config.model.changed_lr_mult=args.changed_lr_mult
-    config.model.new_lr_mult=args.new_lr_mult
-    config.model.use_reg = args.use_reg
+    config.layer_preference = 'first'
 
-    config.model.use_class_weight=args.use_class_weight
-    config.model.class_weight_alpha=args.class_weight_alpha
-    config.model.focal_loss_gamma=args.focal_loss_gamma
-    config.model.focal_loss_alpha=args.focal_loss_alpha
-    config.model.focal_loss_grad=args.focal_loss_grad
-#    config.model.l1_reg=args.l1_reg
-    config.model.l2_reg=args.l2_reg
-    config.model.backbone_name = args.backbone_name
-    config.model.backbone_freeze = args.backbone_freeze
-    config.model.freeze_layer = args.freeze_layer
-    config.model.freeze_ratio = args.freeze_ratio
-    config.model.layer_preference = 'first'
-    config.model.edge_seg_order=args.edge_seg_order
-
-    config.model.midnet_pool_sizes = [6, 3, 2, 1]
-    config.model.midnet_scale = args.midnet_scale
-    config.model.midnet_name = args.midnet_name
-
-    config.model.edge_bg_weight=args.edge_bg_weight
-    config.model.edge_base_weight=args.edge_base_weight
-    config.model.edge_power=args.edge_power
-    config.model.aux_base_weight=args.aux_base_weight
-
-    config.dataset = edict()
-    config.dataset.edge_class_num=args.edge_class_num
-    config.dataset.edge_width=args.edge_width
-    config.dataset.edge_with_gray=args.edge_with_gray
-    config.dataset.with_edge=False
-
-#    if args.dataset_name in ['VOC2012','Cityscapes']:
-#        config.dataset.norm_ways = args.dataset_name.lower()
-#    else:
-#        config.dataset.norm_ways = 'pytorch'
-#    config.dataset.norm_ways = 'pytorch'
-    config.dataset.norm_ways = args.norm_ways
+    config.midnet_pool_sizes = [6, 3, 2, 1]
+    config.with_edge=False
 
     if args.input_shape == 0:
         if args.net_name == 'motionnet':
             upsample_ratio=3
-            count_size = max(config.model.midnet_pool_sizes) * \
-                config.model.midnet_scale*2**upsample_ratio
+            count_size = max(config.midnet_pool_sizes) * \
+                config.midnet_scale*2**upsample_ratio
             input_shape = (count_size, count_size)
         elif args.net_name == 'motion_panet':
             input_shape=(448,448)
@@ -127,8 +150,8 @@ def get_config(args=None):
             upsample_ratio=args.upsample_layer
             if args.use_none_layer and args.upsample_layer>=3:
                 upsample_ratio=3
-            count_size = max(config.model.midnet_pool_sizes) * \
-                config.model.midnet_scale*2**upsample_ratio
+            count_size = max(config.midnet_pool_sizes) * \
+                config.midnet_scale*2**upsample_ratio
             input_shape = (count_size, count_size)
         else:
             input_shape = (72*8, 72*8)
@@ -137,76 +160,43 @@ def get_config(args=None):
 
     print('convert input shape is',input_shape,'*'*30)
 
-    config.model.input_shape = input_shape
-    config.model.midnet_out_channels = 512
-    config.model.subclass_sigmoid=args.subclass_sigmoid
-    config.dataset = get_dataset_generalize_config(
-        config.dataset, args.dataset_name)
-    if config.dataset.ignore_index == 0:
-        config.model.class_number = len(config.dataset.foreground_class_ids)+1
+    config.input_shape = input_shape
+    config.midnet_out_channels = 512
+    config = get_dataset_generalize_config(
+        config, args.dataset_name)
+    if config.ignore_index == 0:
+        config.class_number = len(config.foreground_class_ids)+1
     else:
-        config.model.class_number = len(config.dataset.foreground_class_ids)
-    config.dataset.resize_shape = input_shape
-    config.dataset.name = args.dataset_name.lower()
-    config.dataset.augmentations_blur = args.augmentations_blur
-    config.dataset.dataset_use_part=args.dataset_use_part
+        config.class_number = len(config.foreground_class_ids)
+    config.resize_shape = input_shape
+    config.dataset_name = args.dataset_name.lower()
 
-    config.args = edict()
-    config.args.n_epoch = args.n_epoch
-    # for hyperopt use ~/tmp/logs/hyperopt
-    config.args.log_dir = args.log_dir
-    config.args.summary_image=args.summary_image
-    config.args.save_model=args.save_model
-    config.args.iou_save_threshold=args.iou_save_threshold
-    config.args.batch_size = args.batch_size
-    config.args.augmentation = args.augmentation
-    config.args.augmentations_rotate=args.augmentations_rotate
-    config.args.net_name=args.net_name
-    config.model.net_name=args.net_name
-    config.args.checkpoint_path=args.checkpoint_path
-    config.args.center_loss=args.center_loss
-    config.args.center_loss_weight=args.center_loss_weight
     if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
-        config.dataset.with_edge = True
+        config.with_edge = True
 
-    if args.note is None:
-        config.args.note = '_'.join([args.test,
-                                     'bs'+str(args.batch_size),
-                                     'aug', str(args.augmentation)[0],
-                                     ])
-    else:
-        config.args.note=args.note
-
-    default_aug_config=get_default_augmentor_config()
-    config.aug=edict()
-    config.aug=default_aug_config.aug
-    config.aug.use_rotate=config.args.augmentations_rotate
-    config.aug.use_imgaug=True
-    config.aug.keep_crop_ratio=args.keep_crop_ratio
-    config.aug.crop_size_step=args.crop_size_step
-    config.aug.min_crop_size=args.min_crop_size
-    config.aug.max_crop_size=args.max_crop_size
-    config.aug.pad_for_crop=args.pad_for_crop
+    config=get_default_augmentor_config(config)
+    config.use_rotate=config.use_rotate
+    config.use_imgaug=True
 
     # image size != network input size != crop size
-    if config.aug.keep_crop_ratio is False:
+    if config.keep_crop_ratio is False:
         if args.min_crop_size is None:
-            config.aug.min_crop_size=[2*i for i in config.model.input_shape]
+            config.min_crop_size=[2*i for i in config.input_shape]
         if args.max_crop_size is None:
-            config.aug.max_crop_size=config.aug.min_crop_size
+            config.max_crop_size=config.min_crop_size
 
-        if not isinstance(config.aug.min_crop_size,(tuple,list)):
-            assert config.aug.min_crop_size>0
+        if not isinstance(config.min_crop_size,(tuple,list)):
+            assert config.min_crop_size>0
         else:
-            assert min(config.aug.min_crop_size)>0
-        if not isinstance(config.aug.max_crop_size,(tuple,list)):
-            assert config.aug.max_crop_size>0
+            assert min(config.min_crop_size)>0
+        if not isinstance(config.max_crop_size,(tuple,list)):
+            assert config.max_crop_size>0
         else:
-            assert min(config.aug.max_crop_size)>0
+            assert min(config.max_crop_size)>0
 
-        print('min_crop_size is',config.aug.min_crop_size)
-        print('max_crop_size is',config.aug.max_crop_size)
-        print('crop_size_step is',config.aug.crop_size_step)
+        print('min_crop_size is',config.min_crop_size)
+        print('max_crop_size is',config.max_crop_size)
+        print('crop_size_step is',config.crop_size_step)
 
     config.attention_type=args.attention_type
     return config
@@ -244,8 +234,8 @@ def get_parser():
 
     parser.add_argument('--accumulate',
                         type=int,
-                        default=4,
-                        help='accumulate graident for batch')
+                        default=1,
+                        help='accumulate graident for batch (1)')
 
     parser.add_argument("--learning_rate",
                         help="learning rate",
@@ -535,7 +525,7 @@ def get_parser():
                         type=str2bool,
                         default=True)
 
-    parser.add_argument('--augmentations_rotate',
+    parser.add_argument('--use_rotate',
                         help='augmentations rotate',
                         type=str2bool,
                         default=True)
@@ -597,6 +587,7 @@ def get_parser():
 
     parser.add_argument('--note',
                         help='comment for tensorboard log',
+                        required=True,
                         default=None)
 
     # save model

@@ -16,12 +16,12 @@ class motionnet(nn.Module):
         self.name=self.__class__.__name__
 
         print('warnniing: use_none_layer is false for motionnet')
-        self.backbone=backbone(config.model,use_none_layer=config.model.use_none_layer)
+        self.backbone=backbone(config,use_none_layer=config.use_none_layer)
 
-        self.upsample_type = self.config.model.upsample_type
-        self.upsample_layer = self.config.model.upsample_layer
-        self.class_number = self.config.model.class_number
-        self.input_shape = self.config.model.input_shape
+        self.upsample_type = self.config.upsample_type
+        self.upsample_layer = self.config.upsample_layer
+        self.class_number = self.config.class_number
+        self.input_shape = self.config.input_shape
         self.dataset_name=self.config.dataset.name
         self.ignore_index=self.config.dataset.ignore_index
 
@@ -86,9 +86,9 @@ class transform_panet(nn.Module):
     def __init__(self,backbone,panet,config):
         super().__init__()
         self.config=config
-        self.deconv_layer=config.model.deconv_layer
-        self.upsample_layer=config.model.upsample_layer
-        self.use_none_layer=config.model.use_none_layer
+        self.deconv_layer=config.deconv_layer
+        self.upsample_layer=config.upsample_layer
+        self.use_none_layer=config.use_none_layer
         self.layers=[]
         self.get_layers(backbone,panet)
 
@@ -142,10 +142,10 @@ class motion_panet(nn.Module):
         self.config=config
         self.name=self.__class__.__name__
 
-        self.upsample_layer=config.model.upsample_layer
-        self.class_number=config.model.class_number
-        self.backbone=backbone(config.model,use_none_layer=config.model.use_none_layer)
-        self.panet=panet(config.model)
+        self.upsample_layer=config.upsample_layer
+        self.class_number=config.class_number
+        self.backbone=backbone(config,use_none_layer=config.use_none_layer)
+        self.panet=panet(config)
         self.midnet=transform_panet(self.backbone,self.panet,self.config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
         self.decoder=get_suffix_net(config,
@@ -162,19 +162,19 @@ class motion_panet(nn.Module):
 
 if __name__ == '__main__':
     config=edict()
-    config.model=edict()
-    config.model.upsample_layer=2
-    config.model.deconv_layer=5
-    config.model.backbone_freeze=False
-    config.model.freeze_layer=0
-    config.model.freeze_ratio=0.0
-    config.model.backbone_name='vgg11'
-    config.model.layer_preference='last'
-    config.model.net_name='motion_panet'
-    config.model.use_none_layer=False
+    config=edict()
+    config.upsample_layer=2
+    config.deconv_layer=5
+    config.backbone_freeze=False
+    config.freeze_layer=0
+    config.freeze_ratio=0.0
+    config.backbone_name='vgg11'
+    config.layer_preference='last'
+    config.net_name='motion_panet'
+    config.use_none_layer=False
 
     for name in ['vgg11']:
         print(name+'*'*50)
-        config.model.backbone_name=name
-        bb=panet(config.model)
+        config.backbone_name=name
+        bb=panet(config)
         bb.show_layers()
