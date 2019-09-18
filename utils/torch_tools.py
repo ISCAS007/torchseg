@@ -438,7 +438,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
     # 1<= summary_metric_step <=10
     summary_metric_step=max(min(10,config.n_epoch//10),1)
 
-    tqdm_epoch = trange(config.n_epoch, desc='epoches', leave=True)
+    tqdm_epoch = trange(config.n_epoch, desc='{} epoches'.format(config.note), leave=True)
     for epoch in tqdm_epoch:
         tqdm_epoch.set_postfix(best_iou=best_iou)
         for loader, loader_name in zip(loaders, loader_names):
