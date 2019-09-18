@@ -16,7 +16,7 @@ def get_default_config():
 
     config.layer_preference='last'
     config.input_shape=(224,224)
-    config.accumulate=4
+    config.accumulate=1
 
     config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
     config.cityscapes_split=random.choice(['test','val','train'])

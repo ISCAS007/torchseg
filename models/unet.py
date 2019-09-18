@@ -64,8 +64,8 @@ class UNet(nn.Module):
 class PSPUNet(nn.Module):
     def __init__(self,config):
         super().__init__()
-        config.deconv_layer=5
-        config.upsample_layer=1
+#        config.deconv_layer=5
+#        config.upsample_layer=1
         config.min_channel_number=128
         config.max_channel_number=256
         config.decode_main_layer=1
