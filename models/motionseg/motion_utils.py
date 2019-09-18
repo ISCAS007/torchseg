@@ -381,6 +381,11 @@ def get_parser():
                         type=float,
                         default=1.0)
 
+    parser.add_argument('--loss_name',
+                        help='use iou loss or not, iou loss not support ignore_index',
+                        choices=['ce','dice','iou'],
+                        default='ce')
+
     return parser
 
 def get_default_config():
@@ -447,6 +452,7 @@ def get_default_config():
     config.aux_freeze=3
     config.filter_relu=True
     config.exception_value=1.0
+    config.use_iou_loss=False
     return config
 
 def fine_tune_config(config):
