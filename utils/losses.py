@@ -51,7 +51,7 @@ def ce_loss(true, logits, weights, ignore=255):
     return ce_loss
 
 
-def dice_loss(true, logits, eps=1e-7):
+def dice_loss(logits,true, eps=1e-7):
     """Computes the Sørensen–Dice loss.
 
     Note that PyTorch optimizers minimize a loss. In this
@@ -89,7 +89,7 @@ def dice_loss(true, logits, eps=1e-7):
     return (1 - dice_loss)
 
 
-def jaccard_loss(true, logits, eps=1e-7):
+def jaccard_loss(logits, true, eps=1e-7):
     """Computes the Jaccard loss, a.k.a the IoU loss.
 
     Note that PyTorch optimizers minimize a loss. In this
@@ -118,7 +118,7 @@ def jaccard_loss(true, logits, eps=1e-7):
     else:
         true_1_hot = torch.eye(num_classes)[true.squeeze(1)]
         true_1_hot = true_1_hot.permute(0, 3, 1, 2).float()
-        probas = F.softmax(probas, dim=1)
+        probas = F.softmax(logits, dim=1)
     true_1_hot = true_1_hot.type(logits.type())
     dims = (0,) + tuple(range(2, true.ndimension()))
     intersection = torch.sum(probas * true_1_hot, dims)

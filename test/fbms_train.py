@@ -7,6 +7,7 @@ from models.motionseg.motion_utils import (Metric_Acc,Metric_Mean,get_parser,
                                            fine_tune_config,get_model,
                                            poly_lr_scheduler)
 from utils.torch_tools import init_writer
+from utils.losses import jaccard_loss,dice_loss
 import torch.nn.functional as F
 import os
 import torch
@@ -79,7 +80,7 @@ if __name__ == '__main__':
         y=model([main,flow])['masks'][0]
         make_dot(y,params=dict(list(model.named_parameters())))
         sys.exit(0)
-        
+
 
     dataset_loaders={}
     for split in ['train','val']:
@@ -87,7 +88,7 @@ if __name__ == '__main__':
         batch_size=args.batch_size if split=='train' else 1
         xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=True,drop_last=False,num_workers=2)
         dataset_loaders[split]=xxx_loader
-    
+
     # todo, not finished
     if args.app=='image':
         assert False
@@ -99,7 +100,7 @@ if __name__ == '__main__':
                     origin_labels=torch.autograd.Variable(gt.to(device).long())
                     labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
                     outputs=model.forward(images)
-                    
+
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
     log_dir = os.path.join(config['log_dir'], config['net_name'],
                            config['dataset'], config['note'], time_str)
@@ -107,7 +108,16 @@ if __name__ == '__main__':
 
     writer=init_writer(config,log_dir)
 
-    seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
+    if config.loss_name in ['iou','dice']:
+        # iou loss not support ignore_index
+        assert config.dataset not in ['cdnet2014','all','all2','all3']
+        assert config.ignore_pad_area==0
+        if config.loss_name=='iou':
+            seg_loss_fn=jaccard_loss
+        else:
+            seg_loss_fn=dice_loss
+    else:
+        seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
 
     optimizer_params = [{'params': [p for p in model.parameters() if p.requires_grad]}]
 
