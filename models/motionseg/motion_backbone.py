@@ -77,8 +77,10 @@ class motion_backbone(TN.Module):
 
         if hasattr(config,'modify_resnet_head'):
             os.environ['modify_resnet_head']=str(config.modify_resnet_head)
+            self.modify_resnet_head=config.modify_resnet_head
         else:
             os.environ['modify_resnet_head']=str(False)
+            self.modify_resnet_head=False
 
 
         self.upsample_layer=self.config.upsample_layer
@@ -193,7 +195,7 @@ class motion_backbone(TN.Module):
                         param.requires_grad = False
 
         # if modify resnet head worked, train the modified resnet head
-        if self.config.modify_resnet_head and self.config.use_none_layer and self.format=='resnet':
+        if self.modify_resnet_head and self.use_none_layer and self.format=='resnet':
             for param in self.prefix_net.parameters():
                 param.requires_grad = True
 

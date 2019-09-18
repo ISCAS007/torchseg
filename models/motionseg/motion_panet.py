@@ -275,7 +275,6 @@ class transform_panet2(nn.Module):
         self.decode_main_layer=config.decode_main_layer
         self.min_channel_number=config.min_channel_number
         self.max_channel_number=config.max_channel_number
-        self.backbones=backbones
 
         self.layers=[]
         self.keys=['main_backbone','aux_backbone','main_panet','aux_panet']

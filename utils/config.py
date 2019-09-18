@@ -405,7 +405,7 @@ def get_parser():
                                  'psp_fractal', 'psp_dict', 'psp_aux',
                                  'fcn', 'fcn8s', 'fcn16s', 'fcn32s',
                                  'merge_seg','cross_merge', 'psp_hed',
-                                 'motionnet','motion_panet'],
+                                 'motionnet','motion_panet', 'UNet', 'PSPUNet'],
                         default='pspnet')
 
     parser.add_argument('--midnet_scale',
