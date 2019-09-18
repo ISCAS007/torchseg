@@ -452,7 +452,7 @@ def get_default_config():
     config.aux_freeze=3
     config.filter_relu=True
     config.exception_value=1.0
-    config.use_iou_loss=False
+    config.loss_name='ce'
     return config
 
 def fine_tune_config(config):
