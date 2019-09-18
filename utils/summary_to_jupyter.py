@@ -7,6 +7,7 @@ import time
 import sys
 from tabulate import tabulate
 
+import math
 from utils.config import load_config
 from utils.summary_to_csv import config_to_log,load_log,edict_to_pandas,today_log,recent_log
 import warnings
@@ -72,8 +73,15 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
             param_list=[]
             for col in tasks.columns:
                 if not isinstance(tasks[col][0],(tuple,list)):
-                    if len(set(tasks[col]))>1 and (col not in invalid_param_list) and (col not in tags):
-                        param_list.append(col)
+                    try:
+                        col_set=set(tasks[col])
+                        if len(col_set)>1 and (col not in invalid_param_list) and (col not in tags):
+                            if (None in col_set or math.nan not in col_set) and len(col_set)==2:
+                                print('no group None column ',col)
+                            else:
+                                param_list.append(col)
+                    except:
+                        print(type(tasks[col][0]),col)
 
             print(note,','.join(param_list))
             group_tags=param_list
