@@ -22,8 +22,8 @@ class motionnet(nn.Module):
         self.upsample_layer = self.config.upsample_layer
         self.class_number = self.config.class_number
         self.input_shape = self.config.input_shape
-        self.dataset_name=self.config.dataset.name
-        self.ignore_index=self.config.dataset.ignore_index
+        self.dataset_name=self.config.dataset_name
+        self.ignore_index=self.config.ignore_index
 
         self.midnet=transform_segnet(self.backbone,self.config)
         self.midnet_out_channels=self.backbone.get_feature_map_channel(self.upsample_layer)
