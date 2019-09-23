@@ -76,11 +76,14 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                     try:
                         col_set=set(tasks[col])
                         if len(col_set)>1 and (col not in invalid_param_list) and (col not in tags):
-                            if (None in col_set or math.nan not in col_set) and len(col_set)==2:
+                            has_nan=pd.isna(tasks[col]).any()
+                            has_null=pd.isnull(tasks[col]).any()
+                            if (has_nan or has_null) and len(col_set)<=2:
                                 print('no group None column ',col)
                             else:
                                 param_list.append(col)
                     except:
+                        warnings.warn('exception in task')
                         print(type(tasks[col][0]),col)
 
             print(note,','.join(param_list))
