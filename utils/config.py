@@ -98,6 +98,7 @@ def get_default_config():
     config.predict_save_path=None
     config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
     config.attention_type='n'
+    config.additional_upsample=False
 
     return config
 
@@ -619,6 +620,12 @@ def get_parser():
     parser.add_argument('--attention_type',
                         help='attention type for motionnet 2019/09/16, {s,c,g,h,n}* ',
                         default='n')
+
+    # additional_upsample 2019/09/24
+    parser.add_argument('--additional_upsample',
+                        help='use additional upsample for PSPUNet or not',
+                        type=str2bool,
+                        default=False)
     return parser
 
 def get_hyperparams(key,discrete=False):

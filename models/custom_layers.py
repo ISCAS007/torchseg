@@ -322,7 +322,7 @@ class PSPLayer(nn.Module):
     }
     """
 
-    def __init__(self, pool_sizes, scale, input_shape, out_channels, use_bn):
+    def __init__(self, pool_sizes, scale, input_shape, out_channels, use_bn, additional_upsample=True):
         """
         pool_sizes = [1,2,3,6]
         scale = 5,10
@@ -332,6 +332,7 @@ class PSPLayer(nn.Module):
         super().__init__()
         self.input_shape = input_shape
         self.use_bn=use_bn
+        self.additional_upsample=additional_upsample
         b, in_channels, height, width = input_shape
 
         path_out_c_list = []
@@ -353,8 +354,10 @@ class PSPLayer(nn.Module):
         pool_paths = []
 
         self.min_input_size=max(pool_sizes)*scale
-        self.conv_before_psp=nn.Sequential(conv_1x1(in_channels,in_channels,self.use_bn),
-                                           UpsampleLayer(size=(self.min_input_size,self.min_input_size),mode='bilinear',align_corners=True))
+
+        if self.additional_upsample:
+            self.conv_before_psp=nn.Sequential(conv_1x1(in_channels,in_channels,self.use_bn),
+                                               UpsampleLayer(size=(self.min_input_size,self.min_input_size),mode='bilinear',align_corners=True))
 
 
         for pool_size, out_c in zip(pool_sizes, path_out_c_list):
@@ -368,7 +371,8 @@ class PSPLayer(nn.Module):
 
         self.pool_paths = nn.ModuleList(pool_paths)
 
-        self.conv_after_psp=nn.Sequential(conv_1x1(pool_out_channels,pool_out_channels,self.use_bn),
+        if self.additional_upsample:
+            self.conv_after_psp=nn.Sequential(conv_1x1(pool_out_channels,pool_out_channels,self.use_bn),
                                           UpsampleLayer(size=(height,width),mode='bilinear',align_corners=True))
 
         for m in self.modules():
@@ -380,8 +384,11 @@ class PSPLayer(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-        in_psp_feature=self.conv_before_psp(x)
-        out_psp_features=self.conv_after_psp(torch.cat([m(in_psp_feature) for m in self.pool_paths],dim=1))
+        if self.additional_upsample:
+            in_psp_feature=self.conv_before_psp(x)
+            out_psp_features=self.conv_after_psp(torch.cat([m(in_psp_feature) for m in self.pool_paths],dim=1))
+        else:
+            out_psp_features=torch.cat([m(x) for m in self.pool_paths],dim=1)
         x = torch.cat([x,out_psp_features], dim=1)
         return x
 
@@ -435,7 +442,7 @@ class CascadeMergeLayer(nn.Module):
 
         midnet_out_channels=2*backbone.get_feature_map_channel(self.deconv_layer)
         midnet_input_shape=backbone.get_output_shape(self.deconv_layer,self.input_shape)
-        self.psplayer=PSPLayer(config.midnet_pool_sizes,config.midnet_scale,midnet_input_shape,midnet_out_channels,self.use_bn)
+        self.psplayer=PSPLayer(config.midnet_pool_sizes,config.midnet_scale,midnet_input_shape,midnet_out_channels,self.use_bn,config.additional_upsample)
         self.model_layers=nn.ModuleList([layer for layer in self.layers if layer is not None])
 
     def forward(self,features):
