@@ -394,7 +394,7 @@ class PSPLayer(nn.Module):
             x = torch.cat([x,out_psp_features], dim=1)
         except:
             warnings.warn('exception in PSPLayer')
-            if self.additional_upsampe:
+            if self.additional_upsample:
                 for m in self.pool_paths:
                     print(m(in_psp_feature).shape)
             else:
