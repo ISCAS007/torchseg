@@ -356,6 +356,9 @@ class PSPLayer(nn.Module):
 
         self.min_input_size=max(pool_sizes)*scale
 
+        if not self.additional_upsample:
+            assert height==width==self.min_input_size
+
         if self.additional_upsample:
             self.conv_before_psp=nn.Sequential(conv_1x1(in_channels,in_channels,self.use_bn),
                                                UpsampleLayer(size=(self.min_input_size,self.min_input_size),mode='bilinear',align_corners=True))
@@ -452,8 +455,8 @@ class CascadeMergeLayer(nn.Module):
 
             self.layers[idx]=nn.Sequential(*current_layer)
 
-        midnet_out_channels=2*backbone.get_feature_map_channel(self.deconv_layer)
-        midnet_input_shape=backbone.get_output_shape(self.deconv_layer,self.input_shape)
+        midnet_out_channels=2*backbone.get_feature_map_channel(self.upsample_layer)
+        midnet_input_shape=backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.psplayer=PSPLayer(config.midnet_pool_sizes,config.midnet_scale,midnet_input_shape,midnet_out_channels,self.use_bn,config.additional_upsample)
         self.model_layers=nn.ModuleList([layer for layer in self.layers if layer is not None])
 
