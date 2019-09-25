@@ -357,8 +357,13 @@ class PSPLayer(nn.Module):
 
         self.min_input_size=lcm_list(pool_sizes)*scale
 
+        # scale=1, pool_sizes=[15,5,3,1], deconv_layer=5
+        # input_shape 480 --> feature 15(deconv_layer=5) --> psp --> [1,3,5,15] --> 15
+
+        # scale=5 pool_sizes=[6,3,2,1] deconv_layer=3
+        # input_shape 480 --> feature 60(deconv_layer=3) --> psp --> [6,3,2,1] -->60
         if not self.additional_upsample:
-            assert height==width==self.min_input_size
+            assert height==width==self.min_input_size,"height={},min input size={}".format(height,self.min_input_size)
 
         if self.additional_upsample:
             self.conv_before_psp=nn.Sequential(conv_1x1(in_channels,in_channels,self.use_bn),

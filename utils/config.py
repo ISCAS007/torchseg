@@ -145,13 +145,6 @@ def get_config(args=None):
             input_shape = (count_size, count_size)
         elif args.net_name == 'motion_panet':
             input_shape=(448,448)
-        elif args.midnet_name == 'psp':
-            upsample_ratio=args.upsample_layer
-            if args.use_none_layer and args.upsample_layer>=3:
-                upsample_ratio=3
-            count_size = lcm_list(config.midnet_pool_sizes) * \
-                config.midnet_scale*2**upsample_ratio
-            input_shape = (count_size, count_size)
         elif args.net_name == 'PSPUNet':
             if args.use_none_layer and args.deconv_layer>=3:
                 upsample_ratio=3
@@ -160,6 +153,13 @@ def get_config(args=None):
 
             count_size=lcm_list(config.midnet_pool_sizes)*2**upsample_ratio
             input_shape=(count_size,count_size)
+        elif args.midnet_name == 'psp':
+            upsample_ratio=args.upsample_layer
+            if args.use_none_layer and args.upsample_layer>=3:
+                upsample_ratio=3
+            count_size = lcm_list(config.midnet_pool_sizes) * \
+                config.midnet_scale*2**upsample_ratio
+            input_shape = (count_size, count_size)
         else:
             input_shape = (72*8, 72*8)
     else:
