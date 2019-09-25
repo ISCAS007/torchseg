@@ -180,6 +180,12 @@ class AttentionLayer(nn.Module):
         super().__init__()
         self.config=config
 
+        if hasattr(config,'res_attention'):
+            self.res_attention=config.res_attention
+        else:
+            warnings.warn('not use residual attention default')
+            self.res_attention=False
+
         self.attention_type=config.attention_type
         if filter_c is None:
             filter_c=main_c
@@ -208,6 +214,9 @@ class AttentionLayer(nn.Module):
         if y is None:
             y=x
 
+        if self.res_attention:
+            origin_x=x
+
         for c in self.attention_type:
             if c=='s':
                 x=self.spatial_filter(x,y)
@@ -222,7 +231,10 @@ class AttentionLayer(nn.Module):
             else:
                 assert False,'unknonw attention type {}'.format(self.attention_type)
 
-        return x
+        if self.res_attention and self.attention_type!='n':
+            return origin_x+x
+        else:
+            return x
 
 # apply attention on last layer, psp,...,
 class LowResolutionLayer(nn.Module):

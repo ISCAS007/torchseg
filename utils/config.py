@@ -100,6 +100,7 @@ def get_default_config():
     config.attention_type='n'
     config.additional_upsample=False
     config.midnet_pool_sizes = [6, 3, 2, 1]
+    config.res_attention=False
     return config
 
 def get_config(args=None):
@@ -165,7 +166,7 @@ def get_config(args=None):
     else:
         input_shape = (args.input_shape, args.input_shape)
 
-    print('convert input shape is',input_shape,'*'*30)
+    print('compute input shape is',input_shape,'*'*30)
 
     config.input_shape = input_shape
     config.midnet_out_channels = 512
@@ -205,7 +206,6 @@ def get_config(args=None):
         print('max_crop_size is',config.max_crop_size)
         print('crop_size_step is',config.crop_size_step)
 
-    config.attention_type=args.attention_type
     return config
 
 def dump_config(config,log_dir,filename='config.txt'):
@@ -639,6 +639,12 @@ def get_parser():
                         type=int,
                         nargs='*',
                         default=[6,3,2,1])
+
+    # res_attention 2019/09/25
+    parser.add_argument('--res_attention',
+                        help='use residual attention or not(default False)',
+                        type=str2bool,
+                        default=False)
     return parser
 
 def get_hyperparams(key,discrete=False):
