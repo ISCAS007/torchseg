@@ -455,8 +455,9 @@ class CascadeMergeLayer(nn.Module):
 
             self.layers[idx]=nn.Sequential(*current_layer)
 
-        midnet_out_channels=2*backbone.get_feature_map_channel(self.upsample_layer)
-        midnet_input_shape=backbone.get_output_shape(self.upsample_layer,self.input_shape)
+        # use the last layer (deconv_layer) for psp module
+        midnet_out_channels=2*backbone.get_feature_map_channel(self.deconv_layer)
+        midnet_input_shape=backbone.get_output_shape(self.deconv_layer,self.input_shape)
         self.psplayer=PSPLayer(config.midnet_pool_sizes,config.midnet_scale,midnet_input_shape,midnet_out_channels,self.use_bn,config.additional_upsample)
         self.model_layers=nn.ModuleList([layer for layer in self.layers if layer is not None])
 

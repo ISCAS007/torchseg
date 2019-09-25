@@ -82,6 +82,7 @@ class PSPUNet(nn.Module):
         self.backbone=motion_backbone(config,use_none_layer=config.use_none_layer)
         self.midnet=CascadeMergeLayer(self.backbone,config)
 
+        # use the upsample layer for bilinear upsample
         self.midnet_out_channels=min(max(self.backbone.get_feature_map_channel(config.upsample_layer),
                       self.min_channel_number),self.max_channel_number)
         self.decoder=get_suffix_net(config,
