@@ -8,6 +8,7 @@ upsample.py: custom layers
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import warnings
 
 ## Channel Attention (CA) Layer
 class CALayer(nn.Module):
@@ -384,12 +385,23 @@ class PSPLayer(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-        if self.additional_upsample:
-            in_psp_feature=self.conv_before_psp(x)
-            out_psp_features=self.conv_after_psp(torch.cat([m(in_psp_feature) for m in self.pool_paths],dim=1))
-        else:
-            out_psp_features=torch.cat([m(x) for m in self.pool_paths],dim=1)
-        x = torch.cat([x,out_psp_features], dim=1)
+        try:
+            if self.additional_upsample:
+                in_psp_feature=self.conv_before_psp(x)
+                out_psp_features=self.conv_after_psp(torch.cat([m(in_psp_feature) for m in self.pool_paths],dim=1))
+            else:
+                out_psp_features=torch.cat([m(x) for m in self.pool_paths],dim=1)
+            x = torch.cat([x,out_psp_features], dim=1)
+        except:
+            warnings.warn('exception in PSPLayer')
+            if self.additional_upsampe:
+                for m in self.pool_paths:
+                    print(m(in_psp_feature).shape)
+            else:
+                for m in self.pool_paths:
+                    print(m(x).shape)
+
+            assert False
         return x
 
 # merge layer cascade
