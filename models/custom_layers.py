@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import warnings
+from utils.disc_tools import lcm_list
 
 ## Channel Attention (CA) Layer
 class CALayer(nn.Module):
@@ -354,7 +355,7 @@ class PSPLayer(nn.Module):
         self.scale = scale
         pool_paths = []
 
-        self.min_input_size=max(pool_sizes)*scale
+        self.min_input_size=lcm_list(pool_sizes)*scale
 
         if not self.additional_upsample:
             assert height==width==self.min_input_size

@@ -6,7 +6,7 @@ import json
 import yaml
 import os
 import argparse
-from utils.disc_tools import str2bool
+from utils.disc_tools import str2bool,lcm_list
 from utils.augmentor import get_default_augmentor_config
 from dataset.dataset_generalize import get_dataset_generalize_config
 
@@ -99,7 +99,7 @@ def get_default_config():
     config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
     config.attention_type='n'
     config.additional_upsample=False
-
+    config.midnet_pool_sizes = [6, 3, 2, 1]
     return config
 
 def get_config(args=None):
@@ -135,14 +135,12 @@ def get_config(args=None):
     os.environ['modify_resnet_head']=str(args.modify_resnet_head)
 
     config.layer_preference = 'first'
-
-    config.midnet_pool_sizes = [6, 3, 2, 1]
     config.with_edge=False
 
     if args.input_shape == 0:
         if args.net_name == 'motionnet':
             upsample_ratio=3
-            count_size = max(config.midnet_pool_sizes) * \
+            count_size = lcm_list(config.midnet_pool_sizes) * \
                 config.midnet_scale*2**upsample_ratio
             input_shape = (count_size, count_size)
         elif args.net_name == 'motion_panet':
@@ -151,9 +149,17 @@ def get_config(args=None):
             upsample_ratio=args.upsample_layer
             if args.use_none_layer and args.upsample_layer>=3:
                 upsample_ratio=3
-            count_size = max(config.midnet_pool_sizes) * \
+            count_size = lcm_list(config.midnet_pool_sizes) * \
                 config.midnet_scale*2**upsample_ratio
             input_shape = (count_size, count_size)
+        elif args.net_name == 'PSPUNet':
+            if args.use_none_layer and args.deconv_layer>=3:
+                upsample_ratio=3
+            else:
+                upsample_ratio=args.deconv_layer
+
+            count_size=lcm_list(config.midnet_pool_sizes)*2**upsample_ratio
+            input_shape=(count_size,count_size)
         else:
             input_shape = (72*8, 72*8)
     else:
@@ -626,6 +632,13 @@ def get_parser():
                         help='use additional upsample for PSPUNet or not',
                         type=str2bool,
                         default=False)
+
+    # pool_sizes 2019/09/25
+    parser.add_argument('--midnet_pool_sizes',
+                        help='psp module pool size settings',
+                        type=int,
+                        nargs='*',
+                        default=[6,3,2,1])
     return parser
 
 def get_hyperparams(key,discrete=False):
