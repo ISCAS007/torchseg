@@ -152,7 +152,7 @@ def get_config(args=None):
             else:
                 upsample_ratio=args.deconv_layer
 
-            count_size=lcm_list(config.midnet_pool_sizes)*2**upsample_ratio
+            count_size=lcm_list(config.midnet_pool_sizes)*config.midnet_scale*2**upsample_ratio
             input_shape=(count_size,count_size)
         elif args.midnet_name == 'psp':
             upsample_ratio=args.upsample_layer
