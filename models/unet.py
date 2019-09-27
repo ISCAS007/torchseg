@@ -108,8 +108,6 @@ class AuxNet(nn.Module):
         self.input_shape = self.config.input_shape
         self.dataset_name = self.config.dataset_name
         self.ignore_index = self.config.ignore_index
-        self.min_channel_number=self.config.min_channel_number
-        self.max_channel_number=self.config.max_channel_number
         self.use_bn=self.config.use_bn
 
         self.base=PSPUNet(config)

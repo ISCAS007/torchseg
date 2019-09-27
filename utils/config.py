@@ -146,7 +146,7 @@ def get_config(args=None):
             input_shape = (count_size, count_size)
         elif args.net_name == 'motion_panet':
             input_shape=(448,448)
-        elif args.net_name == 'PSPUNet':
+        elif args.net_name in ['PSPUNet','AuxNet']:
             if args.use_none_layer and args.deconv_layer>=3:
                 upsample_ratio=3
             else:
