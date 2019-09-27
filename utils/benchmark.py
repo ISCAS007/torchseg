@@ -33,7 +33,7 @@ def get_loader(config,split):
         if config.augmentation:
             #        augmentations = Augmentations(p=0.25,use_imgaug=False)
             augmentations = Augmentations(
-                p=0.25, use_imgaug=True, rotate=config.augmentations_rotate)
+                p=0.25, use_imgaug=True, rotate=config.use_rotate)
         else:
             augmentations = None
 
