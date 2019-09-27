@@ -5,6 +5,7 @@ import math
 import os
 import matplotlib.pyplot as plt
 import glob
+import warnings
 
 # Minimum common multiple or least common multiple
 def lcm(a,b):
@@ -139,6 +140,20 @@ def get_newest_file(files):
                 newest_file = full_f
 
     return newest_file
+
+def get_checkpoint_from_txt(txt_path):
+    log_dir=os.path.dirname(txt_path)
+    ckpt_files=glob.glob(os.path.join(log_dir,'**','model-best-*.pkl'),recursive=True)
+
+    # use best checkpoint if available
+    if len(ckpt_files)==0:
+        ckpt_files=glob.glob(os.path.join(log_dir,'**','*.pkl'),recursive=True)
+
+    if len(ckpt_files)==0:
+        warnings.warn('cannot obtain checkpoint file from {}'.format(txt_path))
+        return None
+    else:
+        return get_newest_file(ckpt_files)
 
 def remove_file(root_path,suffix):
     files=glob.glob(os.path.join(root_path,'**','*.{}'.format(suffix)),recursive=True)
