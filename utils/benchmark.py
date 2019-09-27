@@ -20,7 +20,7 @@ def get_loader(config,split):
 
 
     if split=='test':
-        test_dataset=dataset_generalize(config.dataset,split=split,
+        test_dataset=dataset_generalize(config,split=split,
                                     normalizations=normalizations)
         test_loader=TD.DataLoader(dataset=test_dataset,
                                   batch_size=config.batch_size,
@@ -31,14 +31,12 @@ def get_loader(config,split):
     else:
         assert split in ['train','val']
         if config.augmentation:
-            #        augmentations = Augmentations(p=0.25,use_imgaug=False)
-            augmentations = Augmentations(
-                p=0.25, use_imgaug=True, rotate=config.use_rotate)
+            augmentations = Augmentations(config)
         else:
             augmentations = None
 
         dataset = dataset_generalize(
-            config.dataset, split=split,
+            config, split=split,
             augmentations=augmentations,
             normalizations=normalizations)
         loader = TD.DataLoader(
