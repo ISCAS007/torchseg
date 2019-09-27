@@ -316,7 +316,7 @@ class MergeLayer(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self,in_list):
-        assert len(in_list)==len(self.layers)
+        assert len(in_list)==len(self.layers),'len(in_list)={},len(layers)={}'.format(len(in_list),len(self.layers))
         x=torch.cat([F.interpolate(conv(f),size=self.size,mode='nearest') for conv,f in zip(self.layers,in_list)],dim=1)
         return self.conv(x)
 

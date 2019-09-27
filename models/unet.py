@@ -11,14 +11,17 @@ from easydict import EasyDict as edict
 import warnings
 
 class UNet(nn.Module):
+    """
+    backbone generate features [x/2,x/4,x/8,x/16,x/32]
+    x=f(cat(x/8,x/16,x/32)+psp(x/8))
+    """
     def __init__(self,config):
         super().__init__()
         self.config=config
         self.name=self.__class__.__name__
 
-        assert self.config.backbone_name.find('vgg')>=0, 'UNet current only support vgg series'
         use_none_layer=config.use_none_layer
-        self.backbone = backbone(config, use_none_layer=use_none_layer)
+        self.backbone = motion_backbone(config, use_none_layer=use_none_layer)
 
         self.upsample_layer = self.config.upsample_layer
         self.class_number = self.config.class_number
@@ -55,7 +58,10 @@ class UNet(nn.Module):
     def forward(self,x):
         features=self.backbone.forward_layers(x)
         ## for vgg layers, len(features)=6, [x,x/2,x/4,x/8,x/16,x/32]
-        features=features[-5:]
+        if len(features)==6:
+            features=features[-5:]
+        else:
+            assert False
         x1=self.merge_layer(features)
         x2=self.midnet(features[self.upsample_layer-1])
         x=self.decoder(x1+x2)
