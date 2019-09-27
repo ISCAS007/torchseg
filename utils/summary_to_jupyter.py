@@ -43,7 +43,7 @@ def summary(rootpath,tags,filter_str=None,recent_log_number=100):
             task=edict_to_pandas(ed)
             tasks=tasks.append(task,ignore_index=True,sort=False)
         else:
-            print('cannot find log file for',cfg)
+            warnings.warn('cannot find log file for {}'.format(cfg))
             
     return tasks
 
@@ -66,7 +66,7 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
         show_tags=tags.copy()
         tasks=summary(rootpath,tags,note,recent_log_number)
         if tasks.empty:
-            print(note,'task is empty')
+            warnings.warn('{} task is empty'.format(note))
             continue
         
         if note_gtags is None:
@@ -79,14 +79,14 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                             has_nan=pd.isna(tasks[col]).any()
                             has_null=pd.isnull(tasks[col]).any()
                             if (has_nan or has_null) and len(col_set)<=2:
-                                print('no group None column ',col)
+                                warnings.warn('no group None column {}'.format(col))
                             else:
                                 param_list.append(col)
                     except:
                         warnings.warn('exception in task')
                         print(type(tasks[col][0]),col)
 
-            print(note,','.join(param_list))
+            print('###',note,','.join(param_list))
             group_tags=param_list
         else:
             if idx<len(note_gtags):
@@ -103,13 +103,16 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
             dirs=tasks[tasks[tags[1]].isna()]['dir'].tolist()
             tasks=tasks[tasks[tags[1]].notna()]
             for dir in dirs:
+                warnings.warn('remove nan log')
                 print(os.path.dirname(dir))
                 os.system('rm -rf {}'.format(os.path.dirname(dir)))
 
         #print(tasks[show_tags].groupby(group_tags).max().to_string())
         if dump_group:
             if len(group_tags)==0:
-                print(group_tags,param_list,tags,invalid_param_list)
+                warnings.warn('no group tags, check tags and invalid_param_list')
+                print('tags is',tags)
+                print('invalid_param_list is',invalid_param_list)
             else:
                 print(tabulate(tasks[show_tags].groupby(group_tags).mean().sort_values(tags[1]),tablefmt='pipe',headers='keys'))
                 print('\n')
