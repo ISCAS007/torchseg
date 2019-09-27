@@ -31,7 +31,7 @@ from models.unet import UNet,PSPUNet,AuxNet
 from utils.augmentor import Augmentations
 from utils.torch_tools import keras_fit
 from utils.benchmark import keras_benchmark,get_loader
-from utils.config import get_parser,get_config
+from utils.config import get_parser,get_config,get_net
 
 if __name__ == '__main__':
     parser=get_parser()
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     test = args.test
 
     if test == 'naive':
-        net = globals()[args.net_name](config)
+        net = get_net(config)
         best_val_iou=keras_fit(net,train_loader,val_loader)
         print('best val iou is %0.3f'%best_val_iou)
     elif test == 'edge':
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         net = psp_fractal(config)
         keras_fit(net, train_loader, val_loader)
     elif test == 'coarse':
-        net = globals()[args.net_name](config)
+        net = get_net(config)
         for dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
             config = get_dataset_generalize_config(
                 config, dataset_name)
@@ -165,7 +165,7 @@ if __name__ == '__main__':
                             train_loader=train_loader, val_loader=val_loader, config=config)
 
     elif test == 'summary':
-        net = globals()[args.net_name](config)
+        net = get_net(config)
         config_str = json.dumps(config, indent=2, sort_keys=True)
         print(config_str)
         print('args is '+'*'*30)
@@ -193,7 +193,7 @@ if __name__ == '__main__':
     elif test == 'benchmark':
         config.with_path=True
         config.augmentation=False
-        net = globals()[args.net_name](config)
+        net = get_net(config)
 #        test_loader=get_loader(config,'val')
         test_loader=None
         keras_benchmark(model=net,
@@ -203,7 +203,7 @@ if __name__ == '__main__':
                         predict_save_path=args.predict_save_path)
     elif test == 'cycle_lr':
         n_epoch=args.n_epoch
-        net = globals()[args.net_name](config)
+        net = get_net(config)
         for times in range(3):
             config.n_epoch=n_epoch*2**times
             config.note = note+'_%d'%times

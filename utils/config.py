@@ -10,6 +10,24 @@ from utils.disc_tools import str2bool,lcm_list
 from utils.augmentor import get_default_augmentor_config
 from dataset.dataset_generalize import get_dataset_generalize_config
 
+from models.pspnet import pspnet
+from models.psp_edge import psp_edge
+from models.psp_global import psp_global
+from models.psp_dict import psp_dict
+from models.psp_fractal import psp_fractal
+from models.fcn import fcn, fcn8s, fcn16s, fcn32s
+from models.psp_aux import psp_aux
+from models.psp_hed import psp_hed
+from models.merge_seg import merge_seg
+from models.cross_merge import cross_merge
+from models.psp_convert import psp_convert
+from models.psp_convert import CONFIG as psp_convert_config
+from models.motionnet import motionnet,motion_panet
+from models.unet import UNet,PSPUNet,AuxNet
+
+def get_net(config):
+    return globals()[config.net_name](config)
+
 def get_default_config():
     config=edict()
     config.class_number=20
@@ -219,7 +237,7 @@ def load_config(config_file):
     l=f.readline()
     f.close()
 
-    d=yaml.load(l,Loader=yaml.FullLoader)
+    d=yaml.safe_load(l)
     config=edict(d)
 
     return config
