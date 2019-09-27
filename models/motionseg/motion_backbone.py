@@ -91,10 +91,12 @@ class motion_backbone(TN.Module):
             config.net_name.find('panet')>=0 or \
             config.net_name.find('motion_filter')>=0 or \
             config.net_name in ['motion_anet','motion_mix','motion_mix_flow',
-                                'motion_attention','motion_attention_flow']:
+                                'motion_attention','motion_attention_flow','PSPUNet']:
             assert self.deconv_layer > self.upsample_layer,'deconv %d must > decoder %d'%(self.deconv_layer,self.upsample_layer)
         elif config.net_name.find('fcn')>=0 or config.net_name.find('motion_psp')>=0:
             self.deconv_layer = self.upsample_layer
+        elif config.net_name in ['UNet']:
+            pass
         else:
             warnings.warn('unknown net name {} for max extracted layer index'.format(config.net_name))
             assert self.deconv_layer > self.upsample_layer

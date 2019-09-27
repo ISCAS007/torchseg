@@ -5,7 +5,7 @@ from models.backbone import backbone
 from models.upsample import get_midnet, get_suffix_net
 from utils.torch_tools import freeze_layer
 from utils.disc_tools import get_backbone_optimizer_params
-from models.custom_layers import MergeLayer,CascadeMergeLayer
+from models.custom_layers import MergeLayer,CascadeMergeLayer,conv_nxn
 from models.motionseg.motion_backbone import motion_backbone
 from easydict import EasyDict as edict
 import warnings
@@ -70,8 +70,6 @@ class UNet(nn.Module):
 class PSPUNet(nn.Module):
     def __init__(self,config):
         super().__init__()
-#        config.deconv_layer=5
-#        config.upsample_layer=1
         config.min_channel_number=128
         config.max_channel_number=256
         config.decode_main_layer=1
@@ -100,3 +98,28 @@ class PSPUNet(nn.Module):
         x = self.decoder(feature_mid)
 
         return x
+
+class AuxNet(nn.Module):
+    def __init__(self,config):
+        super().__init__()
+        self.config=config
+        self.name=self.__class__.__name__
+        self.class_number = self.config.class_number
+        self.input_shape = self.config.input_shape
+        self.dataset_name = self.config.dataset_name
+        self.ignore_index = self.config.ignore_index
+        self.min_channel_number=self.config.min_channel_number
+        self.max_channel_number=self.config.max_channel_number
+        self.use_bn=self.config.use_bn
+
+        self.base=PSPUNet(config)
+        # note the input shape is the origin image size, so the channel cannot be two large.
+        self.refine=nn.Sequential(conv_nxn(self.class_number,self.class_number*2,5,self.use_bn),
+                               conv_nxn(self.class_number*2,self.class_number,1,self.use_bn))
+
+    def forward(self,x):
+        x=self.base(x)
+        refine=self.refine(x)
+
+        # x is aux loss, but the final result is refine
+        return {'aux':x,'seg':refine}
