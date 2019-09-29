@@ -146,7 +146,8 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
 
     grads_dict = {}
 
-    accumulate=0
+    assert config.accumulate>=1
+    total_loss=0
     tqdm_step = tqdm(loader, desc='steps', leave=False)
     for i, (datas) in enumerate(tqdm_step):
         if loader_name == 'train' and scheduler is None:
@@ -214,9 +215,6 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                 losses_dict[k] = [v.data.cpu().numpy()]
 
         if loader_name == 'train':
-            # loss backward and update weight (train only)
-            loss_dict['%s/total_loss' % loader_name].backward()
-
             # record grad for summary (train only)
             for key_prefix in ['first_grad', 'last_grad']:
                 for key_suffix in ['mean', 'max']:
@@ -233,9 +231,11 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                 grads_dict['last_grad_max'].append(
                     optimizer.param_groups[-1]['params'][-1].grad.max().data.cpu().numpy())
 
-            accumulate+=1
-            if accumulate >= config.accumulate:
-                accumulate=0
+            if (i+1) % config.accumulate == 0:
+                total_loss=total_loss/config.accumulate
+                total_loss.backward()
+                total_loss=0
+
                 optimizer.step()
                 if config.center_loss is not None:
                     for param in center_loss_model.parameters():
@@ -244,6 +244,8 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                 optimizer.zero_grad()
                 if config.center_loss is not None:
                     center_optimizer.zero_grad()
+            else:
+                total_loss+=loss_dict['%s/total_loss' % loader_name]
 
         if summary_metric:
             # summary_all other metric for edge and aux, not run for each epoch to save time
@@ -436,7 +438,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
 
     summary_all_step=max(1,config.n_epoch//10)
     # 1<= summary_metric_step <=10
-    summary_metric_step=max(min(10,config.n_epoch//10),1)
+    summary_metric_step=max(min(10*config.accumulate,config.n_epoch//10),1)
 
     tqdm_epoch = trange(config.n_epoch, desc='{} epoches'.format(config.note), leave=True)
     for epoch in tqdm_epoch:
