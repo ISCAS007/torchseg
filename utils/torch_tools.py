@@ -231,21 +231,19 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                 grads_dict['last_grad_max'].append(
                     optimizer.param_groups[-1]['params'][-1].grad.max().data.cpu().numpy())
 
+            total_loss+=loss_dict['%s/total_loss' % loader_name]
             if (i+1) % config.accumulate == 0:
                 total_loss=total_loss/config.accumulate
                 total_loss.backward()
                 total_loss=0
 
                 optimizer.step()
+                optimizer.zero_grad()
                 if config.center_loss is not None:
                     for param in center_loss_model.parameters():
                         param.grad.data *= (1. / config.center_loss_weight)
                     center_optimizer.step()
-                optimizer.zero_grad()
-                if config.center_loss is not None:
                     center_optimizer.zero_grad()
-            else:
-                total_loss+=loss_dict['%s/total_loss' % loader_name]
 
         if summary_metric:
             # summary_all other metric for edge and aux, not run for each epoch to save time
