@@ -144,8 +144,6 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
     for k, v in metric_fn_dict.items():
         metric_fn_dict[k].reset()
 
-    grads_dict = {}
-
     assert config.accumulate>=1
     total_loss=0
     tqdm_step = tqdm(loader, desc='steps', leave=False)
@@ -215,22 +213,6 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                 losses_dict[k] = [v.data.cpu().numpy()]
 
         if loader_name == 'train':
-            # record grad for summary (train only)
-            for key_prefix in ['first_grad', 'last_grad']:
-                for key_suffix in ['mean', 'max']:
-                    grads_dict[key_prefix+'_'+key_suffix] = []
-            if optimizer.param_groups[0]['params'][0].grad is not None:
-                grads_dict['first_grad_mean'].append(
-                    optimizer.param_groups[0]['params'][0].grad.mean().data.cpu().numpy())
-                grads_dict['first_grad_max'].append(
-                    optimizer.param_groups[0]['params'][0].grad.max().data.cpu().numpy())
-
-            if optimizer.param_groups[-1]['params'][-1].grad is not None:
-                grads_dict['last_grad_mean'].append(
-                    optimizer.param_groups[-1]['params'][-1].grad.mean().data.cpu().numpy())
-                grads_dict['last_grad_max'].append(
-                    optimizer.param_groups[-1]['params'][-1].grad.max().data.cpu().numpy())
-
             total_loss+=loss_dict['%s/total_loss' % loader_name]
             if (i+1) % config.accumulate == 0:
                 total_loss=total_loss/config.accumulate
@@ -254,7 +236,7 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                                                             config,
                                                             summary_all=summary_all,
                                                             prefix_note=loader_name)
-    return outputs_dict, targets_dict, running_metrics, metric_fn_dict, grads_dict, losses_dict, loss_weight_dict
+    return outputs_dict, targets_dict, running_metrics, metric_fn_dict, losses_dict, loss_weight_dict
 
 
 def poly_lr_scheduler(optimizer, iter,
@@ -465,7 +447,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                 with torch.no_grad():
                     outputs_dict, targets_dict, \
                     running_metrics, metric_fn_dict, \
-                    grads_dict, losses_dict, loss_weight_dict = train_val(
+                    losses_dict, loss_weight_dict = train_val(
                         model=model,
                         optimizer=optimizer,
                         scheduler=scheduler,
@@ -488,7 +470,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
             else:
                 outputs_dict, targets_dict, \
                 running_metrics, metric_fn_dict, \
-                grads_dict, losses_dict, loss_weight_dict = train_val(
+                losses_dict, loss_weight_dict = train_val(
                     model=model,
                     optimizer=optimizer,
                     scheduler=scheduler,
@@ -559,7 +541,6 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                           lr_dict=lr_dict,
                           image_dict=image_dict,
                           weight_dict=weight_dict,
-                          grads_dict=grads_dict,
                           epoch=epoch)
     writer.close()
     print('total epoch is %d, best iou is' % config.n_epoch, best_iou)
@@ -891,7 +872,6 @@ def write_summary(writer,
                   lr_dict,
                   image_dict,
                   weight_dict,
-                  grads_dict,
                   epoch):
     # losses_dict value is numpy
     for k, v in losses_dict.items():
@@ -917,8 +897,3 @@ def write_summary(writer,
     # summary image
     for k, v in image_dict.items():
         add_image(summary_writer=writer, name=k, image=v, step=epoch)
-
-    # summary gradients
-    for k, v in grads_dict.items():
-        if len(v) > 0:
-            writer.add_scalar('grad/'+k, np.mean(v), epoch)
