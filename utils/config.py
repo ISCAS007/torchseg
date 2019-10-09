@@ -119,6 +119,8 @@ def get_default_config():
     config.additional_upsample=False
     config.midnet_pool_sizes = [6, 3, 2, 1]
     config.res_attention=False
+    config.min_channel_number=128
+    config.max_channel_number=256
     return config
 
 def get_config(args=None):
@@ -663,6 +665,18 @@ def get_parser():
                         help='use residual attention or not(default False)',
                         type=str2bool,
                         default=False)
+
+    # min_channel_number=128 2019/10/09
+    parser.add_argument('--min_channel_number',
+                        help='min channel number for mid network (128)',
+                        type=int,
+                        default=128)
+
+    # max_channel_number=256 2019/10/09
+    parser.add_argument('--max_channel_number',
+                        help='max channel number for mid network (256)',
+                        type=int,
+                        default=256)
     return parser
 
 def get_hyperparams(key,discrete=False):
