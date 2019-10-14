@@ -121,6 +121,8 @@ def get_default_config():
     config.res_attention=False
     config.min_channel_number=128
     config.max_channel_number=256
+    config.use_semseg=False
+    config.use_imgaug=True
     return config
 
 def get_config(args=None):
@@ -204,7 +206,6 @@ def get_config(args=None):
 
     config=get_default_augmentor_config(config)
     config.use_rotate=config.use_rotate
-    config.use_imgaug=True
 
     # image size != network input size != crop size
     if config.keep_crop_ratio is False:
@@ -677,6 +678,18 @@ def get_parser():
                         help='max channel number for mid network (256)',
                         type=int,
                         default=256)
+
+    # use_imgaug 2019/10/14
+    parser.add_argument('--use_imgaug',
+                        help='use img aug or tt aug (True)',
+                        type=str2bool,
+                        default=True)
+
+    # use_semseg 2019/10/14
+    parser.add_argument('--use_semseg',
+                        help='use img aug or tt aug (True)',
+                        type=str2bool,
+                        default=False)
     return parser
 
 def get_hyperparams(key,discrete=False):

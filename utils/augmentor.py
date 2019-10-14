@@ -12,6 +12,7 @@ from utils.disc_tools import show_images
 from easydict import EasyDict as edict
 from torchvision import transforms as TT
 from utils import joint_transforms as JT
+from utils import semseg_transform as ST
 from dataset.dataset_generalize import image_normalizations
 from functools import partial
 
@@ -343,16 +344,42 @@ class Augmentations(object):
     def __init__(self, config=None):
         if config is None:
             config = get_default_augmentor_config()
-        # augmentation for image
-        self.aug = ImageAugmenter(config=config)
-        # augmentation for image and mask
-        self.tran = ImageTransformer(config=config)
+
+        if hasattr(config,'use_semseg'):
+            self.use_semseg=config.use_semseg
+        else:
+            self.use_semseg=False
+
+        if self.use_semseg:
+            value_scale = 255
+            mean = [0.485, 0.456, 0.406]
+            mean = [item * value_scale for item in mean]
+            std = [0.229, 0.224, 0.225]
+            std = [item * value_scale for item in std]
+
+            self.tran = ST.Compose([
+                ST.RandScale([0.5, 2.0]),
+                ST.RandRotate([-10,10], padding=mean, ignore_label=255),
+                ST.RandomGaussianBlur(),
+                ST.RandomHorizontalFlip(),
+                ST.Crop(config.input_shape, crop_type='rand', padding=mean, ignore_label=255)])
+        else:
+            # augmentation for image
+            self.aug = ImageAugmenter(config=config)
+            # augmentation for image and mask
+            self.tran = ImageTransformer(config=config)
 
     def transform(self, image, mask=None):
-        if mask is None:
-            return self.aug.augument_image(image)
+        if self.use_semseg:
+            if mask is None:
+                return image
+            else:
+                return self.tran(image,mask)
         else:
-            return self.tran.transform_image_and_mask(image, mask)
+            if mask is None:
+                return self.aug.augument_image(image)
+            else:
+                return self.tran.transform_image_and_mask(image, mask)
 
 
 if __name__ == '__main__':
