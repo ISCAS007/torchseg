@@ -17,7 +17,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
 from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
 from tqdm import tqdm, trange
 import glob
-
+import apex
 
 def get_loader(config):
     if config.norm_ways is None:
@@ -216,7 +216,11 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
             total_loss+=loss_dict['%s/total_loss' % loader_name]
             if (i+1) % config.accumulate == 0:
                 total_loss=total_loss/config.accumulate
-                total_loss.backward()
+                if config.use_apex:
+                    with apex.amp.scale_loss(total_loss, optimizer) as scaled_loss:
+                        scaled_loss.backward()
+                else:
+                    total_loss.backward()
                 total_loss=0
 
                 optimizer.step()
@@ -392,7 +396,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
     running_metrics = runningScore(config.class_number)
 
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
-    log_dir = os.path.join(config.log_dir, model.name,
+    log_dir = os.path.join(config.log_dir, config.net_name,
                            config.dataset_name, config.note, time_str)
 #    checkpoint_path = os.path.join(
 #        log_dir, "{}_{}_best_model.pkl".format(model.name, config.name))
@@ -405,12 +409,22 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
     loaders = [train_loader, val_loader]
     loader_names = ['train', 'val']
 
-    # support for multiple gpu, model will be changed, model.name will not exist
-    if device.type == 'cuda':
-        gpu_num = torch.cuda.device_count()
-        if gpu_num > 1:
-            device_ids = [i for i in range(gpu_num)]
-            model = torch.nn.DataParallel(model, device_ids=device_ids)
+    if config.use_apex:
+        torch.distributed.init_process_group(backend='nccl',
+                                init_method='tcp://127.0.0.1:9876',
+                                world_size=1,
+                                rank=0)
+
+        model, optimizer = apex.amp.initialize(model, optimizer,
+                                               opt_level='O2')
+        model = apex.parallel.DistributedDataParallel(model)
+    else:
+        # support for multiple gpu, model will be changed, model.name will not exist
+        if device.type == 'cuda':
+            gpu_num = torch.cuda.device_count()
+            if gpu_num > 1:
+                device_ids = [i for i in range(gpu_num)]
+                model = torch.nn.DataParallel(model, device_ids=device_ids)
 
     # eval module
     if train_loader is None:
@@ -851,7 +865,7 @@ def get_lr_dict(optimizer, prefix_note='train'):
 
 def init_writer(config, log_dir):
     os.makedirs(log_dir, exist_ok=True)
-    writer = SummaryWriter(log_dir=log_dir)
+    writer = SummaryWriter(logdir=log_dir)
     config_str = json.dumps(config, indent=2, sort_keys=True).replace(
         '\n', '\n\n').replace('  ', '\t')
     writer.add_text(tag='config', text_string=config_str)

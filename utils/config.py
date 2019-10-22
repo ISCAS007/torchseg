@@ -123,6 +123,8 @@ def get_default_config():
     config.max_channel_number=256
     config.use_semseg=False
     config.use_imgaug=True
+    config.use_sync_bn=False
+    config.use_apex=False
     return config
 
 def get_config(args=None):
@@ -156,6 +158,7 @@ def get_config(args=None):
     os.environ['torchseg_use_bias']=str(args.use_bias)
     # when use resnet and use_none_layer=True
     os.environ['modify_resnet_head']=str(args.modify_resnet_head)
+    os.environ['torchseg_use_sync_bn']=str(config.use_sync_bn)
 
     config.layer_preference = 'first'
     config.with_edge=False
@@ -688,6 +691,18 @@ def get_parser():
     # use_semseg 2019/10/14
     parser.add_argument('--use_semseg',
                         help='use img aug or tt aug (True)',
+                        type=str2bool,
+                        default=False)
+
+    # use_sync_bn
+    parser.add_argument('--use_sync_bn',
+                        help='use sync bn or not (False)',
+                        type=str2bool,
+                        default=False)
+
+    # use_apex current has bug
+    parser.add_argument('--use_apex',
+                        help='use apex to fast trainning? (False) current has bug',
                         type=str2bool,
                         default=False)
     return parser

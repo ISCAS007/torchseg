@@ -7,17 +7,41 @@ import torch
 import os
 from utils.disc_tools import str2bool
 from models.custom_layers import AttentionLayer
+import warnings
 
 class local_bn(TN.Module):
     def __init__(self, num_features, eps=1e-5, momentum=0.1):
         super().__init__()
-        self.bn = TN.BatchNorm2d(num_features=num_features,
+        if 'torchseg_use_sync_bn' in os.environ.keys():
+            warnings.warn('use sync bn')
+            self.use_sync_bn=str2bool(os.environ['torchseg_use_sync_bn'])
+        else:
+            self.use_sync_bn=False
+
+        if 'torchseg_use_apex' in os.environ.keys():
+            self.use_apex=str2bool(os.environ['torchseg_use_apex'])
+        else:
+            self.use_apex=False
+
+        if self.use_sync_bn:
+            if self.use_apex:
+                import apex
+                BatchNorm=apex.parallel.SyncBatchNorm
+            else:
+                from utils.sync_bn.modules import BatchNorm2d
+                BatchNorm=BatchNorm2d
+        else:
+            BatchNorm=TN.BatchNorm2d
+
+        self.bn = BatchNorm(num_features=num_features,
                                  eps=eps,
-                                 momentum=momentum,
-                                 affine=True)
-        self.use_bn = True
+                                 momentum=momentum)
+
         if 'torchseg_use_bn' in os.environ.keys():
+            warnings.warn('use bn')
             self.use_bn = str2bool(os.environ['torchseg_use_bn'])
+        else:
+            self.use_bn=True
 
         for m in self.modules():
             if isinstance(m, TN.Conv2d):

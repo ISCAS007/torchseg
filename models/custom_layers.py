@@ -67,7 +67,7 @@ class SALayer(nn.Module):
             attention_channel=main_channel
 
         mid_c=max(8,main_channel//reduction)
-        self.conv = self.conv = nn.Sequential(
+        self.conv = nn.Sequential(
                         nn.Conv2d(attention_channel, mid_c, 1, padding=0, bias=True),
                         nn.ReLU(inplace=True),
                         nn.Conv2d(mid_c, 1, 1, padding=0, bias=True),
