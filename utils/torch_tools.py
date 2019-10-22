@@ -17,7 +17,6 @@ from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
 from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
 from tqdm import tqdm, trange
 import glob
-# import apex
 
 def get_loader(config):
     if config.norm_ways is None:
@@ -216,11 +215,7 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
             total_loss+=loss_dict['%s/total_loss' % loader_name]
             if (i+1) % config.accumulate == 0:
                 total_loss=total_loss/config.accumulate
-                if config.use_apex:
-                    with apex.amp.scale_loss(total_loss, optimizer) as scaled_loss:
-                        scaled_loss.backward()
-                else:
-                    total_loss.backward()
+                total_loss.backward()
                 total_loss=0
 
                 optimizer.step()
@@ -409,22 +404,12 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
     loaders = [train_loader, val_loader]
     loader_names = ['train', 'val']
 
-    if config.use_apex:
-        torch.distributed.init_process_group(backend='nccl',
-                                init_method='tcp://127.0.0.1:9876',
-                                world_size=1,
-                                rank=0)
-
-        model, optimizer = apex.amp.initialize(model, optimizer,
-                                               opt_level='O2')
-        model = apex.parallel.DistributedDataParallel(model)
-    else:
-        # support for multiple gpu, model will be changed, model.name will not exist
-        if device.type == 'cuda':
-            gpu_num = torch.cuda.device_count()
-            if gpu_num > 1:
-                device_ids = [i for i in range(gpu_num)]
-                model = torch.nn.DataParallel(model, device_ids=device_ids)
+    # support for multiple gpu, model will be changed, model.name will not exist
+    if device.type == 'cuda':
+        gpu_num = torch.cuda.device_count()
+        if gpu_num > 1:
+            device_ids = [i for i in range(gpu_num)]
+            model = torch.nn.DataParallel(model, device_ids=device_ids)
 
     # eval module
     if train_loader is None:

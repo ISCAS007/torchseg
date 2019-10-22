@@ -10,8 +10,7 @@ from easydict import EasyDict as edict
 import warnings
 from models.upsample import local_upsample
 from models.Anet.layers import Anet
-
-
+from models.custom_layers import get_batchnorm
 class conv_bn_relu(TN.Module):
     def __init__(self,
                  in_channels,
@@ -31,6 +30,7 @@ class conv_bn_relu(TN.Module):
         """
         super().__init__()
 
+        BatchNorm2d=get_batchnorm()
         layers=[TN.Conv2d(in_channels=in_channels,
                             out_channels=out_channels,
                             kernel_size=kernel_size,
@@ -39,7 +39,7 @@ class conv_bn_relu(TN.Module):
                             bias=bias),
                 ]
         if use_bn:
-            layers.append(TN.BatchNorm2d(num_features=out_channels,
+            layers.append(BatchNorm2d(num_features=out_channels,
                                                    eps=eps,
                                                    momentum=momentum))
 
@@ -326,9 +326,11 @@ class motion_backbone(TN.Module):
             return Anet(self.config)
         elif self.use_none_layer or self.in_channels !=3:
             print('use none layer'+'*'*30)
-            from models.MobileNetV2 import mobilenet2
             from models.psp_resnet import resnet50,resnet101
-            from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
+            from models.MobileNetV2 import mobilenet2
+            from models.psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
+                                        vgg11,vgg11_bn,vgg13,vgg13_bn,
+                                        vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
 
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
@@ -339,10 +341,12 @@ class motion_backbone(TN.Module):
             else:
                 return locals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
         else:
-#            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
-            from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn
-            from models.psp_vgg import vgg16_gn,vgg19_gn,vgg21,vgg21_bn
+            from models.psp_resnet import resnet50,resnet101
             from models.MobileNetV2 import mobilenet2
+            from models.psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
+                                        vgg11,vgg11_bn,vgg13,vgg13_bn,
+                                        vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
+#            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             from pretrainedmodels import se_resnet50
 
             assert self.in_channels==3

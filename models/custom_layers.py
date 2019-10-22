@@ -10,6 +10,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 import warnings
 from utils.disc_tools import lcm_list
+from utils.disc_tools import str2bool
+import os
+
+def get_batchnorm():
+    if 'torchseg_use_sync_bn' in os.environ.keys():
+        use_sync_bn=str2bool(os.environ['torchseg_use_sync_bn'])
+    else:
+        use_sync_bn=False
+
+    if use_sync_bn:
+        from utils.sync_bn.modules import BatchNorm2d
+        BatchNorm=BatchNorm2d
+    else:
+        BatchNorm=nn.BatchNorm2d
+
+    return BatchNorm
 
 ## Channel Attention (CA) Layer
 class CALayer(nn.Module):
@@ -254,11 +270,12 @@ class LowResolutionLayer(nn.Module):
         return x
 
 def conv_1x1(in_c,out_c,use_bn=False):
+    BatchNorm2d=get_batchnorm()
     if use_bn:
         return nn.Sequential(nn.Conv2d(in_channels=in_c,
                                                    out_channels=out_c,
                                                    kernel_size=1),
-                                        nn.BatchNorm2d(out_c),
+                                        BatchNorm2d(out_c),
                                         nn.ReLU(inplace=True))
     else:
         return nn.Sequential(nn.Conv2d(in_channels=in_c,
@@ -267,12 +284,13 @@ def conv_1x1(in_c,out_c,use_bn=False):
                                         nn.ReLU(inplace=True))
 
 def conv_nxn(in_c,out_c,kernel_size,use_bn=False):
+    BatchNorm2d=get_batchnorm()
     if use_bn:
         return nn.Sequential(nn.Conv2d(in_channels=in_c,
                                                    out_channels=out_c,
                                                    kernel_size=kernel_size,
                                                    padding=kernel_size//2),
-                                        nn.BatchNorm2d(out_c),
+                                        BatchNorm2d(out_c),
                                         nn.ReLU(inplace=True))
     else:
         return nn.Sequential(nn.Conv2d(in_channels=in_c,

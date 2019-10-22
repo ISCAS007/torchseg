@@ -3,6 +3,7 @@ import torch.utils.model_zoo as model_zoo
 from utils.disc_tools import str2bool
 import os
 import warnings
+from models.custom_layers import get_batchnorm
 model_urls = {
     'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
     'vgg13': 'https://download.pytorch.org/models/vgg13-c768596a.pth',
@@ -17,7 +18,7 @@ model_urls = {
 class NoneLayer(nn.Module):
     def __init__(self):
         super().__init__()
-        
+
     def forward(self,x):
         return x
 
@@ -53,13 +54,13 @@ class VGG(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
         return x
-    
+
     def load_state_dict(self,state_dict):
         model_dict = self.state_dict()
         # 1. filter out unnecessary keys
         pretrained_dict = {k: v for k, v in state_dict.items() if k in model_dict}
         # 2. overwrite entries in the existing state dict
-        model_dict.update(pretrained_dict) 
+        model_dict.update(pretrained_dict)
         # 3. load the new state dict
         super().load_state_dict(model_dict)
 
@@ -79,6 +80,8 @@ class VGG(nn.Module):
 
 def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1,use_none_layer=None,in_channels=3):
     layers = []
+
+    BatchNorm=get_batchnorm()
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
@@ -88,8 +91,8 @@ def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1,use
                     use_none_layer = str2bool(os.environ['use_none_layer'])
                 else:
                     warnings.warn('use default value for use_none_layer')
-                    use_none_layer = True
-            
+                    use_none_layer = False
+
             if use_none_layer:
                 layers += [NoneLayer()]
             else:
@@ -98,12 +101,12 @@ def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1,use
             if group_norm:
                 assert not batch_norm,'group norm will overwrite batch_norm'
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=False)
-                layers += [conv2d, 
-                           nn.GroupNorm(num_groups=32,num_channels=v,eps=eps), 
+                layers += [conv2d,
+                           nn.GroupNorm(num_groups=32,num_channels=v,eps=eps),
                            nn.ReLU(inplace=True)]
             elif batch_norm:
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=False)
-                layers += [conv2d, nn.BatchNorm2d(v,eps=eps,momentum=momentum), nn.ReLU(inplace=True)]
+                layers += [conv2d, BatchNorm(v,eps=eps,momentum=momentum), nn.ReLU(inplace=True)]
             else:
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=True)
                 layers += [conv2d, nn.ReLU(inplace=True)]
@@ -117,7 +120,7 @@ def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1,use
 #    'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
 #    'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 #}
-    
+
 cfg = {
     'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512,'N', 512, 512, 'N'],
     'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'N', 512, 512, 'N'],
@@ -129,7 +132,7 @@ cfg = {
 def vgg(cfg_key,url_key,pretrained=True,group_norm=False,eps=1e-5,momentum=0.1,in_channels=3,**kwargs):
     if pretrained and in_channels==3:
         kwargs['init_weights'] = False
-        
+
     if group_norm is False and cfg_key.find('_bn')>=0:
         batch_norm=True
     else:

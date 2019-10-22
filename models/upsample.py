@@ -18,18 +18,9 @@ class local_bn(TN.Module):
         else:
             self.use_sync_bn=False
 
-        if 'torchseg_use_apex' in os.environ.keys():
-            self.use_apex=str2bool(os.environ['torchseg_use_apex'])
-        else:
-            self.use_apex=False
-
         if self.use_sync_bn:
-            if self.use_apex:
-                import apex
-                BatchNorm=apex.parallel.SyncBatchNorm
-            else:
-                from utils.sync_bn.modules import BatchNorm2d
-                BatchNorm=BatchNorm2d
+            from utils.sync_bn.modules import BatchNorm2d
+            BatchNorm=BatchNorm2d
         else:
             BatchNorm=TN.BatchNorm2d
 

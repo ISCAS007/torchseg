@@ -124,7 +124,6 @@ def get_default_config():
     config.use_semseg=False
     config.use_imgaug=True
     config.use_sync_bn=False
-    config.use_apex=False
     config.num_workers=0
     return config
 
@@ -698,12 +697,6 @@ def get_parser():
     # use_sync_bn 2019/10/22
     parser.add_argument('--use_sync_bn',
                         help='use sync bn or not (False)',
-                        type=str2bool,
-                        default=False)
-
-    # use_apex current has bug 2019/10/22
-    parser.add_argument('--use_apex',
-                        help='use apex to fast trainning? (False) current has bug',
                         type=str2bool,
                         default=False)
 

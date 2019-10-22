@@ -151,7 +151,10 @@ class backbone(TN.Module):
         if self.use_none_layer:
             print('use none layer'+'*'*30)
             from models.psp_resnet import resnet50,resnet101
-            from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
+            from models.psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
+                                        vgg11,vgg11_bn,vgg13,vgg13_bn,
+                                        vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
+
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
@@ -161,10 +164,11 @@ class backbone(TN.Module):
             else:
                 return locals()[self.config.backbone_name](momentum=self.momentum)
         else:
-#            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
-            from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn
             from pretrainedmodels import se_resnet50
-            from models.psp_vgg import vgg16_gn,vgg19_gn,vgg21,vgg21_bn
+            from models.psp_resnet import resnet50,resnet101
+            from models.psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
+                                        vgg11,vgg11_bn,vgg13,vgg13_bn,
+                                        vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
 
             if self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained)
