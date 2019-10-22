@@ -105,7 +105,7 @@ def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1,use
                            nn.GroupNorm(num_groups=32,num_channels=v,eps=eps),
                            nn.ReLU(inplace=True)]
             elif batch_norm:
-                conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=False)
+                conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=True)
                 layers += [conv2d, BatchNorm(v,eps=eps,momentum=momentum), nn.ReLU(inplace=True)]
             else:
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=True)
@@ -133,7 +133,7 @@ def vgg(cfg_key,url_key,pretrained=True,group_norm=False,eps=1e-5,momentum=0.1,i
     if pretrained and in_channels==3:
         kwargs['init_weights'] = False
 
-    if group_norm is False and cfg_key.find('_bn')>=0:
+    if group_norm is False and url_key.find('_bn')>=0:
         batch_norm=True
     else:
         batch_norm=False
