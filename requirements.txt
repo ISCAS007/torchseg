@@ -10,7 +10,7 @@ opencv_python==3.4.1.15
 pandas==0.23.0
 numpy==1.15.1
 psutil==5.4.5
-Pillow==5.4.1
+Pillow==6.2.0
 protobuf==3.7.1
 tensorboardX==1.6
 torchvision==0.2.2.post3
