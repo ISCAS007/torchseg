@@ -17,7 +17,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
 from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
 from tqdm import tqdm, trange
 import glob
-import apex
+# import apex
 
 def get_loader(config):
     if config.norm_ways is None:
