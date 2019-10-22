@@ -42,7 +42,7 @@ def get_loader(config):
         batch_size=batch_size,
         shuffle=True,
         drop_last=True,
-        num_workers=4)
+        num_workers=config.num_workers)
 
     val_dataset = dataset_generalize(config,
                                      split='val',
@@ -53,7 +53,7 @@ def get_loader(config):
         batch_size=batch_size,
         shuffle=True,
         drop_last=False,
-        num_workers=2)
+        num_workers=config.num_workers)
 
     return train_loader, val_loader
 
