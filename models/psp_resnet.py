@@ -10,7 +10,6 @@ import torch.utils.model_zoo as model_zoo
 import os
 from utils.disc_tools import str2bool
 import warnings
-from models.custom_layers import get_batchnorm
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -26,19 +25,18 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None, momentum=0.1, dilation=1):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        BatchNorm2d=get_batchnorm()
 
-        self.bn1 = BatchNorm2d(planes, momentum=momentum)
+        self.bn1 = nn.BatchNorm2d(planes, momentum=momentum)
         if dilation == 1:
             self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                    padding=1, bias=False)
         else:
             self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1,
                                    padding=dilation, dilation=dilation, bias=False)
-        self.bn2 = BatchNorm2d(planes, momentum=momentum)
+        self.bn2 = nn.BatchNorm2d(planes, momentum=momentum)
         self.conv3 = nn.Conv2d(
             planes, planes * self.expansion, kernel_size=1, bias=False)
-        self.bn3 = BatchNorm2d(planes * self.expansion, momentum=momentum)
+        self.bn3 = nn.BatchNorm2d(planes * self.expansion, momentum=momentum)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -75,7 +73,6 @@ class ResNet(nn.Module):
         self.use_none_layer=use_none_layer
         super(ResNet, self).__init__()
 
-        BatchNorm2d=get_batchnorm()
         # for pspnet, the layer1_in_channels=128
         # but from checkpoint, the layer1_in_channels=64, make layer1 unchanged!!!
         self.layer1_in_channels=64
@@ -108,7 +105,7 @@ class ResNet(nn.Module):
                                                          padding=1))
         else:
             self.conv1=nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3,bias=False)
-            self.bn1=BatchNorm2d(64, momentum=momentum)
+            self.bn1=nn.BatchNorm2d(64, momentum=momentum)
             self.relu=nn.ReLU(inplace=True)
             self.maxpool=nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
             self.prefix_net = nn.Sequential(self.conv1,
@@ -129,7 +126,7 @@ class ResNet(nn.Module):
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(
                     m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, BatchNorm2d):
+            elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
@@ -157,14 +154,13 @@ class ResNet(nn.Module):
         super().load_state_dict(model_dict)
 
     def conv_bn_relu(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False):
-        BatchNorm2d=get_batchnorm()
         seq = nn.Sequential(nn.Conv2d(in_channels=in_channels,
                                       out_channels=out_channels,
                                       kernel_size=kernel_size,
                                       stride=stride,
                                       padding=padding,
                                       bias=bias),
-                            BatchNorm2d(num_features=out_channels,
+                            nn.BatchNorm2d(num_features=out_channels,
                                            momentum=self.momentum),
                             nn.ReLU(inplace=True))
 
@@ -190,8 +186,6 @@ class ResNet(nn.Module):
             in_channels = self.inplanes
 
         downsample = None
-
-        BatchNorm2d=get_batchnorm()
         if stride != 1 or self.inplanes != planes * block.expansion:
             if dilation != 1 and self.use_none_layer:
                 downsample_stride = 1
@@ -201,7 +195,7 @@ class ResNet(nn.Module):
             downsample = nn.Sequential(
                 nn.Conv2d(in_channels, planes * block.expansion,
                           kernel_size=1, stride=downsample_stride, bias=False),
-                BatchNorm2d(planes * block.expansion, momentum=momentum),
+                nn.BatchNorm2d(planes * block.expansion, momentum=momentum),
             )
 
         layers = []

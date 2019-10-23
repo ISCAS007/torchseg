@@ -136,6 +136,7 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
         model.train()
     else:
         model.eval()
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     losses_dict = {}
@@ -168,6 +169,11 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                             'edge': edges, 'img': images}
         else:
             assert False, 'unexcepted loader output size %d' % len(datas)
+
+        if config.test=='dist':
+            images=images.cuda(config.gpu,non_blocking=True)
+            for key,value in targets_dict.items():
+                targets_dict[key]=value.cuda(config.gpu,non_blocking=True)
 
         outputs = model.forward(images)
 

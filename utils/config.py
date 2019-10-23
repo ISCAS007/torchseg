@@ -26,7 +26,8 @@ from models.motionnet import motionnet,motion_panet
 from models.unet import UNet,PSPUNet,AuxNet
 
 def get_net(config):
-    return globals()[config.net_name](config)
+    model = globals()[config.net_name](config)
+    return model
 
 def get_default_config():
     config=edict()
@@ -125,6 +126,13 @@ def get_default_config():
     config.use_imgaug=True
     config.use_sync_bn=False
     config.num_workers=0
+    config.n_node=-1
+    config.gpu=None
+    config.seed=42
+    config.rank=-1
+    config.dist_backend='nccl'
+    config.dist_url='tcp://127.0.0.1:9876'
+    config.mp_dist=False
     return config
 
 def get_config(args=None):
@@ -147,8 +155,6 @@ def get_config(args=None):
             print('{} : unknown keys {}'.format(key,args.__dict__[key]))
             config[key]=args.__dict__[key]
 
-    if config.upsample_layer > 3:
-        config.use_none_layer = args.use_none_layer = True
     os.environ['use_none_layer'] = str(config.use_none_layer)
 
     # use_bn,use_dropout will change the variable in local_bn,local_dropout
@@ -158,10 +164,6 @@ def get_config(args=None):
     os.environ['torchseg_use_bias']=str(args.use_bias)
     # when use resnet and use_none_layer=True
     os.environ['modify_resnet_head']=str(args.modify_resnet_head)
-    os.environ['torchseg_use_sync_bn']=str(config.use_sync_bn)
-
-    config.layer_preference = 'first'
-    config.with_edge=False
 
     if args.input_shape == 0:
         if args.net_name == 'motionnet':
@@ -194,6 +196,7 @@ def get_config(args=None):
     print('compute input shape is',input_shape,'*'*30)
 
     config.input_shape = input_shape
+    #TODO midnet_out_channels is not used by stoa model
     config.midnet_out_channels = 512
     config = get_dataset_generalize_config(
         config, args.dataset_name)
@@ -201,14 +204,18 @@ def get_config(args=None):
         config.class_number = len(config.foreground_class_ids)+1
     else:
         config.class_number = len(config.foreground_class_ids)
+
+    #TODO resize_shape can be replaced be input_shape currently
     config.resize_shape = input_shape
     config.dataset_name = args.dataset_name.lower()
 
     if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
         config.with_edge = True
+    else:
+        config.with_edge = False
 
     config=get_default_augmentor_config(config)
-    config.use_rotate=config.use_rotate
+    config.use_rotate=args.use_rotate
 
     # image size != network input size != crop size
     if config.keep_crop_ratio is False:

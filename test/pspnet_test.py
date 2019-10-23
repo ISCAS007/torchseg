@@ -87,6 +87,8 @@ if __name__ == '__main__':
         net = get_net(config)
         best_val_iou=keras_fit(net,train_loader,val_loader)
         print('best val iou is %0.3f'%best_val_iou)
+    elif test == 'dist':
+        dist_train(config)
     elif test == 'edge':
         config.with_edge = True
         net = psp_edge(config)

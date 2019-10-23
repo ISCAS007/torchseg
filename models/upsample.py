@@ -12,19 +12,8 @@ import warnings
 class local_bn(TN.Module):
     def __init__(self, num_features, eps=1e-5, momentum=0.1):
         super().__init__()
-        if 'torchseg_use_sync_bn' in os.environ.keys():
-            warnings.warn('use sync bn')
-            self.use_sync_bn=str2bool(os.environ['torchseg_use_sync_bn'])
-        else:
-            self.use_sync_bn=False
 
-        if self.use_sync_bn:
-            from utils.sync_bn.modules import BatchNorm2d
-            BatchNorm=BatchNorm2d
-        else:
-            BatchNorm=TN.BatchNorm2d
-
-        self.bn = BatchNorm(num_features=num_features,
+        self.bn = TN.BatchNorm(num_features=num_features,
                                  eps=eps,
                                  momentum=momentum)
 
