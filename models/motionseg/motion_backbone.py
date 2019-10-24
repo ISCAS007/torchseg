@@ -10,7 +10,6 @@ from easydict import EasyDict as edict
 import warnings
 from models.upsample import local_upsample
 from models.Anet.layers import Anet
-from models.custom_layers import get_batchnorm
 class conv_bn_relu(TN.Module):
     def __init__(self,
                  in_channels,

@@ -125,11 +125,11 @@ def get_default_config():
     config.use_semseg=False
     config.use_imgaug=True
     config.use_sync_bn=False
-    config.num_workers=0
-    config.n_node=-1
+    config.num_workers=8
+    config.n_node=1
     config.gpu=None
     config.seed=42
-    config.rank=-1
+    config.rank=0
     config.dist_backend='nccl'
     config.dist_url='tcp://127.0.0.1:9876'
     config.mp_dist=False
@@ -258,7 +258,8 @@ def load_config(config_file):
 def get_parser():
     choices = ['edge', 'global', 'dict', 'fractal',
                'summary', 'naive', 'coarse',
-               'convert','hyperopt','benchmark', 'cycle_lr']
+               'convert','hyperopt','benchmark', 'cycle_lr',
+               'dist']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -709,9 +710,15 @@ def get_parser():
 
     # 2019/10/22
     parser.add_argument('--num_workers',
-                        help='the number of data loader workers (0)',
+                        help='the number of data loader workers (8)',
                         type=int,
-                        default=0)
+                        default=8)
+
+    # 2019/10/24
+    parser.add_argument('--mp_dist',
+                        help='use multiprocess distribute trainning or not (False)',
+                        type=str2bool,
+                        default=False)
     return parser
 
 def get_hyperparams(key,discrete=False):

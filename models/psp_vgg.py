@@ -3,7 +3,6 @@ import torch.utils.model_zoo as model_zoo
 from utils.disc_tools import str2bool
 import os
 import warnings
-from models.custom_layers import get_batchnorm
 model_urls = {
     'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
     'vgg13': 'https://download.pytorch.org/models/vgg13-c768596a.pth',

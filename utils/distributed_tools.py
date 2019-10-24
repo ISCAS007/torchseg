@@ -29,12 +29,12 @@ def get_dist_module(config):
             model.cuda(config.gpu)
             if config.use_sync_bn:
                 model=torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model=DDP(model,device_ids=[config.gpu])
+            model=DDP(model,device_ids=[config.gpu],find_unused_parameters=True)
         else:
             model.cuda()
             if config.use_sync_bn:
                 model=torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model=DDP(model)
+            model=DDP(model,find_unused_parameters=True)
     elif config.gpu is not None:
         torch.cuda.set_device(config.gpu)
         model=model.cuda(config.gpu)
@@ -108,15 +108,15 @@ def main_worker(gpu,ngpus_per_node,config):
     train_loader=torch.utils.data.DataLoader(train_dataset,
                                              batch_size=batch_size,
                                              shuffle=(train_sampler is None),
-                                             num_worker=num_workers,
-                                             pip_memory=True,
+                                             num_workers=num_workers,
+                                             pin_memory=True,
                                              sampler=train_sampler)
 
     val_loader=torch.utils.data.DataLoader(val_dataset,
                                            batch_size=batch_size,
                                            shuffle=False,
                                            num_workers=num_workers,
-                                           pip_memory=True)
+                                           pin_memory=True)
 
     scheduler = get_scheduler(optimizer, config)
 
