@@ -3,6 +3,16 @@
 use pytorch to do image semantic segmentation
 - train+val pspnet ```python test/pspnet_test.py --batch_size=8 --net_name=pspnet --augmentation=False --learning_rate=0.01 --optimizer=sgd --backbone_name=resnet101 --midnet_scale=10 --upsample_type=bilinear --backbone_pretrained=True```
 
+### current version use pytorch1.1+ (for DDP and sync batchnorm support)
+- DDP trainning
+```
+python test/pspnet_test.py --test dist --mp_dist True --note dist --batch_size 4
+```
+- support sync batchnorm
+```
+python test/pspnet_test.py --test dist --mp_dist True --note dist --batch_size 4 --use_sync_bn True
+```
+
 # experiments
 | net_name    | backbone  | midnet | suffix   | dataset    | note | miou(t/v) |
 | --------    | --------- | ------ | -------- | ---------- | ---- | --------- |
@@ -31,12 +41,13 @@ use pytorch to do image semantic segmentation
 - for detail version see [requirements.txt](requirements.txt)
 - test on python3
 ```
-conda install pytorch=0.4 torchvision -c pytorch
+conda install pytorch=1.1 torchvision cudatoolkit=9.2 -c pytorch
 pip install opencv-python
 pip install tensorboardX
 pip install easydict
 pip install imgaug
 pip install pandas
+pip install torchsummary
 ...
 ```
 
@@ -57,43 +68,8 @@ the miou is 0.8+
 # blog reference
 - [paper and dataset for semantic segmentation introduction](https://meetshah1995.github.io/semantic-segmentation/deep-learning/pytorch/visdom/2017/06/01/semantic-segmentation-over-the-years.html#sec_datasets)
 
-# todo
-- [x] [pspnet](models/pspnet.py)
-    - [x] [train on corse dataset and then finetune + optimizer config(not adam)](https://github.com/ZijunDeng/pytorch-semantic-segmentation/issues/6)
-    - [x] [slice/slide + flipped prediction/evaluation](https://github.com/Vladkryvoruchko/PSPNet-Keras-tensorflow/issues/12)
-    - [x] official pspnet layer setting
-        - https://raw.githubusercontent.com/hszhao/PSPNet/master/evaluation/prototxt/pspnet101_cityscapes_713.prototxt
-        - [resnet-101](https://dgschwend.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85) [ethereon](https://ethereon.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85)
-        - [resnet-101-deploy](https://dgschwend.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150) [ethereon](https://ethereon.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150)
-        - [pspnet101 cityscapes 713](https://dgschwend.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79) [ethereon](https://ethereon.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79)
-- [x] [convolution pose machine](https://github.com/CMU-Perceptual-Computing-Lab/convolutional-pose-machines-release/tree/master/model)
-    - [x] [FLIC](https://ethereon.github.io/netscope/#/gist/c37f3ec677831ca706115fb7238b52a9)
-    - [x] [LEEDS_PC]
-    - [x] [MPI]
-- [x] pspnet + edge
-    - [x] multi input, output, loss, log
-    - [x] edge before pspnet or after pspnet
-        - [x] psp_edge
-        - [x] psp_hed [pytorch-hed](https://github.com/buntyke/pytorch-hed/blob/master/model.py) [caffe-hed](https://ethereon.github.io/netscope/#/gist/cc277790d05d8d87d131d222a6b7f613)
-    - [x] Series connection or Parallel connection
-    - [x] change edge width with epoch
-- [x] pspnet + global
-    - very different from keras version, from single dilation to multi dilation
-- [x] pspnet + dict learning
-    - dict net after upsample net (conv feature can be upsampled with duc, but dict feature may not fit for upsample)
-- [ ] pspnet + fractal filters (random number of filters)
-    - [x] max/mean feature
-    - [ ] int parameter a learning for route (choice=int(a), a is the index for right class, for different class, we have different index)
-    - [x] before upsample, otherwise will out of memory.
-- [ ] multi outputs metrics support like keras
-- [x] [benchmark](test/benchmark_test.py)
-    - [x] dataset loader with path
-    - [x] upsample predict results
-    - [ ] ~~crop + merge predict results~~
-    - [x] train id --> label id
-    
 # benchmark
-    
+
 ## cityscapes
 - use code from https://github.com/mcordts/cityscapesScripts (only support for python2)
 - change to python2 environment `source activate env2`

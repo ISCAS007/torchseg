@@ -80,7 +80,6 @@ class VGG(nn.Module):
 def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1,use_none_layer=None,in_channels=3):
     layers = []
 
-    BatchNorm=get_batchnorm()
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
@@ -105,7 +104,7 @@ def make_layers(cfg, batch_norm=False,group_norm=False,eps=1e-5,momentum=0.1,use
                            nn.ReLU(inplace=True)]
             elif batch_norm:
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=True)
-                layers += [conv2d, BatchNorm(v,eps=eps,momentum=momentum), nn.ReLU(inplace=True)]
+                layers += [conv2d, nn.BatchNorm2d(v,eps=eps,momentum=momentum), nn.ReLU(inplace=True)]
             else:
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1,bias=True)
                 layers += [conv2d, nn.ReLU(inplace=True)]

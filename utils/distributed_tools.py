@@ -146,6 +146,8 @@ def main_worker(gpu,ngpus_per_node,config):
 
     tqdm_epoch = trange(config.n_epoch, desc='{} epoches'.format(config.note), leave=True)
     for epoch in tqdm_epoch:
+        if train_sampler is not None:
+            train_sampler.set_epoch(epoch)
         tqdm_epoch.set_postfix(best_iou=best_iou)
         for loader, loader_name in zip(loaders, loader_names):
             if loader is None:
