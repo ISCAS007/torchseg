@@ -158,11 +158,14 @@ class backbone(TN.Module):
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
-                return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum)
+                return locals()[self.config.backbone_name](pretrained=pretrained,
+                             eps=self.eps,
+                             momentum=self.momentum,
+                             use_none_layer=self.use_none_layer)
             elif self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained)
             else:
-                return locals()[self.config.backbone_name](momentum=self.momentum)
+                return locals()[self.config.backbone_name](momentum=self.momentum,use_none_layer=self.use_none_layer)
         else:
             from pretrainedmodels import se_resnet50
             from models.psp_resnet import resnet50,resnet101
@@ -179,7 +182,7 @@ class backbone(TN.Module):
                     return locals()[self.config.backbone_name](pretrained=None)
             else:
                 assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
-                return locals()[self.config.backbone_name](pretrained=pretrained)
+                return locals()[self.config.backbone_name](pretrained=pretrained,use_none_layer=self.use_none_layer)
 
     def get_layers(self):
         if self.use_none_layer == False:
