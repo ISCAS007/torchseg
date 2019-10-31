@@ -127,7 +127,7 @@ cfg = {
     'F': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'N', 512, 512, 512, 512, 'N', 512, 512],
 }
 
-def vgg(cfg_key,url_key,pretrained=True,group_norm=False,eps=1e-5,momentum=0.1,in_channels=3,**kwargs):
+def vgg(cfg_key,url_key,pretrained=True,group_norm=False,eps=1e-5,momentum=0.1,in_channels=3,use_none_layer=False,**kwargs):
     if pretrained and in_channels==3:
         kwargs['init_weights'] = False
 
@@ -135,9 +135,13 @@ def vgg(cfg_key,url_key,pretrained=True,group_norm=False,eps=1e-5,momentum=0.1,i
         batch_norm=True
     else:
         batch_norm=False
-    model = VGG(make_layers(cfg[cfg_key],batch_norm=batch_norm,
-                            group_norm=group_norm,eps=eps,
-                            momentum=momentum,in_channels=in_channels), **kwargs)
+    model = VGG(make_layers(cfg[cfg_key],
+                            batch_norm=batch_norm,
+                            group_norm=group_norm,
+                            eps=eps,
+                            momentum=momentum,
+                            in_channels=in_channels,
+                            use_none_layer=use_none_layer), **kwargs)
     if pretrained and in_channels==3:
         model.load_state_dict(model_zoo.load_url(model_urls[url_key]))
     elif pretrained:
