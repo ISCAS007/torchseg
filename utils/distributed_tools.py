@@ -11,7 +11,7 @@ from dataset.dataset_generalize import dataset_generalize, image_normalizations
 from torch.nn.parallel import DistributedDataParallel as DDP
 from utils.torch_tools import (get_optimizer,get_scheduler,get_loss_fn_dict,
                          train_val,get_metric,get_image_dict,
-                         get_lr_dict,init_writer,write_summary)
+                         get_lr_dict,init_writer,write_summary,is_main_process)
 from utils.metrics import runningScore
 import random
 import time
@@ -144,11 +144,16 @@ def main_worker(gpu,ngpus_per_node,config):
     # 1<= summary_metric_step <=10
     summary_metric_step=max(min(10*config.accumulate,config.n_epoch//10),1)
 
-    tqdm_epoch = trange(config.n_epoch, desc='{} epoches'.format(config.note), leave=True)
+    config.ngpus_per_node=ngpus_per_node
+    if is_main_process(config):
+        tqdm_epoch = trange(config.n_epoch, desc='{} epoches'.format(config.note), leave=True)
+    else:
+        tqdm_epoch = range(config.n_epoch)
     for epoch in tqdm_epoch:
         if train_sampler is not None:
             train_sampler.set_epoch(epoch)
-        tqdm_epoch.set_postfix(best_iou=best_iou)
+        if is_main_process(config):
+            tqdm_epoch.set_postfix(best_iou=best_iou)
         for loader, loader_name in zip(loaders, loader_names):
             if loader is None:
                 continue

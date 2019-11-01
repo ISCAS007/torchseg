@@ -126,6 +126,9 @@ def freeze_layer(layer):
         param.requires_grad = False
 
 
+def is_main_process(config):
+    return not config.mp_dist or (config.mp_dist and config.rank % config.ngpus_per_node == 0)
+
 def train_val(model, optimizer, scheduler, loss_fn_dict,
               metric_fn_dict, running_metrics,
               loader, config, epoch, summary_all, loader_name,
@@ -146,7 +149,11 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
 
     assert config.accumulate>=1
     total_loss=0
-    tqdm_step = tqdm(loader, desc='steps', leave=False)
+    if is_main_process(config):
+        tqdm_step = tqdm(loader, desc='steps', leave=False)
+    else:
+        tqdm_step = loader
+
     for i, (datas) in enumerate(tqdm_step):
         if loader_name == 'train' and scheduler is None:
             # work only for sgd and no other scheduler
