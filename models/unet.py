@@ -116,8 +116,9 @@ class AuxNet(nn.Module):
 
         self.base=PSPUNet(config)
         # note the input shape is the origin image size, so the channel cannot be two large.
-        self.refine=nn.Sequential(conv_nxn(self.class_number,self.class_number*2,5,self.use_bn),
-                               conv_nxn(self.class_number*2,self.class_number,1,self.use_bn))
+        self.refine=nn.Sequential(conv_nxn(self.class_number,self.class_number*4,3,self.use_bn,groups=self.class_number,dilation=3),
+                                  conv_nxn(self.class_number*4,self.class_number*4,3,self.use_bn,groups=self.class_number),
+                               conv_nxn(self.class_number*2,self.class_number,1,self.use_bn,groups=self.class_number))
 
     def forward(self,x):
         x=self.base(x)
