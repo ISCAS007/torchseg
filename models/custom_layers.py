@@ -350,6 +350,8 @@ class PSPLayer(nn.Module):
         self.use_bn=use_bn
         self.additional_upsample=additional_upsample
         b, in_channels, height, width = input_shape
+        assert width>=height,'current support only width >= height'
+        h_w_ratio=width//height
 
         path_out_c_list = []
         N = len(pool_sizes)
@@ -377,11 +379,13 @@ class PSPLayer(nn.Module):
         # scale=5 pool_sizes=[6,3,2,1] deconv_layer=3
         # input_shape 480 --> feature 60(deconv_layer=3) --> psp --> [6,3,2,1] -->60
         if not self.additional_upsample:
-            assert height==width==self.min_input_size,"height={},min input size={}".format(height,self.min_input_size)
+            assert height%self.min_input_size==0 and width%self.min_input_size==0,"height={},min input size={}".format(height,self.min_input_size)
+
 
         if self.additional_upsample:
+
             self.conv_before_psp=nn.Sequential(conv_1x1(in_channels,in_channels,self.use_bn),
-                                               UpsampleLayer(size=(self.min_input_size,self.min_input_size),mode='bilinear',align_corners=True))
+                                               UpsampleLayer(size=(self.min_input_size,h_w_ratio*self.min_input_size),mode='bilinear',align_corners=True))
 
 
         for pool_size, out_c in zip(pool_sizes, path_out_c_list):
@@ -390,7 +394,7 @@ class PSPLayer(nn.Module):
                                                    padding=0),
                                       conv_1x1(in_channels,out_c,self.use_bn),
                                       conv_1x1(out_c,out_c,self.use_bn),
-                                      UpsampleLayer(size=(self.min_input_size, self.min_input_size), mode='nearest'))
+                                      UpsampleLayer(size=(self.min_input_size, h_w_ratio*self.min_input_size), mode='nearest'))
             pool_paths.append(pool_path)
 
         self.pool_paths = nn.ModuleList(pool_paths)

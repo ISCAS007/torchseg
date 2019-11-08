@@ -31,108 +31,105 @@ def get_net(config):
 
 def get_default_config():
     config=edict()
-    config.class_number=20
 
-    config.layer_preference='last'
-    config.input_shape=(224,224)
     config.accumulate=1
-
-    config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
-    config.cityscapes_split=random.choice(['test','val','train'])
-    config.resize_shape=(224,224)
-
-    config.batch_size=4
-    config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
-    config.note='default'
-    config.test='naive'
-    config.learning_rate=1e-4
-    config.optimizer='adam'
-    config.scheduler=None
-    config.lr_weight_decay=1e-4
-    config.lr_momentum=0.9
-    config.use_bn=True
-    config.use_bias=True
-    config.use_dropout=False
-    config.use_lr_mult=False
-    config.center_loss=None
-    config.center_loss_weight=1.0
-    config.use_class_weight=False
-    config.class_weight_alpha=0.0
-    config.focal_loss_gamma=1.0
-    config.focal_loss_alpha=1.0
-    config.focal_loss_grad=True
-    config.pre_lr_mult=1.0
-    config.changed_lr_mult=1.0
-    config.new_lr_mult=1.0
-    config.use_reg=False
-    config.l1_reg=1e-7
-    config.l2_reg=1e-5
-    config.dataset_name='Cityscapes'
-    config.dataset_use_part=0
+    config.additional_upsample=False
+    config.attention_type='n'
+    config.augmentations_blur=True
+    config.augmentation=True
+    config.aux_base_weight=1.0
+    config.auxnet_layer=4
+    config.auxnet_type='bilinear'
+    config.backbone_freeze=False
     config.backbone_name='vgg16'
     config.backbone_pretrained=True
-    config.backbone_freeze=False
-    config.freeze_layer=3
-    config.freeze_ratio=0.0
-    config.modify_resnet_head=False
-    config.net_name='pspnet'
-    config.midnet_scale=5
-    config.midnet_name='psp'
-    config.n_epoch=100
-    config.upsample_type='bilinear'
-    config.subclass_sigmoid=True
-    config.auxnet_type='bilinear'
-    config.upsample_layer=3
-    config.deconv_layer=5
-    config.auxnet_layer=4
-    config.edge_bg_weight=0.01
-    config.edge_base_weight=1.0
-    config.aux_base_weight=1.0
-    config.edge_power=0.9
-    config.edge_class_num=2
-    config.edge_width=10
-    config.edge_seg_order='same'
-    config.edge_with_gray=False
-    config.cross_merge_times=1
-    config.use_none_layer=False
-    config.momentum=0.1
-    config.input_shape=0
-    config.augmentation=True
-    config.augmentations_blur=True
-    config.use_rotate=True
-    config.keep_crop_ratio=True
-    config.min_crop_size=None
-    config.max_crop_size=None
-    config.crop_size_step=0
-    config.pad_for_crop=False
-    config.norm_ways='pytorch'
-    config.hyperopt='loop'
-    config.hyperkey='model.l2_reg'
-    config.hyperopt_calls=3
-    config.summary_image=False
-    config.note=None
-    config.save_model=False
-    config.iou_save_threshold=0.6
+    config.batch_size=4
+    config.center_loss=None
+    config.center_loss_weight=1.0
+    config.changed_lr_mult=1.0
     config.checkpoint_path=None
-    config.predict_save_path=None
-    config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
-    config.attention_type='n'
-    config.additional_upsample=False
-    config.midnet_pool_sizes = [6, 3, 2, 1]
-    config.res_attention=False
-    config.min_channel_number=128
-    config.max_channel_number=256
-    config.use_semseg=False
-    config.use_imgaug=True
-    config.use_sync_bn=False
-    config.num_workers=8
-    config.n_node=1
-    config.gpu=None
-    config.seed=42
-    config.rank=0
+    config.cityscapes_split=random.choice(['test','val','train'])
+    config.class_number=20
+    config.class_weight_alpha=0.0
+    config.crop_size_step=0
+    config.cross_merge_times=1
+    config.dataset_name='Cityscapes'
+    config.dataset_use_part=0
+    config.deconv_layer=5
     config.dist_backend='nccl'
     config.dist_url='tcp://127.0.0.1:9876'
+    config.edge_base_weight=1.0
+    config.edge_bg_weight=0.01
+    config.edge_class_num=2
+    config.edge_power=0.9
+    config.edge_seg_order='same'
+    config.edge_width=10
+    config.edge_with_gray=False
+    config.focal_loss_alpha=1.0
+    config.focal_loss_gamma=1.0
+    config.focal_loss_grad=True
+    config.freeze_layer=3
+    config.freeze_ratio=0.0
+    config.gpu=None
+    config.hyperkey='model.l2_reg'
+    config.hyperopt_calls=3
+    config.hyperopt='loop'
+    config.input_shape=(224,224)
+    config.iou_save_threshold=0.6
+    config.keep_crop_ratio=True
+    config.l1_reg=1e-7
+    config.l2_reg=1e-5
+    config.layer_preference='last'
+    config.learning_rate=1e-4
+    config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
+    config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
+    config.lr_momentum=0.9
+    config.lr_weight_decay=1e-4
+    config.max_channel_number=256
+    config.max_crop_size=None
+    config.midnet_name='psp'
+    config.midnet_pool_sizes = [6, 3, 2, 1]
+    config.midnet_scale=5
+    config.min_channel_number=128
+    config.min_crop_size=None
+    config.modify_resnet_head=False
+    config.momentum=0.1
     config.mp_dist=False
+    config.n_epoch=100
+    config.net_name='pspnet'
+    config.new_lr_mult=1.0
+    config.n_node=1
+    config.norm_ways='pytorch'
+    config.note='default'
+    config.note=None
+    config.num_workers=8
+    config.optimizer='adam'
+    config.pad_for_crop=False
+    config.predict_save_path=None
+    config.pre_lr_mult=1.0
+    config.rank=0
+    config.res_attention=False
+    config.resize_shape=(224,224)
+    config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+    config.save_model=False
+    config.scheduler=None
+    config.seed=42
+    config.subclass_sigmoid=True
+    config.summary_image=False
+    config.test='naive'
+    config.upsample_layer=3
+    config.upsample_type='bilinear'
+    config.use_bias=True
+    config.use_bn=True
+    config.use_class_weight=False
+    config.use_dropout=False
+    config.use_imgaug=True
+    config.use_lr_mult=False
+    config.use_none_layer=False
+    config.use_reg=False
+    config.use_rotate=True
+    config.use_semseg=False
+    config.use_sync_bn=False
     return config
 
 def get_config(args=None):
@@ -165,7 +162,7 @@ def get_config(args=None):
     # when use resnet and use_none_layer=True
     os.environ['modify_resnet_head']=str(args.modify_resnet_head)
 
-    if args.input_shape == 0:
+    if args.input_shape is None:
         if args.net_name == 'motionnet':
             upsample_ratio=3
             count_size = lcm_list(config.midnet_pool_sizes) * \
@@ -191,9 +188,14 @@ def get_config(args=None):
         else:
             input_shape = (72*8, 72*8)
     else:
-        input_shape = (args.input_shape, args.input_shape)
+        if len(args.input_shape) == 2:
+            input_shape = args.input_shape
+        elif len(args.input_shape) == 1:
+            input_shape=[args.input_shape[0],args.input_shape[0]]
+        else:
+            assert False,'input shape should be x or (x,x)'
 
-    print('compute input shape is',input_shape,'*'*30)
+    print('input shape is',input_shape,'*'*30)
 
     config.input_shape = input_shape
     #TODO midnet_out_channels is not used by stoa model
@@ -552,7 +554,8 @@ def get_parser():
     parser.add_argument('--input_shape',
                         help='input shape, can be auto computer by midnet_scale and upsample_layer + use_none_layer',
                         type=int,
-                        default=0)
+                        args='*',
+                        default=None)
 
     parser.add_argument('--augmentation',
                         help='true or false to do augmentation',
@@ -698,7 +701,7 @@ def get_parser():
 
     # use_semseg 2019/10/14
     parser.add_argument('--use_semseg',
-                        help='use img aug or tt aug (True)',
+                        help='use img aug or tt aug (False)',
                         type=str2bool,
                         default=False)
 

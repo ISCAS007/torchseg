@@ -145,7 +145,7 @@ def get_parser():
 
     parser.add_argument('--app',
                         help='application name',
-                        choices=['train','summary','dataset','viz'],
+                        choices=['train','summary','dataset','viz','dist'],
                         default='train')
 
     parser.add_argument("--net_name",

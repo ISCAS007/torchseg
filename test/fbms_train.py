@@ -15,6 +15,101 @@ import time
 import torchsummary
 import sys
 from tqdm import trange,tqdm
+from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.distributed as dist
+import torch.multiprocessing as mp
+import random
+import torch.backends.cudnn as cudnn
+
+def get_dist_module(config):
+    if config['net_name'] in ['motion_stn','motion_net']:
+        model=globals()[config['net_name']]()
+    else:
+        model=get_model(config)
+
+    # support for cpu/gpu
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    if config.use_sync_bn:
+        torch.cuda.set_device(config.gpu)
+        model.cuda(config.gpu)
+        model=torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        model=DDP(model,find_unused_parameters=True)
+    else:
+        model.to(device)
+
+    if config.loss_name in ['iou','dice']:
+        # iou loss not support ignore_index
+        assert config.dataset not in ['cdnet2014','all','all2','all3']
+        assert config.ignore_pad_area==0
+        if config.loss_name=='iou':
+            seg_loss_fn=jaccard_loss
+        else:
+            seg_loss_fn=dice_loss
+    else:
+        seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
+
+    if config.use_sync_bn:
+        seg_loss_fn=seg_loss_fn.cuda(config.gpu)
+
+    optimizer_params = [{'params': [p for p in model.parameters() if p.requires_grad]}]
+
+    if config.optimizer=='adam':
+        optimizer = torch.optim.Adam(
+                    optimizer_params, lr=config['init_lr'], amsgrad=False)
+    else:
+        assert config.init_lr>1e-3
+        optimizer = torch.optim.SGD(
+                    optimizer_params, lr=config['init_lr'], momentum=0.9, weight_decay=1e-4)
+
+    dataset_loaders={}
+    for split in ['train','val']:
+        xxx_dataset=get_dataset(config,split)
+
+        if config.use_sync_bn and split=='train':
+            xxx_sampler=torch.utils.data.DistributedSampler(xxx_dataset)
+        batch_size=args.batch_size if split=='train' else 1
+
+        if split=='train':
+            xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=(xxx_sampler is None),drop_last=False,num_workers=2,sampler=xxx_sampler,pin_memory=True)
+        else:
+            xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=False,num_workers=2,pin_memory=True)
+        dataset_loaders[split]=xxx_loader
+
+    return model,seg_loss_fn,optimizer,dataset_loaders
+
+def main_worker(gpu,ngpus_per_node,config):
+    config.gpu=gpu
+
+    if config.use_sync_bn:
+        if config.dist_url=='env://' and config.rank==-1:
+            config.rank=int(os.environ['RANK'])
+
+        if config.mp_dist:
+            config.rank=config.rank*ngpus_per_node+gpu
+
+        dist.init_process_group(backend=config.dist_backend,
+                                init_method=config.dist_url,
+                                world_size=config.world_size,
+                                rank=config.rank)
+
+    model,loss_fn_dict,optimizer,dataset_loaders=get_dist_module(config)
+
+    train(config,model,loss_fn_dict,optimizer,dataset_loaders)
+
+def dist_train(config):
+    if config.seed is None:
+        random.seed(config.seed)
+        torch.manual_seed(config.seed)
+        cudnn.deterministic=True
+
+    ngpus_per_node=torch.cuda.device_count()
+    if config.use_sync_bn:
+        config.world_size=ngpus_per_node*config.n_node
+        mp.spawn(main_worker,nprocs=ngpus_per_node,args=(ngpus_per_node,config))
+    else:
+        config.world_size=ngpus_per_node
+        main_worker(config.gpu,ngpus_per_node,config)
 
 if __name__ == '__main__':
     parser=get_parser()
@@ -53,15 +148,10 @@ if __name__ == '__main__':
                 xxx_dataset.__getitem__(idx)
         sys.exit(0)
 
-
-    if config['net_name'] in ['motion_stn','motion_net']:
-        model=globals()[config['net_name']]()
-    else:
-        model=get_model(config)
-
     # support for cpu/gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.to(device)
+
+    model,seg_loss_fn,optimizer,dataset_loaders=get_dist_module(config)
 
     if args.app=='summary':
         # not work for output with dict.
@@ -81,14 +171,6 @@ if __name__ == '__main__':
         make_dot(y,params=dict(list(model.named_parameters())))
         sys.exit(0)
 
-
-    dataset_loaders={}
-    for split in ['train','val']:
-        xxx_dataset=get_dataset(config,split)
-        batch_size=args.batch_size if split=='train' else 1
-        xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=True,drop_last=False,num_workers=2)
-        dataset_loaders[split]=xxx_loader
-
     # todo, not finished
     if args.app=='image':
         assert False
@@ -101,40 +183,27 @@ if __name__ == '__main__':
                     labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
                     outputs=model.forward(images)
 
-    time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
-    log_dir = os.path.join(config['log_dir'], config['net_name'],
-                           config['dataset'], config['note'], time_str)
-    checkpoint_path = os.path.join(log_dir, 'model-last-%d.pkl' % config['epoch'])
+def is_main_process(config):
+    return not config.use_sync_bn or (config.use_sync_bn and config.rank % config.ngpus_per_node == 0)
 
-    writer=init_writer(config,log_dir)
+def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
+    if is_main_process(config):
+        time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
+        log_dir = os.path.join(config['log_dir'], config['net_name'],
+                               config['dataset'], config['note'], time_str)
+        checkpoint_path = os.path.join(log_dir, 'model-last-%d.pkl' % config['epoch'])
 
-    if config.loss_name in ['iou','dice']:
-        # iou loss not support ignore_index
-        assert config.dataset not in ['cdnet2014','all','all2','all3']
-        assert config.ignore_pad_area==0
-        if config.loss_name=='iou':
-            seg_loss_fn=jaccard_loss
-        else:
-            seg_loss_fn=dice_loss
-    else:
-        seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
-
-    optimizer_params = [{'params': [p for p in model.parameters() if p.requires_grad]}]
-
-    if config.optimizer=='adam':
-        optimizer = torch.optim.Adam(
-                    optimizer_params, lr=config['init_lr'], amsgrad=False)
-    else:
-        assert config.init_lr>1e-3
-        optimizer = torch.optim.SGD(
-                    optimizer_params, lr=config['init_lr'], momentum=0.9, weight_decay=1e-4)
+        writer=init_writer(config,log_dir)
 
     metric_acc=Metric_Acc(config.exception_value)
     metric_stn_loss=Metric_Mean()
     metric_mask_loss=Metric_Mean()
     metric_total_loss=Metric_Mean()
 
-    tqdm_epoch = trange(config['epoch'], desc='{} epochs'.format(config.note), leave=True)
+    if is_main_process(config):
+        tqdm_epoch = trange(config['epoch'], desc='{} epochs'.format(config.note), leave=True)
+    else:
+        tqdm_epoch=range(config.epoch)
 
     step_acc=0
     for epoch in tqdm_epoch:
@@ -149,7 +218,11 @@ if __name__ == '__main__':
             metric_mask_loss.reset()
             metric_total_loss.reset()
 
-            tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
+            if is_main_process(config):
+                tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
+            else:
+                tqdm_step = dataset_loaders[split]
+
             N=len(dataset_loaders[split])
             for step,(frames,gt) in enumerate(tqdm_step):
                 images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
@@ -197,35 +270,38 @@ if __name__ == '__main__':
                         step_acc=0
                     else:
                         step_acc+=1
-            acc=metric_acc.get_acc()
-            precision=metric_acc.get_precision()
-            recall=metric_acc.get_recall()
-            fmeasure=metric_acc.get_fmeasure()
-            avg_p,avg_r,avg_f=metric_acc.get_avg_metric()
-            mean_stn_loss=metric_stn_loss.get_mean()
-            mean_mask_loss=metric_mask_loss.get_mean()
-            mean_total_loss=metric_total_loss.get_mean()
-            writer.add_scalar(split+'/acc',acc,epoch)
-            writer.add_scalar(split+'/precision',precision,epoch)
-            writer.add_scalar(split+'/recall',recall,epoch)
-            writer.add_scalar(split+'/fmeasure',fmeasure,epoch)
-            writer.add_scalar(split+'/avg_p',avg_p,epoch)
-            writer.add_scalar(split+'/avg_r',avg_r,epoch)
-            writer.add_scalar(split+'/avg_f',avg_f,epoch)
-            writer.add_scalar(split+'/stn_loss',mean_stn_loss,epoch)
-            writer.add_scalar(split+'/mask_loss',mean_mask_loss,epoch)
-            writer.add_scalar(split+'/total_loss',mean_total_loss,epoch)
 
-            if split=='train':
-                tqdm_epoch.set_postfix(train_fmeasure=fmeasure.item())
-            else:
-                tqdm_epoch.set_postfix(val_fmeasure=fmeasure.item())
+            if is_main_process(config):
+                acc=metric_acc.get_acc()
+                precision=metric_acc.get_precision()
+                recall=metric_acc.get_recall()
+                fmeasure=metric_acc.get_fmeasure()
+                avg_p,avg_r,avg_f=metric_acc.get_avg_metric()
+                mean_stn_loss=metric_stn_loss.get_mean()
+                mean_mask_loss=metric_mask_loss.get_mean()
+                mean_total_loss=metric_total_loss.get_mean()
+                writer.add_scalar(split+'/acc',acc,epoch)
+                writer.add_scalar(split+'/precision',precision,epoch)
+                writer.add_scalar(split+'/recall',recall,epoch)
+                writer.add_scalar(split+'/fmeasure',fmeasure,epoch)
+                writer.add_scalar(split+'/avg_p',avg_p,epoch)
+                writer.add_scalar(split+'/avg_r',avg_r,epoch)
+                writer.add_scalar(split+'/avg_f',avg_f,epoch)
+                writer.add_scalar(split+'/stn_loss',mean_stn_loss,epoch)
+                writer.add_scalar(split+'/mask_loss',mean_mask_loss,epoch)
+                writer.add_scalar(split+'/total_loss',mean_total_loss,epoch)
 
-            if epoch % 10 == 0:
-                print(split,'fmeasure=%0.4f'%fmeasure,
-                      'total_loss=',mean_total_loss)
+                if split=='train':
+                    tqdm_epoch.set_postfix(train_fmeasure=fmeasure.item())
+                else:
+                    tqdm_epoch.set_postfix(val_fmeasure=fmeasure.item())
 
-    if config['save_model']:
+                if epoch % 10 == 0:
+                    print(split,'fmeasure=%0.4f'%fmeasure,
+                          'total_loss=',mean_total_loss)
+
+    if is_main_process(config) and config['save_model']:
         torch.save(model.state_dict(),checkpoint_path)
 
-    writer.close()
+    if is_main_process(config):
+        writer.close()
