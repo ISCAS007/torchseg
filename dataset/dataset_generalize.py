@@ -260,12 +260,13 @@ class dataset_generalize(TD.Dataset):
         if hasattr(self.config, 'resize_shape'):
             assert len(self.config.resize_shape) == 2, 'resize_shape should with len of 2 but %d' % len(
                 self.config.resize_shape)
-            img = cv2.resize(src=img, dsize=tuple(
-                self.config.resize_shape), interpolation=cv2.INTER_LINEAR)
+
+            # for opencv, resize input is (w,h)
+            dsize=(self.config.resize_shape[1],self.config.resize_shape[0])
+            img = cv2.resize(src=img, dsize=dsize, interpolation=cv2.INTER_LINEAR)
 
             if self.split !='test':
-                ann = cv2.resize(src=ann, dsize=tuple(
-                    self.config.resize_shape), interpolation=cv2.INTER_NEAREST)
+                ann = cv2.resize(src=ann, dsize=dsize, interpolation=cv2.INTER_NEAREST)
 
 #        print('bgr',np.min(img),np.max(img),np.mean(img),np.std(img))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
