@@ -554,7 +554,7 @@ def get_parser():
     parser.add_argument('--input_shape',
                         help='input shape, can be auto computer by midnet_scale and upsample_layer + use_none_layer',
                         type=int,
-                        args='*',
+                        nargs='*',
                         default=None)
 
     parser.add_argument('--augmentation',
