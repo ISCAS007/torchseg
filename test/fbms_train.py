@@ -34,7 +34,7 @@ def get_dist_module(config):
         torch.cuda.set_device(config.gpu)
         model.cuda(config.gpu)
         model=torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        model=DDP(model,find_unused_parameters=True)
+        model=DDP(model,find_unused_parameters=True,device_ids=[config.gpu])
     else:
         model.to(device)
 
@@ -94,7 +94,7 @@ def main_worker(gpu,ngpus_per_node,config):
                                 rank=config.rank)
 
     model,loss_fn_dict,optimizer,dataset_loaders=get_dist_module(config)
-
+    cudnn.benchmark=True
     train(config,model,loss_fn_dict,optimizer,dataset_loaders)
 
 def dist_train(config):
@@ -190,6 +190,7 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
     else:
         tqdm_epoch=range(config.epoch)
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     step_acc=0
     for epoch in tqdm_epoch:
         for split in ['train','val']:
@@ -210,9 +211,14 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
 
             N=len(dataset_loaders[split])
             for step,(frames,gt) in enumerate(tqdm_step):
-                images = [torch.autograd.Variable(img.cuda(config.gpu).float()) for img in frames]
-                origin_labels=torch.autograd.Variable(gt.cuda(config.gpu).long())
+                images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
+                origin_labels=torch.autograd.Variable(gt.to(device).long())
                 labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
+
+                if config.use_sync_bn:
+                    images=[img.cuda(config.gpu,non_blocking=True) for img in images]
+                    origin_labels=origin_labels.cuda(config.gpu,non_blocking=True)
+                    labels=labels.cuda(config.gpu,non_blocking=True)
 
                 if split=='train':
                     poly_lr_scheduler(config,optimizer,
