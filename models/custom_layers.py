@@ -351,7 +351,6 @@ class PSPLayer(nn.Module):
         self.additional_upsample=additional_upsample
         b, in_channels, height, width = input_shape
         assert width>=height,'current support only width >= height'
-        h_w_ratio=width//height
 
         path_out_c_list = []
         N = len(pool_sizes)
@@ -381,20 +380,21 @@ class PSPLayer(nn.Module):
         if not self.additional_upsample:
             assert height%self.min_input_size==0 and width%self.min_input_size==0,"height={},min input size={}".format(height,self.min_input_size)
 
-
+        h_ratio=height//self.min_input_size
+        w_ratio=width//self.min_input_size
         if self.additional_upsample:
 
             self.conv_before_psp=nn.Sequential(conv_1x1(in_channels,in_channels,self.use_bn),
-                                               UpsampleLayer(size=(self.min_input_size,h_w_ratio*self.min_input_size),mode='bilinear',align_corners=True))
+                                               UpsampleLayer(size=(h_ratio*self.min_input_size,w_ratio*self.min_input_size),mode='bilinear',align_corners=True))
 
 
         for pool_size, out_c in zip(pool_sizes, path_out_c_list):
-            pool_path = nn.Sequential(nn.AvgPool2d(kernel_size=[pool_size*scale,pool_size*scale*h_w_ratio],
-                                                   stride=[pool_size*scale,pool_size*scale*h_w_ratio],
+            pool_path = nn.Sequential(nn.AvgPool2d(kernel_size=[h_ratio*pool_size*scale,pool_size*scale*w_ratio],
+                                                   stride=[pool_size*scale*h_ratio,pool_size*scale*w_ratio],
                                                    padding=0),
                                       conv_1x1(in_channels,out_c,self.use_bn),
                                       conv_1x1(out_c,out_c,self.use_bn),
-                                      UpsampleLayer(size=(self.min_input_size, h_w_ratio*self.min_input_size), mode='nearest'))
+                                      UpsampleLayer(size=(self.min_input_size*h_ratio, w_ratio*self.min_input_size), mode='nearest'))
             pool_paths.append(pool_path)
 
         self.pool_paths = nn.ModuleList(pool_paths)

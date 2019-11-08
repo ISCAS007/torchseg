@@ -68,7 +68,7 @@ def get_dist_module(config):
 
         if config.use_sync_bn and split=='train':
             xxx_sampler=torch.utils.data.DistributedSampler(xxx_dataset)
-        batch_size=args.batch_size if split=='train' else 1
+        batch_size=config.batch_size if split=='train' else 1
 
         if split=='train':
             xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=(xxx_sampler is None),drop_last=False,num_workers=2,sampler=xxx_sampler,pin_memory=True)
@@ -85,8 +85,8 @@ def main_worker(gpu,ngpus_per_node,config):
         if config.dist_url=='env://' and config.rank==-1:
             config.rank=int(os.environ['RANK'])
 
-        if config.mp_dist:
-            config.rank=config.rank*ngpus_per_node+gpu
+        config.rank=gpu
+        #config.rank=config.rank*ngpus_per_node+gpu
 
         dist.init_process_group(backend=config.dist_backend,
                                 init_method=config.dist_url,
@@ -98,14 +98,17 @@ def main_worker(gpu,ngpus_per_node,config):
     train(config,model,loss_fn_dict,optimizer,dataset_loaders)
 
 def dist_train(config):
-    if config.seed is None:
+    config.dist_backend='nccl'
+    config.dist_url='tcp://127.0.0.1:9876'
+    if config.seed is not None:
         random.seed(config.seed)
         torch.manual_seed(config.seed)
         cudnn.deterministic=True
 
     ngpus_per_node=torch.cuda.device_count()
+    config.ngpus_per_node=ngpus_per_node
     if config.use_sync_bn:
-        config.world_size=ngpus_per_node*config.n_node
+        config.world_size=ngpus_per_node
         mp.spawn(main_worker,nprocs=ngpus_per_node,args=(ngpus_per_node,config))
     else:
         config.world_size=ngpus_per_node
@@ -151,37 +154,19 @@ if __name__ == '__main__':
     # support for cpu/gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model,seg_loss_fn,optimizer,dataset_loaders=get_dist_module(config)
+
 
     if args.app=='summary':
+        config.gpu=0
+        model,seg_loss_fn,optimizer,dataset_loaders=get_dist_module(config)
         # not work for output with dict.
         torchsummary.summary(model, ((3, config.input_shape[0], config.input_shape[1]),
                                      (2, config.input_shape[0], config.input_shape[1])))
         sys.exit(0)
-    elif args.app=='viz':
-        # not work
-        from torchviz import make_dot
-        print(model)
-        model.train()
-        main=torch.randn(2,3,config.input_shape[0],config.input_shape[1],
-                      device=device,requires_grad=True)
-        flow=torch.randn(2,2,config.input_shape[0],config.input_shape[1],
-                         device=device,requires_grad=True)
-        y=model([main,flow])['masks'][0]
-        make_dot(y,params=dict(list(model.named_parameters())))
-        sys.exit(0)
-
-    # todo, not finished
-    if args.app=='image':
-        assert False
-        model.eval()
-        for split in ['train','val']:
-            for epoch in trange(10):
-                for frames,gt in dataset_loaders[split]:
-                    images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
-                    origin_labels=torch.autograd.Variable(gt.to(device).long())
-                    labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
-                    outputs=model.forward(images)
+    elif config.use_sync_bn:
+        dist_train(config)
+    else:
+        main_worker(gpu=0,ngpus_per_node=1,config=config)
 
 def is_main_process(config):
     return not config.use_sync_bn or (config.use_sync_bn and config.rank % config.ngpus_per_node == 0)
@@ -225,8 +210,8 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
 
             N=len(dataset_loaders[split])
             for step,(frames,gt) in enumerate(tqdm_step):
-                images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
-                origin_labels=torch.autograd.Variable(gt.to(device).long())
+                images = [torch.autograd.Variable(img.cuda(config.gpu).float()) for img in frames]
+                origin_labels=torch.autograd.Variable(gt.cuda(config.gpu).long())
                 labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
 
                 if split=='train':

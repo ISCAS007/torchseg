@@ -274,7 +274,7 @@ def main_worker(gpu,ngpus_per_node,config):
     return best_iou
 
 def dist_train(config):
-    if config.seed is None:
+    if config.seed is not None:
         random.seed(config.seed)
         torch.manual_seed(config.seed)
         cudnn.deterministic=True

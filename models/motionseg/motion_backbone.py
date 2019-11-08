@@ -29,7 +29,6 @@ class conv_bn_relu(TN.Module):
         """
         super().__init__()
 
-        BatchNorm2d=get_batchnorm()
         layers=[TN.Conv2d(in_channels=in_channels,
                             out_channels=out_channels,
                             kernel_size=kernel_size,
@@ -38,7 +37,7 @@ class conv_bn_relu(TN.Module):
                             bias=bias),
                 ]
         if use_bn:
-            layers.append(BatchNorm2d(num_features=out_channels,
+            layers.append(TN.BatchNorm2d(num_features=out_channels,
                                                    eps=eps,
                                                    momentum=momentum))
 
