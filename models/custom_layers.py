@@ -389,8 +389,8 @@ class PSPLayer(nn.Module):
 
 
         for pool_size, out_c in zip(pool_sizes, path_out_c_list):
-            pool_path = nn.Sequential(nn.AvgPool2d(kernel_size=pool_size*scale,
-                                                   stride=pool_size*scale,
+            pool_path = nn.Sequential(nn.AvgPool2d(kernel_size=[pool_size*scale,pool_size*scale*h_w_ratio],
+                                                   stride=[pool_size*scale,pool_size*scale*h_w_ratio],
                                                    padding=0),
                                       conv_1x1(in_channels,out_c,self.use_bn),
                                       conv_1x1(out_c,out_c,self.use_bn),
