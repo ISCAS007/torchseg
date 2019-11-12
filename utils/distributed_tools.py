@@ -217,38 +217,39 @@ def main_worker(gpu,ngpus_per_node,config):
                 if isinstance(scheduler,cos_lr):
                     scheduler.step()
 
-            metric_dict, class_iou_dict = get_metric(
-                running_metrics, metric_fn_dict,
-                summary_all=summary_all, prefix_note=loader_name, summary_metric=summary_metric)
-            if loader_name == 'val' and summary_metric:
-                val_iou = metric_dict['val/iou']
-                tqdm.write('epoch %d,curruent val iou is %0.5f' %
-                        (epoch, val_iou))
-                if val_iou >= best_iou:
-                    best_iou = val_iou
-                    iou_save_threshold = config.iou_save_threshold
+            if is_main_process(config):
+                metric_dict, class_iou_dict = get_metric(
+                    running_metrics, metric_fn_dict,
+                    summary_all=summary_all, prefix_note=loader_name, summary_metric=summary_metric)
+                if loader_name == 'val' and summary_metric:
+                    val_iou = metric_dict['val/iou']
+                    tqdm.write('epoch %d,curruent val iou is %0.5f' %
+                            (epoch, val_iou))
+                    if val_iou >= best_iou:
+                        best_iou = val_iou
+                        iou_save_threshold = config.iou_save_threshold
 
-                    # save the best the model if good enough
-                    if best_iou >= iou_save_threshold:
-                        print('save current best model', '*'*30)
+                        # save the best the model if good enough
+                        if best_iou >= iou_save_threshold:
+                            print('save current best model', '*'*30)
+                            checkpoint_path = os.path.join(
+                                log_dir, 'model-best-%d.pkl' % epoch)
+                            save_model_if_necessary(model, config, checkpoint_path)
+
+                    # save the last model if the best model not good enough
+                    if epoch == config.n_epoch-1 and best_iou < iou_save_threshold:
+                        print('save the last model', '*'*30)
                         checkpoint_path = os.path.join(
-                            log_dir, 'model-best-%d.pkl' % epoch)
+                            log_dir, 'model-last-%d.pkl' % epoch)
                         save_model_if_necessary(model, config, checkpoint_path)
 
-                # save the last model if the best model not good enough
-                if epoch == config.n_epoch-1 and best_iou < iou_save_threshold:
-                    print('save the last model', '*'*30)
-                    checkpoint_path = os.path.join(
-                        log_dir, 'model-last-%d.pkl' % epoch)
-                    save_model_if_necessary(model, config, checkpoint_path)
+                # return valid image when summary_all=True
+                image_dict = get_image_dict(
+                    outputs_dict, targets_dict, config,
+                    summary_all=summary_all, prefix_note=loader_name)
 
-            # return valid image when summary_all=True
-            image_dict = get_image_dict(
-                outputs_dict, targets_dict, config,
-                summary_all=summary_all, prefix_note=loader_name)
-
-            if writer is None:
-                writer = init_writer(config=config, log_dir=log_dir)
+                if writer is None:
+                    writer = init_writer(config=config, log_dir=log_dir)
 
             # change weight and learning rate (train only)
             if loader_name == 'train':
@@ -261,16 +262,19 @@ def main_worker(gpu,ngpus_per_node,config):
                 weight_dict = {}
                 lr_dict = {}
 
-            write_summary(writer=writer,
-                          losses_dict=losses_dict,
-                          metric_dict=metric_dict,
-                          class_iou_dict=class_iou_dict,
-                          lr_dict=lr_dict,
-                          image_dict=image_dict,
-                          weight_dict=weight_dict,
-                          epoch=epoch)
-    writer.close()
-    print('total epoch is %d, best iou is' % config.n_epoch, best_iou)
+            if is_main_process(config):
+                write_summary(writer=writer,
+                              losses_dict=losses_dict,
+                              metric_dict=metric_dict,
+                              class_iou_dict=class_iou_dict,
+                              lr_dict=lr_dict,
+                              image_dict=image_dict,
+                              weight_dict=weight_dict,
+                              epoch=epoch)
+
+    if is_main_process(config):
+        writer.close()
+        print('total epoch is %d, best iou is' % config.n_epoch, best_iou)
     return best_iou
 
 def dist_train(config):
