@@ -3,6 +3,8 @@
 - 2018/10/25 update hyperopt loop, from random to stable combination
 - 2019/10/22 update from torch0.4 to torch1.0, TensorboardX.SummaryWriter(log_dir --> logdir)
 - 2019/11/01 add sync_bn (test == dist)
+- 2019/11/09 add sync_bn for motionseg
+- 2019/11/12 for torch1.1+, learning rate schedule step should after optimizer.step()
 
 # todo
 - [x] [pspnet](models/pspnet.py)

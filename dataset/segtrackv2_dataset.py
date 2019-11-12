@@ -54,11 +54,13 @@ class motionseg_dataset(td.Dataset):
         if self.split=='train' and self.augmentations is not None:
             frame_images=[self.augmentations.transform(img) for img in frame_images]
 
-        # resize image
-        resize_frame_images=[cv2.resize(img,self.input_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
+
+        # resize image, opencv resize image with (width,height), but input_shape is [height,width]
+        resize_shape=tuple([self.input_shape[1],self.input_shape[0]])
+        resize_frame_images=[cv2.resize(img,resize_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
 
         if self.split=='train':
-            resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)
+            resize_gt_image=cv2.resize(gt_image,resize_shape,interpolation=cv2.INTER_NEAREST)
         else:
             resize_gt_image=gt_image
 
@@ -94,7 +96,7 @@ class motionseg_dataset(td.Dataset):
             b=np.fromfile(flow_file,np.int32,count=2)
             flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
             flow=np.clip(flow,a_min=-50,a_max=50)/50.0
-            optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
+            optical_flow=cv2.resize(flow,resize_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
             if self.split=='val_path':
                 return {'images':[resize_frame_images[0],optical_flow],
                         'gt':resize_gt_image,
