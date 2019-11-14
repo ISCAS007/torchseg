@@ -24,6 +24,7 @@ from models.psp_convert import psp_convert
 from models.psp_convert import CONFIG as psp_convert_config
 from models.motionnet import motionnet,motion_panet
 from models.unet import UNet,PSPUNet,AuxNet
+from models.global_local_net import GlobalLocalNet
 
 def get_net(config):
     model = globals()[config.net_name](config)
@@ -446,7 +447,8 @@ def get_parser():
                                  'psp_fractal', 'psp_dict', 'psp_aux',
                                  'fcn', 'fcn8s', 'fcn16s', 'fcn32s',
                                  'merge_seg','cross_merge', 'psp_hed',
-                                 'motionnet','motion_panet', 'UNet', 'PSPUNet', 'AuxNet'],
+                                 'motionnet','motion_panet', 'UNet',
+                                 'PSPUNet', 'AuxNet', 'GlobalLocalNet'],
                         default='pspnet')
 
     parser.add_argument('--midnet_scale',

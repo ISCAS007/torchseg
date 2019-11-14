@@ -183,6 +183,10 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
             for key,value in targets_dict.items():
                 targets_dict[key]=value.cuda(config.gpu,non_blocking=True)
 
+        if config.net_name in ['GlobalLocalNet']:
+            h,w=config.origin_input_shape
+            targets_dict['seg']=targets_dict['seg'][:,h//4:(h*3)//4,w//4:(w*3)//4]
+
         if config.net_name in ['AuxNet']:
             outputs = model.forward(images,2*epoch>config.n_epoch)
         else:
