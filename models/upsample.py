@@ -150,9 +150,9 @@ class upsample_bilinear(TN.Module):
         """
         super().__init__()
         self.output_shape = output_shape
-        self.center_channels=512
+        self.center_channels=min(512,in_channels)
         self.conv_bn_relu = conv_bn_relu(in_channels=in_channels,
-                                         out_channels=512,
+                                         out_channels=self.center_channels,
                                          kernel_size=3,
                                          stride=1,
                                          padding=1,
@@ -161,7 +161,7 @@ class upsample_bilinear(TN.Module):
 
         # for single stream network, the last conv not need bias?
         bias=str2bool(os.environ['torchseg_use_bias'])
-        self.conv = TN.Conv2d(in_channels=512,
+        self.conv = TN.Conv2d(in_channels=self.center_channels,
                               out_channels=out_channels,
                               kernel_size=1,
                               padding=0,
@@ -176,14 +176,16 @@ class upsample_bilinear(TN.Module):
                 TN.init.constant_(m.bias, 0)
 
     # TODO upsampel feature is self.conv_bn_relu(x) or self.conv(x)
-    def forward(self, x, need_upsample_feature=False):
+    def forward(self, x, need_upsample_feature=False,need_raw_result=False):
         self.center_feature = x = self.conv_bn_relu(x)
-        x = self.conv(x)
+        raw_result = x = self.conv(x)
         x = F.interpolate(x, size=self.output_shape,
                           mode='bilinear', align_corners=True)
 
         if need_upsample_feature:
             return self.center_feature, x
+        elif need_raw_result:
+            raw_result,x
         else:
             return x
 

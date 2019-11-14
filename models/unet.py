@@ -9,6 +9,7 @@ from models.custom_layers import MergeLayer,CascadeMergeLayer,conv_nxn
 from models.motionseg.motion_backbone import motion_backbone
 from easydict import EasyDict as edict
 import warnings
+import torch
 
 class UNet(nn.Module):
     """
@@ -120,9 +121,17 @@ class AuxNet(nn.Module):
                                   conv_nxn(self.class_number*4,self.class_number*4,3,self.use_bn,groups=self.class_number),
                                conv_nxn(self.class_number*2,self.class_number,1,self.use_bn,groups=self.class_number))
 
-    def forward(self,x):
-        x=self.base(x)
-        refine=self.refine(x)
-
-        # x is aux loss, but the final result is refine
-        return {'aux':x,'seg':refine}
+    def forward(self,x,refine=True):
+        if refine:
+            feature_map = self.base.backbone.forward_layers(x)
+            feature_mid = self.base.midnet(feature_map)
+            assert self.config.upsample_type=='bilinear'
+            raw_result,x = self.base.decoder(feature_mid,need_raw_result=True)
+            refine_result=self.refine(torch.softmax(raw_result,dim=1))
+            refine_result = F.interpolate(refine_result, size=self.input_shape,
+                          mode='bilinear', align_corners=True)
+            # x is aux loss, but the final result is refine
+            return {'aux':x,'seg':refine_result}
+        else:
+            x=self.base(x)
+            return x

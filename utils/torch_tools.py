@@ -17,6 +17,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
 from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
 from tqdm import tqdm, trange
 import glob
+import torch.nn.functional as F
 
 def get_loader(config):
     if config.norm_ways is None:
@@ -182,7 +183,10 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
             for key,value in targets_dict.items():
                 targets_dict[key]=value.cuda(config.gpu,non_blocking=True)
 
-        outputs = model.forward(images)
+        if config.net_name in ['AuxNet']:
+            outputs = model.forward(images,2*epoch>config.n_epoch)
+        else:
+            outputs = model.forward(images)
 
         if isinstance(outputs, dict):
             outputs_dict = outputs
