@@ -6,6 +6,11 @@ from models.motionseg.motion_panet import motion_panet2
 from models.motionseg.motion_utils import get_default_config
 
 class GlobalLocalNet(nn.Module):
+    """
+    for semantic segmentation, we find the bigger input shape, the better miou.
+    so we propose global local net, use local image and global image with input shape (h,w), to generate the
+    segmentation result like input shape (2xh,2xw),(4xh,4xw),(8xh,8xw),...
+    """
     def __init__(self,config):
         super().__init__()
 
