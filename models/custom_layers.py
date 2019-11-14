@@ -270,21 +270,23 @@ def conv_1x1(in_c,out_c,use_bn=False,groups=1):
                                                    kernel_size=1),
                                         nn.ReLU(inplace=True))
 
-def conv_nxn(in_c,out_c,kernel_size,use_bn=False,groups=1):
+def conv_nxn(in_c,out_c,kernel_size,use_bn=False,groups=1,dilation=1):
     if use_bn:
         return nn.Sequential(nn.Conv2d(in_channels=in_c,
                                                    out_channels=out_c,
                                                    groups=groups,
+                                                   dilation=dilation,
                                                    kernel_size=kernel_size,
-                                                   padding=kernel_size//2),
+                                                   padding=dilation*(kernel_size-1)//2),
                                         nn.BatchNorm2d(out_c),
                                         nn.ReLU(inplace=True))
     else:
         return nn.Sequential(nn.Conv2d(in_channels=in_c,
                                                    out_channels=out_c,
                                                    groups=groups,
+                                                   dilation=dilation,
                                                    kernel_size=kernel_size,
-                                                   padding=kernel_size//2),
+                                                   padding=dilation*(kernel_size-1)//2),
                                         nn.ReLU(inplace=True))
 
 # merge all layers
