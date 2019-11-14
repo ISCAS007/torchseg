@@ -185,7 +185,7 @@ class upsample_bilinear(TN.Module):
         if need_upsample_feature:
             return self.center_feature, x
         elif need_raw_result:
-            raw_result,x
+            return raw_result,x
         else:
             return x
 
