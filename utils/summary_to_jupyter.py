@@ -9,7 +9,7 @@ from tabulate import tabulate
 
 import math
 from utils.config import load_config
-from utils.summary_to_csv import config_to_log,load_log,edict_to_pandas,today_log,recent_log
+from utils.summary_to_csv import config_to_log,load_log,edict_to_pandas,today_log,recent_log,get_actual_step
 import warnings
 def summary(rootpath,tags,filter_str=None,recent_log_number=100):
     config_files=glob(os.path.join(rootpath,'**','config.txt'),recursive=True)
@@ -26,10 +26,12 @@ def summary(rootpath,tags,filter_str=None,recent_log_number=100):
         if log is not None:
             ed=load_config(cfg)
             metrics=load_log(log,tags)
+            actual_step=get_actual_step(log)
             for key,value in metrics.items():
                 ed[key]=value
             
             ed['dir']=cfg
+            ed['actual_step']=actual_step
             log_time=''
             for s in cfg.split(os.sep):
                 if s.find('___')>=0:

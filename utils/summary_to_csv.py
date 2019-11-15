@@ -57,6 +57,17 @@ def load_log(log_file,tags=['train/acc','val/acc','train/iou','val/iou']):
 #    print(best_metrics)
     return best_metrics
 
+def get_actual_step(log_file):
+    """
+    returna actual step
+    """
+    actual_step=0
+    for e in tf.train.summary_iterator(log_file):
+        if hasattr(e,'step'):
+            actual_step=e.step
+            
+    return actual_step+1
+
 def summary(rootpath):
     config_files=glob(os.path.join(rootpath,'**','config.txt'),recursive=True)
     tasks=pd.DataFrame()
