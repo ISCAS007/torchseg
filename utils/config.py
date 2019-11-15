@@ -88,6 +88,7 @@ def get_default_config():
     config.lr_weight_decay=1e-4
     config.max_channel_number=256
     config.max_crop_size=None
+    config.main_base_weight=1.0
     config.midnet_name='psp'
     config.midnet_pool_sizes = [6, 3, 2, 1]
     config.midnet_scale=5
@@ -510,6 +511,11 @@ def get_parser():
 
     parser.add_argument('--aux_base_weight',
                         help='aux weight for aux loss, weight for segmentation is 1.0',
+                        type=float,
+                        default=1.0)
+
+    parser.add_argument('--main_base_weight',
+                        help='main weight for main loss, weight for segmentation is 1.0',
                         type=float,
                         default=1.0)
 

@@ -117,10 +117,22 @@ class AuxNet(nn.Module):
         self.use_bn=self.config.use_bn
 
         self.base=PSPUNet(config)
+
+        refine_nets=[]
+        in_c=self.class_number
+        use_bn=False
+        for idx,factor in enumerate([16,64,128,128]):
+            out_c=factor*self.class_number
+            dilation=3 if idx==0 else 1
+            kernel_size=3 if idx==0 else 1
+            refine_nets.append(conv_nxn(in_c,out_c,kernel_size,use_bn=use_bn,groups=self.class_number,dilation=dilation))
+            in_c=out_c
+
+        self.refine=nn.Sequential(*refine_nets)
         # note the input shape is the origin image size, so the channel cannot be two large.
-        self.refine=nn.Sequential(conv_nxn(self.class_number,self.class_number*4,3,self.use_bn,groups=self.class_number,dilation=3),
-                                  conv_nxn(self.class_number*4,self.class_number*4,3,self.use_bn,groups=self.class_number),
-                               conv_nxn(self.class_number*4,self.class_number,1,self.use_bn,groups=self.class_number))
+#        self.refine=nn.Sequential(conv_nxn(self.class_number,self.class_number*4,3,self.use_bn,groups=self.class_number,dilation=3),
+#                                  conv_nxn(self.class_number*4,self.class_number*4,3,self.use_bn,groups=self.class_number),
+#                               conv_nxn(self.class_number*4,self.class_number,1,self.use_bn,groups=self.class_number))
 
     def forward(self,x,refine=True):
         if refine:

@@ -638,7 +638,8 @@ def get_loss_weight(step, max_step, config=None):
     loss_weight_dict = {}
     loss_power = 0.9
     edge_power = aux_power = loss_power
-    edge_base_weight = aux_base_weight = 1.0
+    edge_base_weight = main_base_weight = aux_base_weight = 1.0
+
     if config is not None:
         if hasattr(config, 'edge_power'):
             edge_power = config.edge_power
@@ -648,11 +649,13 @@ def get_loss_weight(step, max_step, config=None):
             edge_base_weight = config.edge_base_weight
         if hasattr(config, 'aux_base_weight'):
             aux_base_weight = config.aux_base_weight
+        if hasattr(config, 'main_base_weight'):
+            main_base_weight = config.main_base_weight
 
         config.poly_loss_weight = False
         if hasattr(config, 'poly_loss_weight'):
             if config.poly_loss_weight:
-                loss_weight_dict['seg'] = 1.0
+                loss_weight_dict['seg'] = main_base_weight
                 # from small to big
                 loss_weight_dict['edge'] = edge_base_weight * \
                     (step/(1.0+max_step))**edge_power
@@ -662,7 +665,7 @@ def get_loss_weight(step, max_step, config=None):
 
                 return loss_weight_dict
 
-    loss_weight_dict['seg'] = 1.0
+    loss_weight_dict['seg'] = main_base_weight
     loss_weight_dict['edge'] = edge_base_weight
     loss_weight_dict['aux'] = aux_base_weight
 

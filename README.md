@@ -70,6 +70,13 @@ the miou is 0.8+
 
 # benchmark
 
+| dataset | train | val | test | class | resolution |
+| - | - | - | - | - | - |
+| cityscapes | 2975 | 500 | 1525 | 19 | 1024x2048 |
+| pascal-context | 4998 | - | 5105 | 59 | - |
+| pascal-voc2012 | 1464 | 1449 | 1456 | 20 | - |
+| camvid | 369 | 101 | 233 | 11 | - |
+
 ## cityscapes
 - use code from https://github.com/mcordts/cityscapesScripts (only support for python2)
 - change to python2 environment `source activate env2`
