@@ -121,7 +121,7 @@ class AuxNet(nn.Module):
         refine_nets=[]
         in_c=self.class_number
         use_bn=False
-        for idx,factor in enumerate([16,64,128,128]):
+        for idx,factor in enumerate([16,64,1]):
             out_c=factor*self.class_number
             dilation=3 if idx==0 else 1
             kernel_size=3 if idx==0 else 1
