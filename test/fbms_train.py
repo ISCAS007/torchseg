@@ -68,6 +68,9 @@ def get_dist_module(config):
 
         if config.use_sync_bn and split=='train':
             xxx_sampler=torch.utils.data.DistributedSampler(xxx_dataset)
+        else:
+            xxx_sampler=None
+
         batch_size=config.batch_size if split=='train' else 1
 
         if split=='train':
@@ -77,6 +80,139 @@ def get_dist_module(config):
         dataset_loaders[split]=xxx_loader
 
     return model,seg_loss_fn,optimizer,dataset_loaders
+
+def is_main_process(config):
+    return not config.use_sync_bn or (config.use_sync_bn and config.rank % config.ngpus_per_node == 0)
+
+def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
+    if is_main_process(config):
+        time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
+        log_dir = os.path.join(config['log_dir'], config['net_name'],
+                               config['dataset'], config['note'], time_str)
+        checkpoint_path = os.path.join(log_dir, 'model-last-%d.pkl' % config['epoch'])
+
+        writer=init_writer(config,log_dir)
+
+    metric_acc=Metric_Acc(config.exception_value)
+    metric_stn_loss=Metric_Mean()
+    metric_mask_loss=Metric_Mean()
+    metric_total_loss=Metric_Mean()
+
+    if is_main_process(config):
+        tqdm_epoch = trange(config['epoch'], desc='{} epochs'.format(config.note), leave=True)
+    else:
+        tqdm_epoch=range(config.epoch)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    step_acc=0
+    for epoch in tqdm_epoch:
+        for split in ['train','val']:
+            if split=='train':
+                model.train()
+            else:
+                model.eval()
+
+            metric_acc.reset()
+            metric_stn_loss.reset()
+            metric_mask_loss.reset()
+            metric_total_loss.reset()
+
+            if is_main_process(config):
+                tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
+            else:
+                tqdm_step = dataset_loaders[split]
+
+            N=len(dataset_loaders[split])
+            for step,(frames,gt) in enumerate(tqdm_step):
+                images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
+
+                if config.use_diff_img and (not config.use_optical_flow):
+                    images[1]=images[1]-images[0]
+
+                origin_labels=torch.autograd.Variable(gt.to(device).long())
+                labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
+
+                if config.use_sync_bn:
+                    images=[img.cuda(config.gpu,non_blocking=True) for img in images]
+                    origin_labels=origin_labels.cuda(config.gpu,non_blocking=True)
+                    labels=labels.cuda(config.gpu,non_blocking=True)
+
+                if split=='train':
+                    poly_lr_scheduler(config,optimizer,
+                              iter=epoch*N+step,
+                              max_iter=config.epoch*N)
+
+                outputs=model.forward(images)
+                if config.net_name=='motion_anet':
+                    mask_gt=torch.squeeze(labels,dim=1)
+                    mask_loss_value=0
+                    for mask in outputs['masks']:
+                        mask_loss_value+=seg_loss_fn(mask,mask_gt)
+                else:
+                    mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(labels,dim=1))
+
+                if config['net_name'].find('_stn')>=0:
+                    if config['stn_object']=='features':
+                        stn_loss_value=stn_loss(outputs['features'],labels.float(),outputs['pose'],config['pose_mask_reg'])
+                    elif config['stn_object']=='images':
+                        stn_loss_value=stn_loss(outputs['stn_images'],labels.float(),outputs['pose'],config['pose_mask_reg'])
+                    else:
+                        assert False,'unknown stn object %s'%config['stn_object']
+
+                    total_loss_value=mask_loss_value*config['motion_loss_weight']+stn_loss_value*config['stn_loss_weight']
+                else:
+                    stn_loss_value=torch.tensor(0.0)
+                    total_loss_value=mask_loss_value
+
+                origin_mask=F.interpolate(outputs['masks'][0], size=origin_labels.shape[2:4],mode='nearest')
+
+                metric_acc.update(origin_mask,origin_labels)
+                metric_stn_loss.update(stn_loss_value.item())
+                metric_mask_loss.update(mask_loss_value.item())
+                metric_total_loss.update(total_loss_value.item())
+                if split=='train':
+                    total_loss_value.backward()
+                    if (step_acc+1)>=config.accumulate:
+                        optimizer.step()
+                        optimizer.zero_grad()
+                        step_acc=0
+                    else:
+                        step_acc+=1
+
+            if is_main_process(config):
+                acc=metric_acc.get_acc()
+                precision=metric_acc.get_precision()
+                recall=metric_acc.get_recall()
+                fmeasure=metric_acc.get_fmeasure()
+                avg_p,avg_r,avg_f=metric_acc.get_avg_metric()
+                mean_stn_loss=metric_stn_loss.get_mean()
+                mean_mask_loss=metric_mask_loss.get_mean()
+                mean_total_loss=metric_total_loss.get_mean()
+                writer.add_scalar(split+'/acc',acc,epoch)
+                writer.add_scalar(split+'/precision',precision,epoch)
+                writer.add_scalar(split+'/recall',recall,epoch)
+                writer.add_scalar(split+'/fmeasure',fmeasure,epoch)
+                writer.add_scalar(split+'/avg_p',avg_p,epoch)
+                writer.add_scalar(split+'/avg_r',avg_r,epoch)
+                writer.add_scalar(split+'/avg_f',avg_f,epoch)
+                writer.add_scalar(split+'/stn_loss',mean_stn_loss,epoch)
+                writer.add_scalar(split+'/mask_loss',mean_mask_loss,epoch)
+                writer.add_scalar(split+'/total_loss',mean_total_loss,epoch)
+
+                if split=='train':
+                    tqdm_epoch.set_postfix(train_fmeasure=fmeasure.item())
+                else:
+                    tqdm_epoch.set_postfix(val_fmeasure=fmeasure.item())
+
+                if epoch % 10 == 0:
+                    print(split,'fmeasure=%0.4f'%fmeasure,
+                          'total_loss=',mean_total_loss)
+
+    if is_main_process(config) and config['save_model']:
+        torch.save(model.state_dict(),checkpoint_path)
+
+    if is_main_process(config):
+        writer.close()
 
 def main_worker(gpu,ngpus_per_node,config):
     config.gpu=gpu
@@ -167,132 +303,3 @@ if __name__ == '__main__':
         dist_train(config)
     else:
         main_worker(gpu=0,ngpus_per_node=1,config=config)
-
-def is_main_process(config):
-    return not config.use_sync_bn or (config.use_sync_bn and config.rank % config.ngpus_per_node == 0)
-
-def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
-    if is_main_process(config):
-        time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
-        log_dir = os.path.join(config['log_dir'], config['net_name'],
-                               config['dataset'], config['note'], time_str)
-        checkpoint_path = os.path.join(log_dir, 'model-last-%d.pkl' % config['epoch'])
-
-        writer=init_writer(config,log_dir)
-
-    metric_acc=Metric_Acc(config.exception_value)
-    metric_stn_loss=Metric_Mean()
-    metric_mask_loss=Metric_Mean()
-    metric_total_loss=Metric_Mean()
-
-    if is_main_process(config):
-        tqdm_epoch = trange(config['epoch'], desc='{} epochs'.format(config.note), leave=True)
-    else:
-        tqdm_epoch=range(config.epoch)
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    step_acc=0
-    for epoch in tqdm_epoch:
-        for split in ['train','val']:
-            if split=='train':
-                model.train()
-            else:
-                model.eval()
-
-            metric_acc.reset()
-            metric_stn_loss.reset()
-            metric_mask_loss.reset()
-            metric_total_loss.reset()
-
-            if is_main_process(config):
-                tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
-            else:
-                tqdm_step = dataset_loaders[split]
-
-            N=len(dataset_loaders[split])
-            for step,(frames,gt) in enumerate(tqdm_step):
-                images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
-                origin_labels=torch.autograd.Variable(gt.to(device).long())
-                labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
-
-                if config.use_sync_bn:
-                    images=[img.cuda(config.gpu,non_blocking=True) for img in images]
-                    origin_labels=origin_labels.cuda(config.gpu,non_blocking=True)
-                    labels=labels.cuda(config.gpu,non_blocking=True)
-
-                if split=='train':
-                    poly_lr_scheduler(config,optimizer,
-                              iter=epoch*N+step,
-                              max_iter=config.epoch*N)
-
-                outputs=model.forward(images)
-                if config.net_name=='motion_anet':
-                    mask_gt=torch.squeeze(labels,dim=1)
-                    mask_loss_value=0
-                    for mask in outputs['masks']:
-                        mask_loss_value+=seg_loss_fn(mask,mask_gt)
-                else:
-                    mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(labels,dim=1))
-
-                if config['net_name'].find('_stn')>=0:
-                    if config['stn_object']=='features':
-                        stn_loss_value=stn_loss(outputs['features'],labels.float(),outputs['pose'],config['pose_mask_reg'])
-                    elif config['stn_object']=='images':
-                        stn_loss_value=stn_loss(outputs['stn_images'],labels.float(),outputs['pose'],config['pose_mask_reg'])
-                    else:
-                        assert False,'unknown stn object %s'%config['stn_object']
-
-                    total_loss_value=mask_loss_value*config['motion_loss_weight']+stn_loss_value*config['stn_loss_weight']
-                else:
-                    stn_loss_value=torch.tensor(0.0)
-                    total_loss_value=mask_loss_value
-
-                origin_mask=F.interpolate(outputs['masks'][0], size=origin_labels.shape[2:4],mode='nearest')
-
-                metric_acc.update(origin_mask,origin_labels)
-                metric_stn_loss.update(stn_loss_value.item())
-                metric_mask_loss.update(mask_loss_value.item())
-                metric_total_loss.update(total_loss_value.item())
-                if split=='train':
-                    total_loss_value.backward()
-                    if (step_acc+1)>=config.accumulate:
-                        optimizer.step()
-                        optimizer.zero_grad()
-                        step_acc=0
-                    else:
-                        step_acc+=1
-
-            if is_main_process(config):
-                acc=metric_acc.get_acc()
-                precision=metric_acc.get_precision()
-                recall=metric_acc.get_recall()
-                fmeasure=metric_acc.get_fmeasure()
-                avg_p,avg_r,avg_f=metric_acc.get_avg_metric()
-                mean_stn_loss=metric_stn_loss.get_mean()
-                mean_mask_loss=metric_mask_loss.get_mean()
-                mean_total_loss=metric_total_loss.get_mean()
-                writer.add_scalar(split+'/acc',acc,epoch)
-                writer.add_scalar(split+'/precision',precision,epoch)
-                writer.add_scalar(split+'/recall',recall,epoch)
-                writer.add_scalar(split+'/fmeasure',fmeasure,epoch)
-                writer.add_scalar(split+'/avg_p',avg_p,epoch)
-                writer.add_scalar(split+'/avg_r',avg_r,epoch)
-                writer.add_scalar(split+'/avg_f',avg_f,epoch)
-                writer.add_scalar(split+'/stn_loss',mean_stn_loss,epoch)
-                writer.add_scalar(split+'/mask_loss',mean_mask_loss,epoch)
-                writer.add_scalar(split+'/total_loss',mean_total_loss,epoch)
-
-                if split=='train':
-                    tqdm_epoch.set_postfix(train_fmeasure=fmeasure.item())
-                else:
-                    tqdm_epoch.set_postfix(val_fmeasure=fmeasure.item())
-
-                if epoch % 10 == 0:
-                    print(split,'fmeasure=%0.4f'%fmeasure,
-                          'total_loss=',mean_total_loss)
-
-    if is_main_process(config) and config['save_model']:
-        torch.save(model.state_dict(),checkpoint_path)
-
-    if is_main_process(config):
-        writer.close()

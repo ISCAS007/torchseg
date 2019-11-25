@@ -397,6 +397,11 @@ def get_parser():
                         type=int,
                         default=None)
 
+    parser.add_argument('--use_diff_img',
+                        help='use frame difference as auxilary input or not(False)',
+                        type=str2bool,
+                        default=False)
+
     return parser
 
 def get_default_config():
@@ -462,6 +467,7 @@ def get_default_config():
     config.use_none_layer=False
     config.use_part_number=1000
     config.use_sync_bn=False
+    config.use_diff_img=False
 
     return config
 
