@@ -123,11 +123,30 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                 tqdm_step = dataset_loaders[split]
 
             N=len(dataset_loaders[split])
-            for step,(frames,gt) in enumerate(tqdm_step):
+            for step,data in enumerate(tqdm_step):
+                frames=data['images']
+                gt=data['labels'][0]
                 images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
 
-                if config.use_diff_img and (not config.use_optical_flow):
-                    images[1]=images[1]-images[0]
+                aux_input = []
+                for c in config.input_format:
+                    if c.lower()=='b':
+                        assert False
+                    elif c.lower()=='g':
+                        origin_aux_gt=torch.autograd.Variable(data['labels'][1].to(device).long())
+                        resize_aux_gt=F.interpolate(origin_aux_gt.float(),size=config.input_shape,mode='nearest').float()
+                        aux_input.append(resize_aux_gt)
+                    elif c.lower()=='n':
+                        aux_input.append(torch.autograd.Variable(data['images'][1].to(device).float()))
+                    elif c.lower()=='o':
+                        aux_input.append(torch.autograd.Variable(data['optical_flow'].to(device).float()))
+                    elif c.lower()=='-':
+                        pass
+                    else:
+                        assert False
+
+                if len(aux_input)>0:
+                    images[1]=torch.autograd.Variable(torch.cat(aux_input,dim=1).to(device).float())
 
                 origin_labels=torch.autograd.Variable(gt.to(device).long())
                 labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()

@@ -351,7 +351,6 @@ class motion_panet2(nn.Module):
         self.config=config
         self.input_shape=config.input_shape
         self.upsample_layer=config.upsample_layer
-        self.use_aux_input=config.use_aux_input
         self.min_channel_number=config.min_channel_number
         self.max_channel_number=config.max_channel_number
         if config.net_name.find('flow')>=0:
@@ -365,6 +364,38 @@ class motion_panet2(nn.Module):
 
         self.main_backbone=motion_backbone(config,use_none_layer=config.use_none_layer)
 
+        aux_in_channels=0
+        for c in self.config.input_format:
+            if c.lower()=='b':
+                assert False
+                # background image
+                aux_in_channels+=3
+            elif c.lower()=='o':
+                # optical flow
+                aux_in_channels+=2
+            elif c.lower()=='n':
+                # neighbor image
+                aux_in_channels+=3
+            elif c.lower()=='-':
+                pass
+            elif c.lower()=='g':
+                # neighbor groundtruth
+                aux_in_channels+=1
+            else:
+                assert False
+
+        if self.config.input_format.lower()!='n':
+            self.share_backbone=False
+            if config.share_backbone:
+                warnings.warn('share backbone not worked for {}'.format(config.net_name))
+        else:
+            self.share_backbone=config.share_backbone
+
+        if aux_in_channels==0:
+            self.use_aux_input=False
+        else:
+            self.use_aux_input=True
+
         self.aux_backbone=None
         if self.share_backbone:
             if self.use_aux_input:
@@ -375,26 +406,14 @@ class motion_panet2(nn.Module):
                 if config.aux_backbone != config.backbone_name:
                     assert False
         else:
-            if self.use_flow:
+            if self.use_aux_input:
                 if config.aux_backbone is None:
-                    config.aux_backbone=config.flow_backbone
-                    warnings.warn('use deprecated param flow_backbone, please use aux_backbone instead')
-
+                    config.aux_backbone=config.backbone_name
                 aux_config=edict(config.copy())
                 aux_config.backbone_name=aux_config.aux_backbone
                 aux_config.freeze_layer=0
                 aux_config.backbone_pretrained=False
-                self.aux_backbone=motion_backbone(aux_config,use_none_layer=config.use_none_layer,in_channels=2)
-                #self.aux_backbone=panet(config,in_c=2,network_mode=config.flow_backbone)
-            elif self.use_aux_input:
-                if config.aux_backbone is None:
-                    self.aux_backbone=motion_backbone(config,use_none_layer=config.use_none_layer)
-                else:
-                    warnings.warn('use aux freeze layer (good!!!)')
-                    aux_config=edict(config.copy())
-                    aux_config.backbone_name=aux_config.aux_backbone
-                    aux_config.freeze_layer=config.aux_freeze
-                    self.aux_backbone=motion_backbone(aux_config,use_none_layer=config.use_none_layer)
+                self.aux_backbone=motion_backbone(aux_config,use_none_layer=config.use_none_layer,in_channels=aux_in_channels)
 
         self.main_panet=None
         if config.main_panet:

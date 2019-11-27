@@ -177,10 +177,9 @@ def get_parser():
                         choices=backbone_names,
                         default=None)
 
-    parser.add_argument('--flow_backbone',
-                        help='deprecated backbone for flow network(vgg11), currently motion_panet2 support only',
-                        choices=backbone_names,
-                        default='vgg11')
+    parser.add_argument('--input_format',
+                        help='input format [Background(B),Neighbor Image(N),Optical Flow(O),Neighbor GroundTruth(G),None(-)] (-)',
+                        default='-')
 
     parser.add_argument('--accumulate',
                         help='batch size accumulate (1)',
@@ -244,11 +243,6 @@ def get_parser():
                         help='use nono layer to replace maxpool2d or not',
                         type=str2bool,
                         default=False)
-
-    parser.add_argument('--use_aux_input',
-                        help='use aux image as input or not(True)',
-                        type=str2bool,
-                        default=True)
 
     parser.add_argument('--always_merge_flow',
                         help='@deprecated merge flow at every deconv layer or not (False)',
@@ -397,11 +391,6 @@ def get_parser():
                         type=int,
                         default=None)
 
-    parser.add_argument('--use_diff_img',
-                        help='use frame difference as auxilary input or not(False)',
-                        type=str2bool,
-                        default=False)
-
     return parser
 
 def get_default_config():
@@ -425,7 +414,6 @@ def get_default_config():
     config.filter_feature=None
     config.filter_relu=True
     config.filter_type='main'
-    config.flow_backbone='vgg11'
     config.frame_gap=5
     config.freeze_layer=1
     config.freeze_ratio=0.0
@@ -433,6 +421,7 @@ def get_default_config():
     config.ignore_pad_area=0
     config.init_lr=1e-4
     config.input_shape=[224,224]
+    config.input_format='-'
     config.layer_preference='last'
     config.log_dir=os.path.expanduser('~/tmp/logs/motion')
     config.loss_name='ce'
@@ -460,14 +449,12 @@ def get_default_config():
     config.upsample_layer=1
     config.upsample_type='bilinear'
     config.upsample_type='bilinear'
-    config.use_aux_input=True
     config.use_bias=True
     config.use_bn=False
     config.use_dropout=False
     config.use_none_layer=False
     config.use_part_number=1000
     config.use_sync_bn=False
-    config.use_diff_img=False
 
     return config
 
