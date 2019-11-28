@@ -10,8 +10,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import warnings
 from utils.disc_tools import lcm_list
-from utils.disc_tools import str2bool
-import os
 
 ## Channel Attention (CA) Layer
 class CALayer(nn.Module):

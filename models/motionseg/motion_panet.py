@@ -13,6 +13,29 @@ from models.motionseg.motion_unet import get_decoder
 from models.motionseg.motion_fcn import stn
 from easydict import EasyDict as edict
 
+def get_input_channel(input_format):
+    aux_in_channels=0
+    for c in input_format:
+        if c.lower()=='b':
+            assert False
+            # background image
+            aux_in_channels+=3
+        elif c.lower()=='o':
+            # optical flow
+            aux_in_channels+=2
+        elif c.lower()=='n':
+            # neighbor image
+            aux_in_channels+=3
+        elif c.lower()=='-':
+            pass
+        elif c.lower()=='g':
+            # neighbor groundtruth
+            aux_in_channels+=1
+        else:
+            assert False
+
+    return aux_in_channels
+
 class panet(motion_backbone):
     """
     use for panet for image/flow and backbone for flow
@@ -364,25 +387,7 @@ class motion_panet2(nn.Module):
 
         self.main_backbone=motion_backbone(config,use_none_layer=config.use_none_layer)
 
-        aux_in_channels=0
-        for c in self.config.input_format:
-            if c.lower()=='b':
-                assert False
-                # background image
-                aux_in_channels+=3
-            elif c.lower()=='o':
-                # optical flow
-                aux_in_channels+=2
-            elif c.lower()=='n':
-                # neighbor image
-                aux_in_channels+=3
-            elif c.lower()=='-':
-                pass
-            elif c.lower()=='g':
-                # neighbor groundtruth
-                aux_in_channels+=1
-            else:
-                assert False
+        aux_in_channels=get_input_channel(self.config.input_format)
 
         if self.config.input_format.lower()!='n':
             self.share_backbone=False

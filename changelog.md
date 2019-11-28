@@ -5,6 +5,7 @@
 - 2019/11/01 add sync_bn (test == dist)
 - 2019/11/09 add sync_bn for motionseg
 - 2019/11/12 for torch1.1+, learning rate schedule step should after optimizer.step()
+- 2019/11/27 add input_format for fbms dataset and panet2, so there are bugs for other dataset and network structure
 
 # todo
 - [x] [pspnet](models/pspnet.py)
