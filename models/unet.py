@@ -98,6 +98,7 @@ class PSPUNet(nn.Module):
         self.optimizer_params=[dict(params=self.backbone.parameters(), lr_mult=1),
                           dict(params=self.midnet.parameters(),lr_mult=lr_mult),
                           dict(params=self.decoder.parameters(),lr_mult=lr_mult)]
+
     def forward(self,x):
         feature_map = self.backbone.forward_layers(x)
         feature_mid = self.midnet(feature_map)

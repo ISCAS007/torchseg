@@ -25,10 +25,29 @@ from models.psp_convert import CONFIG as psp_convert_config
 from models.motionnet import motionnet,motion_panet
 from models.unet import UNet,PSPUNet,AuxNet
 from models.global_local_net import GlobalLocalNet
+import torch
+
+def convert_to_dilated_pool(module):
+    dilation=3
+    output_module=module
+    if isinstance(module,torch.nn.MaxPool2d):
+        output_module=torch.nn.MaxPool2d(kernel_size=module.kernel_size,
+                                         stride=module.stride,
+                                         padding=(dilation*(module.kernel_size-1)-1)//2,
+                                         dilation=dilation)
+    for name,child in module.named_children():
+        output_module.add_module(name,convert_to_dilated_pool(child))
+
+    del module
+    return output_module
 
 def get_net(config):
     model = globals()[config.net_name](config)
-    return model
+
+    if config.use_dilated_pool:
+        return convert_to_dilated_pool(model)
+    else:
+        return model
 
 def get_default_config():
     config=edict()
@@ -132,6 +151,8 @@ def get_default_config():
     config.use_rotate=True
     config.use_semseg=False
     config.use_sync_bn=False
+    config.use_dilated_pool=False
+    config.sub_config=''
     return config
 
 def get_config(args=None):
@@ -730,6 +751,17 @@ def get_parser():
                         help='use multiprocess distribute trainning or not (False)',
                         type=str2bool,
                         default=False)
+
+    # 2019/12/09
+    parser.add_argument('--sub_config',
+                        help='dynamic config for specific model',
+                        default='')
+
+    # 2019/12/09
+    parser.add_argument('--use_dilated_pool',
+                         help="use dilated pool or not(False)",
+                         type=str2bool,
+                         default=False)
     return parser
 
 def get_hyperparams(key,discrete=False):
