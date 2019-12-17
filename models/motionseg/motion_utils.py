@@ -5,6 +5,7 @@ from dataset.fbms_dataset import fbms_dataset
 from dataset.cdnet_dataset import cdnet_dataset
 from dataset.segtrackv2_dataset import segtrackv2_dataset
 from dataset.bmcnet_dataset import bmcnet_dataset
+from dataset.davis_dataset import davis_dataset
 from dataset.dataset_generalize import image_normalizations
 from utils.augmentor import Augmentations
 from models.motionseg.motion_fcn import motion_fcn,motion_fcn2,motion_fcn_stn,motion_fcn2_flow,motion_fcn_flow
@@ -161,7 +162,7 @@ def get_parser():
 
     parser.add_argument('--dataset',
                         help='dataset name (FBMS)',
-                        choices=['FBMS','cdnet2014','segtrackv2','BMCnet','all','all2','all3'],
+                        choices=['FBMS','cdnet2014','segtrackv2','BMCnet','DAVIS2017','all','all2','all3'],
                         default='cdnet2014')
 
     backbone_names=['vgg'+str(number) for number in [11,13,16,19,21]]
@@ -478,6 +479,8 @@ def fine_tune_config(config):
         config['root_path']=os.path.expanduser('~/cvdataset/SegTrackv2')
     elif config.dataset=='BMCnet':
         config['root_path']=os.path.expanduser('~/cvdataset/BMCnet')
+    elif config.dataset=='DAVIS2017':
+        config['root_path']=os.path.expanduser('~/cvdataset/DAVIS')
     elif config.dataset in ['all','all2','all3']:
         pass
     else:
@@ -498,6 +501,8 @@ def get_dataset(config,split):
         xxx_dataset=segtrackv2_dataset(config,split,normalizations=normer,augmentations=augmentations)
     elif config.dataset=='BMCnet':
         xxx_dataset=bmcnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
+    elif config.dataset=='DAVIS2017':
+        xxx_dataset=davis_dataset(config,split,normalizations=normer,augmentations=augmentations)
     elif config.dataset=='all':
         config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
         fbms=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)

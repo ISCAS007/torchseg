@@ -74,12 +74,15 @@ class motionseg_dataset(td.Dataset):
         resize_gt_images=[np.expand_dims(img,0) for img in resize_gt_images]
 
         flow_path=main2flow(main_path)
-        flow_file=open(flow_path,'r')
-        a=np.fromfile(flow_file,np.uint8,count=4)
-        b=np.fromfile(flow_file,np.int32,count=2)
-        flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
-        flow=np.clip(flow,a_min=-50,a_max=50)/50.0
-        optical_flow=cv2.resize(flow,resize_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
+        if os.path.exists(flow_path):
+            flow_file=open(flow_path,'r')
+            a=np.fromfile(flow_file,np.uint8,count=4)
+            b=np.fromfile(flow_file,np.int32,count=2)
+            flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
+            flow=np.clip(flow,a_min=-50,a_max=50)/50.0
+            optical_flow=cv2.resize(flow,resize_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
+        else:
+            optical_flow=0
 
         data={'images':resize_frame_images,
               'labels':resize_gt_images,
