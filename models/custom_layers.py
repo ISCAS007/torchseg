@@ -177,9 +177,10 @@ class HALayer(nn.Module):
         return y
 
 class AttentionLayer(nn.Module):
-    def __init__(self,config,main_c,filter_c=None):
+    def __init__(self,config,main_c,filter_c=None,is_lr_layer=False):
         super().__init__()
         self.config=config
+        self.is_lr_layer=is_lr_layer
 
         if hasattr(config,'res_attention'):
             self.res_attention=config.res_attention
@@ -203,13 +204,13 @@ class AttentionLayer(nn.Module):
         if 'h' in self.attention_type:
             self.global2_filter=HALayer(main_channel=main_c,attention_channel=filter_c)
 
-        if 'd' in self.attention_type:
+        if 'd' in self.attention_type and self.is_lr_layer:
             self.dual_filter=DUAL_Module(main_c)
 
-        if 'p' in self.attention_type:
+        if 'p' in self.attention_type and self.is_lr_layer:
             self.pam_filter=PAM_Module(main_c)
 
-        if 'q' in self.attention_type:
+        if 'q' in self.attention_type and self.is_lr_layer:
             self.cam_filter=CAM_Module(main_c)
 
         for m in self.modules():
@@ -236,11 +237,11 @@ class AttentionLayer(nn.Module):
                 x=self.global_filter(x,y)
             elif c=='h':
                 x=self.global2_filter(x,y)
-            elif c=='d':
+            elif c=='d' and self.is_lr_layer:
                 x=self.dual_filter(x)
-            elif c=='p':
+            elif c=='p' and self.is_lr_layer:
                 x=self.pam_filter(x)
-            elif c=='q':
+            elif c=='q' and self.is_lr_layer:
                 x=self.cam_filter(x)
             elif c=='n':
                 pass
