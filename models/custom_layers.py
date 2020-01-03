@@ -237,11 +237,13 @@ class AttentionLayer(nn.Module):
                 x=self.global_filter(x,y)
             elif c=='h':
                 x=self.global2_filter(x,y)
-            elif c=='d' and self.is_lr_layer:
+            elif (not self.is_lr_layer) and c in ['d','p','q']:
+                pass
+            elif c=='d':
                 x=self.dual_filter(x)
-            elif c=='p' and self.is_lr_layer:
+            elif c=='p':
                 x=self.pam_filter(x)
-            elif c=='q' and self.is_lr_layer:
+            elif c=='q':
                 x=self.cam_filter(x)
             elif c=='n':
                 pass
