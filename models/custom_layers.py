@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import warnings
 from utils.disc_tools import lcm_list
+from models.dual_attention import CAM_Module,PAM_Module,DUAL_Module
 
 ## Channel Attention (CA) Layer
 class CALayer(nn.Module):
@@ -202,6 +203,15 @@ class AttentionLayer(nn.Module):
         if 'h' in self.attention_type:
             self.global2_filter=HALayer(main_channel=main_c,attention_channel=filter_c)
 
+        if 'd' in self.attention_type:
+            self.dual_filter=DUAL_Module(main_c)
+
+        if 'p' in self.attention_type:
+            self.pam_filter=PAM_Module(main_c)
+
+        if 'q' in self.attention_type:
+            self.cam_filter=CAM_Module(main_c)
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(
@@ -226,6 +236,12 @@ class AttentionLayer(nn.Module):
                 x=self.global_filter(x,y)
             elif c=='h':
                 x=self.global2_filter(x,y)
+            elif c=='d':
+                x=self.dual_filter(x)
+            elif c=='p':
+                x=self.pam_filter(x)
+            elif c=='q':
+                x=self.cam_filter(x)
             elif c=='n':
                 pass
             else:

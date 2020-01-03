@@ -64,6 +64,7 @@ the miou is 0.8+
 ```
 - https://github.com/CSAILVision/semantic-segmentation-pytorch
 - [cityscapes dataset evaluation](https://github.com/mcordts/cityscapesScripts)
+- [dual attention](https://github.com/junfu1115/DANet)
 
 # blog reference
 - [paper and dataset for semantic segmentation introduction](https://meetshah1995.github.io/semantic-segmentation/deep-learning/pytorch/visdom/2017/06/01/semantic-segmentation-over-the-years.html#sec_datasets)
