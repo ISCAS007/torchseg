@@ -9,9 +9,11 @@ import cv2
 from dataset.segtrackv2_dataset import main2flow,motionseg_dataset
 
 class davis_dataset(motionseg_dataset):
-    def __init__(self,config,split='train',normalizations=None,augmentations=None):
+    split_set=['train','val','test-dev','test-challenge']
+    split_with_gt_set=['train','val']
+    def __init__(self,config,split='train',normalizations=None,augmentations=None,task='unsupervised'):
         super().__init__(config,split,normalizations,augmentations)
-        if split not in ['train','val']:
+        if split not in self.split_set:
             assert False,'unknown split {} for davis'.format(split)
 
         self.split=split
@@ -25,14 +27,14 @@ class davis_dataset(motionseg_dataset):
         self.resolution = '480p'
         self.image_folder = 'JPEGImages'
         self.imageset_folder = 'ImageSets'
-        self.annotation_folder = 'Annotations'
+        self.annotation_folder = 'Annotations' if task == 'semi-supervised' else 'Annotations_unsupervised'
 
         self.root_path=config.root_path
         self.main_input_path_list=self.get_main_input_path_list(split)
 
         print('%s dataset size %d'%(split,len(self.main_input_path_list)))
         self.main_input_path_list.sort()
-        if self.split in ['train','val','val_path']:
+        if self.split in ['train','val']:
             n=len(self.main_input_path_list)
             if n > self.config['use_part_number'] > 0:
                 gap=n//self.config['use_part_number']
@@ -115,6 +117,8 @@ class davis_dataset(motionseg_dataset):
     def get_main_input_path_list(self, train_or_val=None, use_first_frame=True):
         if train_or_val is None:
             train_or_val=self.split
+        else:
+            assert train_or_val in self.split_set
 
         year = self.year
         root_path = self.root_path
@@ -174,20 +178,28 @@ class davis_dataset(motionseg_dataset):
     def __get_path__(self,index):
         main_path=self.main_input_path_list[index]
         aux_path=self.get_neighbor_path(main_path)
-        main_gt_path=self.get_annotation_path(main_path)
-        return main_path,aux_path,main_gt_path
+
+        if self.split in self.split_with_gt_set:
+            main_gt_path=self.get_annotation_path(main_path)
+            return main_path,aux_path,main_gt_path
+        else:
+            return main_path,aux_path,main_path
 
     def __get_image__(self,index):
         main_file,aux_file,gt_file=self.__get_path__(index)
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
-        gt_image=cv2.imread(gt_file,cv2.IMREAD_GRAYSCALE)
+        if self.split in self.split_with_gt_set:
+            gt_image=cv2.imread(gt_file,cv2.IMREAD_GRAYSCALE)
 
-        # find aux_gt_file
-        aux_gt_file=self.get_annotation_path(aux_file)
-        if os.path.exists(aux_gt_file):
-            aux_gt_image=cv2.imread(aux_gt_file,cv2.IMREAD_GRAYSCALE)
+            # find aux_gt_file
+            aux_gt_file=self.get_annotation_path(aux_file)
+            if os.path.exists(aux_gt_file):
+                aux_gt_image=cv2.imread(aux_gt_file,cv2.IMREAD_GRAYSCALE)
+            else:
+                aux_gt_image=np.zeros_like(gt_image)
         else:
-            aux_gt_image=np.zeros_like(gt_image)
+            height,width,_=frame_images[0].shape
+            aux_gt_image=gt_image=np.zeros((height,width),dtype=np.uint8)
 
         labels=[]
         for gt in [gt_image,aux_gt_image]:
@@ -202,13 +214,25 @@ if __name__ == '__main__':
     cfg.input_shape=(224,224)
     cfg.use_part_number=0
     cfg.frame_gap=5
-    cfg.root_path = '/media/sdb/CVDataset/ObjectSegmentation/DAVIS'
-    d = DAVIS(cfg)
+    cfg.root_path = os.path.expanduser('~/cvdataset/DAVIS')
+    cfg.dataset='DAVIS2017'
+    cfg.note='test'
+    split='test-challenge'
+    d = davis_dataset(cfg,split=split,task='unsupervised')
 
-    main_input_path = '/media/sdb/CVDataset/ObjectSegmentation/DAVIS/JPEGImages/480p/bear/00000.jpg'
+    main_input_path = os.path.expanduser('~/cvdataset/DAVIS/JPEGImages/480p/bear/00000.jpg')
     neighbor_path = d.get_neighbor_path(main_input_path)
     print(neighbor_path)
     annotation_path = d.get_annotation_path(main_input_path)
     print(annotation_path)
 
+    save_dir=os.path.join(os.path.expanduser('~/tmp/result'),cfg.dataset,split,cfg.note)
+    result_path=d.get_result_path(save_dir,main_input_path)
+    print(result_path)
+
     main_input_path_list = d.get_main_input_path_list()
+    print(len(main_input_path_list))
+
+    for data in d:
+        print(data)
+        break

@@ -45,6 +45,12 @@ class motionseg_dataset(td.Dataset):
         """
         assert False
 
+    def get_result_path(self,save_dir,main_path):
+        """
+        return save path for benchmark
+        """
+        assert False
+
     def __getitem__(self,index):
         frame_images,gt_images,main_path,aux_path,gt_path=self.__get_image__(index)
 
@@ -87,6 +93,8 @@ class motionseg_dataset(td.Dataset):
         data={'images':resize_frame_images,
               'labels':resize_gt_images,
               'gt_path':gt_path,
+              'main_path':main_path,
+              'aux_path':aux_path,
               'shape':frame_images[0].shape,
               'optical_flow':optical_flow}
 

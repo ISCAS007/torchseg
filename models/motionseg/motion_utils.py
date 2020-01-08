@@ -145,8 +145,8 @@ def get_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--app',
-                        help='application name',
-                        choices=['train','summary','dataset','viz','dist'],
+                        help='application name, train(train and val), test(run benchmark test, save model output), summary(view model), dataset(view dataset), viz(visualization)',
+                        choices=['train','summary','dataset','viz','test'],
                         default='train')
 
     parser.add_argument("--net_name",
@@ -254,6 +254,7 @@ def get_parser():
                         help="save model or not",
                         type=str2bool,
                         default=True)
+
     parser.add_argument("--stn_loss_weight",
                         help="stn loss weight (1.0)",
                         type=float,
@@ -392,6 +393,11 @@ def get_parser():
                         type=int,
                         default=None)
 
+    # 2020/01/08
+    parser.add_argument('--checkpoint_path',
+                        help='the checkpoint path to load for test and validation',
+                        default=None)
+
     return parser
 
 def get_default_config():
@@ -407,6 +413,7 @@ def get_default_config():
     config.backbone_name='vgg11'
     config.backbone_pretrained=True
     config.batch_size=4
+    config.checkpoint_path=None
     config.dataset='cdnet2014'
     config.decode_main_layer=1
     config.deconv_layer=5

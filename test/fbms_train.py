@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
 import torch.utils.data as td
 from models.motion_stn import motion_stn, motion_net, stn_loss
 from models.motionseg.motion_utils import (Metric_Acc,Metric_Mean,get_parser,
@@ -20,6 +21,11 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 import random
 import torch.backends.cudnn as cudnn
+import cv2
+import glob
+from easydict import EasyDict as edict
+from utils.davis_benchmark import benchmark
+from utils.disc_tools import get_newest_file
 
 def get_dist_module(config):
     if config['net_name'] in ['motion_stn','motion_net']:
@@ -233,6 +239,60 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
     if is_main_process(config):
         writer.close()
 
+def test(config):
+    if config.checkpoint_path is None:
+        log_dir = os.path.join(config['log_dir'], config['net_name'],
+                               config['dataset'], config['note'])
+
+        checkpoint_path_list=glob.glob(os.path.join(log_dir,'*','*.pkl'))
+        assert len(checkpoint_path_list)>0,f'{log_dir} do not have checkpoint'
+        checkpoint_path = get_newest_file(checkpoint_path_list)
+    else:
+        checkpoint_path=config.checkpoint_path
+
+    model=get_model(config)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    model.load_state_dict(torch.load(checkpoint_path))
+    model.eval()
+
+
+    if config.dataset.lower()=='DAVIS2017'.lower():
+        for split in ['val','test-dev','test-challenge']:
+            save_dir=os.path.join(os.path.expanduser('~/tmp/result'),config.dataset,split,config.note)
+            xxx_dataset=get_dataset(config,split)
+            xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=1,shuffle=False,num_workers=2,pin_memory=True)
+            tqdm_step = tqdm(xxx_loader, desc='steps', leave=False)
+            for step,data in enumerate(tqdm_step):
+                frames=data['images']
+                main_path=data['main_path'][0]
+                height,width,_=data['shape']
+                height,width=height[0],width[0]
+                print(height,width)
+
+                save_path=xxx_dataset.get_result_path(save_dir,main_path)
+                assert save_path!=main_path
+                images = [img.to(device).float() for img in frames]
+                outputs=model.forward(images)
+                result_mask=F.interpolate(outputs['masks'][0], size=(height,width),mode='nearest')
+                # print(result_mask.shape) # (batch_size,2,height,width)
+                np_mask=np.squeeze(np.argmax(result_mask.data.cpu().numpy(),axis=1)).astype(np.uint8)
+                # print(np_mask.shape) # (height,width)
+
+                os.makedirs(os.path.dirname(save_path),exist_ok=True)
+                print(f'save image to {save_path}')
+                cv2.imwrite(save_path,np_mask)
+
+            if split=='val':
+                args=edict()
+                args.davis_path=os.path.expanduser('~/cvdataset/DAVIS')
+                args.set='val'
+                args.task='unsupervised'
+                args.results_path=save_dir
+                benchmark(args)
+    else:
+        assert False,'not supported dataset for test'
+
 def main_worker(gpu,ngpus_per_node,config):
     config.gpu=gpu
 
@@ -305,19 +365,15 @@ if __name__ == '__main__':
             for idx in range(dataset_size):
                 xxx_dataset.__getitem__(idx)
         sys.exit(0)
-
-    # support for cpu/gpu
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-
-
-    if args.app=='summary':
+    elif args.app=='summary':
         config.gpu=0
         model,seg_loss_fn,optimizer,dataset_loaders=get_dist_module(config)
         # not work for output with dict.
         torchsummary.summary(model, ((3, config.input_shape[0], config.input_shape[1]),
                                      (2, config.input_shape[0], config.input_shape[1])))
         sys.exit(0)
+    elif args.app in ['test','benchmark']:
+        test(config)
     elif config.use_sync_bn:
         dist_train(config)
     else:
