@@ -258,7 +258,14 @@ def test(config):
 
 
     if config.dataset.lower()=='DAVIS2017'.lower():
-        for split in ['val','test-dev','test-challenge']:
+        if config.app=='test':
+            split_set=['val']
+        elif config.app=='benchmark':
+            split_set=['test-dev','test-challenge']
+        else:
+            assert False
+
+        for split in split_set:
             save_dir=os.path.join(os.path.expanduser('~/tmp/result'),config.dataset,split,config.note)
             xxx_dataset=get_dataset(config,split)
             xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=1,shuffle=False,num_workers=2,pin_memory=True)

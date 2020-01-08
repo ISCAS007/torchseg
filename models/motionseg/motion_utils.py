@@ -145,8 +145,8 @@ def get_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--app',
-                        help='application name, train(train and val), test(run benchmark test, save model output), summary(view model), dataset(view dataset), viz(visualization)',
-                        choices=['train','summary','dataset','viz','test'],
+                        help='application name, train(train and val), test(run benchmark for val dataset, save model output), benchmark(run benchmark for test dataset), summary(view model), dataset(view dataset), viz(visualization)',
+                        choices=['train','summary','dataset','viz','test','benchmark'],
                         default='train')
 
     parser.add_argument("--net_name",
