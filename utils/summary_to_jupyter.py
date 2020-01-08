@@ -66,11 +66,22 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
     for idx,note in enumerate(notes):
         show_tags=[]
         show_tags=tags.copy()
+        
+        
         tasks=summary(rootpath,tags,note,recent_log_number)
         if tasks.empty:
             warnings.warn('{} task is empty'.format(note))
             continue
+            
+        check_ok=True
+        for key in show_tags:
+            if key not in tasks.columns:
+                warnings.warn('key {} not in task'.format(key))
+                check_ok=False
         
+        if not check_ok:
+            continue
+            
         if note_gtags is None:
             param_list=[]
             for col in tasks.columns:
