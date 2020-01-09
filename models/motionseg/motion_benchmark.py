@@ -25,7 +25,7 @@ import glob
 def get_save_path(gt_path,dataset_root_path,output_root_path):
     save_path=gt_path.replace(dataset_root_path,output_root_path)
     assert save_path!=gt_path,'cannot overwrite gt path'
-    
+
     return save_path
 
 def benchmark(config_file,output_root_path='output',use_crf=False):
@@ -36,13 +36,13 @@ def benchmark(config_file,output_root_path='output',use_crf=False):
         assert len(config_files)>0
         config_file=config_files[0]
         print(config_file)
-        
+
     model,dataset_loaders,normer=get_model_and_dataset(config_file)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.eval()
-    
+
     config=model.config
-    split='val_path'
+    split='val'
     tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
     for data_dict in tqdm_step:
         assert isinstance(data_dict,dict),'type is {}'.format(data_dict)
@@ -50,12 +50,12 @@ def benchmark(config_file,output_root_path='output',use_crf=False):
         gt_paths=data_dict['gt_path']
         assert len(gt_paths)==1
         save_path=get_save_path(gt_paths[0],config.root_path,os.path.join(output_root_path,config.dataset,config.note))
-        
+
         outputs=model.forward(images)
         shape=data_dict['shape']
         origin_mask=F.interpolate(outputs['masks'][0], size=shape[0:2],mode='nearest')
         os.makedirs(os.path.dirname(save_path),exist_ok=True)
-        
+
         if use_crf:
             pass
         else:
@@ -88,13 +88,13 @@ def merge_images(images,wgap=5,hgap=5,col_num=9,resize_img_w=48):
         merge_img[y_top:y_top+resize_img_h,x_left:x_left+resize_img_w,:]=resize_img
         col=col+1
         max_resize_img_h=max(max_resize_img_h,resize_img_h)
-        if col==col_num: 
+        if col==col_num:
             col=0
             y=y+max_resize_img_h+hgap
             max_resize_img_h=0
 
     return merge_img
-        
+
 def showcase(config_file,output_root_path='output',generate_results=False,mode='best'):
     """
     run benchmark() first
@@ -106,22 +106,22 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
         assert len(config_files)>0
         config_file=config_files[0]
         print(config_file)
-        
+
     if generate_results:
         benchmark(config_file,output_root_path)
     def get_fmeasure(gt_path,save_path):
         gt_img=cv2.imread(gt_path,cv2.IMREAD_GRAYSCALE)
-        pred_img=cv2.imread(save_path,cv2.IMREAD_GRAYSCALE)        
-        
+        pred_img=cv2.imread(save_path,cv2.IMREAD_GRAYSCALE)
+
         tp=np.sum(np.logical_and(gt_img>0,pred_img>0))
 #        tn=np.sum(np.logical_and(gt_img==0,pred_img==0))
         fp=np.sum(np.logical_and(gt_img==0,pred_img>0))
         fn=np.sum(np.logical_and(gt_img>0,pred_img==0))
-        
+
         precision=tp/(tp+fp+1e-5)
         recall=tp/(tp+fn+1e-5)
         fmeasure=2*precision*recall/(precision+recall+1e-5)
-        
+
         return fmeasure
     config=load_config(config_file)
     default_config=get_default_config()
@@ -129,15 +129,24 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
         if not hasattr(config,key):
             config[key]=default_config[key]
     config=fine_tune_config(config)
-    split='val_path'
+    split='val'
     dataset=get_dataset(config,split)
     N=len(dataset)
     category_dict={}
     fmeasure_dict={}
     for idx in trange(N):
         img1_path,img2_path,gt_path=dataset.__get_path__(idx)
-        save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset,config.note))
-        assert config.dataset=='FBMS'
+
+        if config.dataset=='FBMS':
+            save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset,config.note))
+        elif config.dataset.lower()=='DAVIS2017'.lower():
+            save_path=get_save_path(gt_path,
+                                    os.path.join(config.root_path,'Annotations_unsupervised/480p'),
+                                    output_root_path)
+            print(gt_path,config.root_path,output_root_path,save_path)
+        else:
+            assert False
+
         category=img1_path.split('/')[-2]
         fmeasure=get_fmeasure(gt_path,save_path)
         if category not in category_dict.keys():
@@ -153,16 +162,19 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
     images=[]
     for key,value in category_dict.items():
         print(value[2])
-        for path in value:
-            images.append(cv2.cvtColor(cv2.imread(path),cv2.COLOR_BGR2RGB))
-        
+        for idx,path in enumerate(value):
+            img=cv2.imread(path)
+            if np.max(img)==1:
+                img*=255
+            images.append(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
+
     merge_img=merge_images(images,col_num=9,resize_img_w=120)
     save_merge_path=os.path.join(output_root_path,'{}_showcase_{}_{}.jpg'.format(config.dataset,split,config.net_name))
     cv2.imwrite(save_merge_path,merge_img)
     print(fmeasure_dict)
     plt.imshow(merge_img)
     plt.show()
-    
+
 def evaluation(config_file,output_root_path='output',generate_results=False,dataset_name=''):
     """
     run benchmark() first
@@ -174,7 +186,7 @@ def evaluation(config_file,output_root_path='output',generate_results=False,data
         assert len(config_files)>0
         config_file=config_files[0]
         print(config_file)
-        
+
     if generate_results:
         benchmark(config_file,output_root_path)
     config=load_config(config_file)
@@ -186,44 +198,44 @@ def evaluation(config_file,output_root_path='output',generate_results=False,data
     split='val_path'
     if dataset_name!='':
         config.dataset=dataset_name
-        
+
     dataset=get_dataset(config,split)
     N=len(dataset)
-    
+
     sum_f=sum_p=sum_r=0
     sum_tp=sum_fp=sum_tn=sum_fn=0
     for idx in trange(N):
         img1_path,img2_path,gt_path=dataset.__get_path__(idx)
         save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset,config.note))
-        
+
         gt_img=cv2.imread(gt_path,cv2.IMREAD_GRAYSCALE)
-        pred_img=cv2.imread(save_path,cv2.IMREAD_GRAYSCALE)        
-        
+        pred_img=cv2.imread(save_path,cv2.IMREAD_GRAYSCALE)
+
         tp=np.sum(np.logical_and(gt_img>0,pred_img>0))
         tn=np.sum(np.logical_and(gt_img==0,pred_img==0))
         fp=np.sum(np.logical_and(gt_img==0,pred_img>0))
         fn=np.sum(np.logical_and(gt_img>0,pred_img==0))
-        
+
         if tp+fn==0:
             r=1
         else:
             r=tp/(tp+fn)
-        
+
         if tp+fp==0:
             p=1
         else:
             p=tp/(tp+fp)
-        
+
         if p+r==0:
             f=1
         else:
             f=2*p*r/(p+r)
-                
-        
+
+
         sum_f+=f
         sum_p+=p
         sum_r+=r
-        
+
         sum_tp+=tp
         sum_fp+=fp
         sum_tn+=tn
@@ -231,16 +243,20 @@ def evaluation(config_file,output_root_path='output',generate_results=False,data
     overall_precision=sum_tp/(sum_tp+sum_fp+1e-5)
     overall_recall=sum_tp/(sum_tp+sum_fn+1e-5)
     overall_fmeasure=2*overall_precision*overall_recall/(overall_precision+overall_recall+1e-5)
-    
+
     print('tp={},tn={},fp={},fn={}'.format(sum_tp,sum_tn,sum_fp,sum_fn))
     print('precision={},recall={}'.format(overall_precision,overall_recall))
     print('overall fmeasure is {}'.format(overall_fmeasure))
-    
+
     print('mean precision={}, recall={}, fmeasure={}'.format(sum_p/N,sum_r/N,sum_f/N))
 if __name__ == '__main__':
     """
+    # for FBMS
     python xxx/motion_benchmark.py benchmark xxx/xxx.txt
     python xxx/motion_benchmark.py showcase xxx/xxx.txt
     python xxx.py evaluation xxx/xxx.txt
+
+    # for DAVIS2017
+    python models/motionseg/motion_benchmark.py showcase ~/tmp/logs/motion/motion_attention/DAVIS2017/test_inn_attd/2020-01-08___15-56-32/config.txt ~/tmp/result/DAVIS2017/val/test_inn_attd
     """
     fire.Fire()

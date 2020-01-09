@@ -283,7 +283,7 @@ def test(config):
                 outputs=model.forward(images)
                 result_mask=F.interpolate(outputs['masks'][0], size=(height,width),mode='nearest')
                 # print(result_mask.shape) # (batch_size,2,height,width)
-                np_mask=np.squeeze(np.argmax(result_mask.data.cpu().numpy(),axis=1)).astype(np.uint8)
+                np_mask=255*np.squeeze(np.argmax(result_mask.data.cpu().numpy(),axis=1)).astype(np.uint8)
                 # print(np_mask.shape) # (height,width)
 
                 os.makedirs(os.path.dirname(save_path),exist_ok=True)
