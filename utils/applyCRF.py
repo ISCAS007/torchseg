@@ -74,9 +74,6 @@ def apply_crf(image_dir,result_dir,output_dir=None):
 if __name__ == '__main__':
     """
     # for FBMS
-    python xxx/motion_benchmark.py benchmark xxx/xxx.txt
-    python xxx/motion_benchmark.py showcase xxx/xxx.txt
-    python xxx.py evaluation xxx/xxx.txt
 
     # for DAVIS2017
     python utils/applyCRF.py apply_crf ~/cvdataset/DAVIS/JPEGImages/480p ~/tmp/result/DAVIS2017/val/test_inn_attd

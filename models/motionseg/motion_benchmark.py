@@ -28,7 +28,7 @@ def get_save_path(gt_path,dataset_root_path,output_root_path):
 
     return save_path
 
-def benchmark(config_file,output_root_path='output',use_crf=False):
+def benchmark(config_file,output_root_path='output'):
     if not os.path.exists(config_file):
         pattern=os.path.expanduser('~/tmp/logs/motion/**/config.txt')
         config_files=glob.glob(pattern,recursive=True)
@@ -56,10 +56,7 @@ def benchmark(config_file,output_root_path='output',use_crf=False):
         origin_mask=F.interpolate(outputs['masks'][0], size=shape[0:2],mode='nearest')
         os.makedirs(os.path.dirname(save_path),exist_ok=True)
 
-        if use_crf:
-            pass
-        else:
-            save_img=np.squeeze(np.argmax(origin_mask.data.cpu().numpy(),axis=1)).astype(np.uint8)*255
+        save_img=np.squeeze(np.argmax(origin_mask.data.cpu().numpy(),axis=1)).astype(np.uint8)*255
         cv2.imwrite(save_path,save_img)
 
 def merge_images(images,wgap=5,hgap=5,col_num=9,resize_img_w=48):
@@ -195,7 +192,7 @@ def evaluation(config_file,output_root_path='output',generate_results=False,data
         if not hasattr(config,key):
             config[key]=default_config[key]
     config=fine_tune_config(config)
-    split='val_path'
+    split='val'
     if dataset_name!='':
         config.dataset=dataset_name
 
