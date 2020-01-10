@@ -12,16 +12,11 @@ def apply_crf(image_dir,result_dir,output_dir=None):
     if output_dir is None:
         output_dir=result_dir+'_crf'
 
-    result_files=glob.glob(os.path.join(result_dir,'**','*.*'),recursive=True)
-    mask_suffix='.png'
-
-    assert len(result_files)>0
-    result_masks=[f for f in result_files if f.endswith(mask_suffix)]
+    result_masks=glob.glob(os.path.join(result_dir,'**','*.png'),recursive=True)
     assert len(result_masks)>0
 
-    print(len(result_files),len(result_masks))
-
     img_suffix='.jpg'
+    mask_suffix='.png'
     tqdm_set=tqdm(result_masks)
     for result_file in tqdm_set:
         img_file=result_file.replace(result_dir,image_dir).replace(mask_suffix,img_suffix)
@@ -33,6 +28,15 @@ def apply_crf(image_dir,result_dir,output_dir=None):
 
         min_val = np.min(anno_rgb.ravel())
         max_val = np.max(anno_rgb.ravel())
+
+        if max_val==min_val:
+            output_file=result_file.replace(result_dir,output_dir)
+            os.makedirs(os.path.dirname(output_file),exist_ok=True)
+            imsave(output_file, anno_rgb.astype(np.uint8))
+            output_file_info=output_file.split(os.sep)
+            tqdm_set.set_postfix(video=output_file_info[-2],file=output_file_info[-1])
+            continue
+
         out = (anno_rgb.astype('float') - min_val) / (max_val - min_val)
         labels = np.zeros((2, img.shape[0], img.shape[1]))
         labels[1, :, :] = out
