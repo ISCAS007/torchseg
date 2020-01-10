@@ -1,16 +1,13 @@
 import pandas as pd
 from glob import glob
 import numpy as np
-from easydict import EasyDict as edict
 import os
-import time
-import sys
 from tabulate import tabulate
 
-import math
 from utils.config import load_config
 from utils.summary_to_csv import config_to_log,load_log,edict_to_pandas,today_log,recent_log,get_actual_step
 import warnings
+
 def summary(rootpath,tags,filter_str=None,recent_log_number=100):
     config_files=glob(os.path.join(rootpath,'**','config.txt'),recursive=True)
     if filter_str == 'today':
@@ -19,7 +16,7 @@ def summary(rootpath,tags,filter_str=None,recent_log_number=100):
         config_files=recent_log(config_files,recent_log_number)
     elif filter_str is not None:
         config_files=[f for f in config_files if f.find(filter_str)>=0]
-    
+
     tasks=pd.DataFrame()
     for cfg in config_files:
         log=config_to_log(cfg)
@@ -29,7 +26,7 @@ def summary(rootpath,tags,filter_str=None,recent_log_number=100):
             actual_step=get_actual_step(log)
             for key,value in metrics.items():
                 ed[key]=value
-            
+
             ed['dir']=cfg
             ed['actual_step']=actual_step
             log_time=''
@@ -41,12 +38,12 @@ def summary(rootpath,tags,filter_str=None,recent_log_number=100):
             if 'dataset_name' not in ed.keys():
                 ed['dataset_name']=cfg.split(os.sep)[-4]
                 warnings.warn('obtain dataset name from config file path')
-                
+
             task=edict_to_pandas(ed)
             tasks=tasks.append(task,ignore_index=True,sort=False)
         else:
             warnings.warn('cannot find log file for {}'.format(cfg))
-            
+
     return tasks
 
 def dump(tags=['train/fmeasure','val/fmeasure'],
@@ -62,26 +59,25 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
         dump_dir=True,
         recent_log_number=100):
     dir_tags=[tags[1],'dir']
-    
+
     for idx,note in enumerate(notes):
         show_tags=[]
         show_tags=tags.copy()
-        
-        
+
         tasks=summary(rootpath,tags,note,recent_log_number)
         if tasks.empty:
             warnings.warn('{} task is empty'.format(note))
             continue
-            
+
         check_ok=True
         for key in show_tags:
             if key not in tasks.columns:
                 warnings.warn('key {} not in task'.format(key))
                 check_ok=False
-        
+
         if not check_ok:
             continue
-            
+
         if note_gtags is None:
             param_list=[]
             for col in tasks.columns:
@@ -106,11 +102,11 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                 group_tags=note_gtags[idx]
             else:
                 group_tags=[]
-            
+
         show_tags+=group_tags
         show_tags+=descripe
         show_tags=list(set(show_tags))
-        
+
         # remove empty dirs
         if delete_nan:
             dirs=tasks[tasks[tags[1]].isna()]['dir'].tolist()
@@ -131,9 +127,9 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                 print('\n')
                 print(tabulate(tasks[[tags[1]]+group_tags].groupby(group_tags).agg([np.mean,np.std,np.max]),tablefmt='pipe',headers='keys'))
                 print('\n')
-        
+
         if note=='recent':
-            
+
             sort_tags=['log_time'] if sort_tags is None or len(sort_tags)==0 else sort_tags
             print(tabulate(tasks[show_tags].sort_values(sort_tags),tablefmt='pipe',headers='keys'))
         else:
@@ -142,5 +138,5 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
         if dump_dir:
             print(tabulate(tasks[dir_tags].sort_values(tags[1]),tablefmt='pipe',headers='keys'))
             print('\n')
-    
+
     return tasks

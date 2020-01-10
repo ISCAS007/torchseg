@@ -20,8 +20,6 @@ from models.psp_aux import psp_aux
 from models.psp_hed import psp_hed
 from models.merge_seg import merge_seg
 from models.cross_merge import cross_merge
-from models.psp_convert import psp_convert
-from models.psp_convert import CONFIG as psp_convert_config
 from models.motionnet import motionnet,motion_panet
 from models.unet import UNet,PSPUNet,AuxNet
 from models.global_local_net import GlobalLocalNet

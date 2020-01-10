@@ -24,8 +24,6 @@ from models.psp_aux import psp_aux
 from models.psp_hed import psp_hed
 from models.merge_seg import merge_seg
 from models.cross_merge import cross_merge
-from models.psp_convert import psp_convert
-from models.psp_convert import CONFIG as psp_convert_config
 from models.motionnet import motionnet,motion_panet
 from models.unet import UNet,PSPUNet,AuxNet
 from utils.augmentor import Augmentations
@@ -38,13 +36,6 @@ if __name__ == '__main__':
     parser=get_parser()
     args = parser.parse_args()
     config = get_config(args)
-
-    if args.test == 'convert':
-        input_shape = tuple(
-            psp_convert_config[args.dataset_name]['input_size'])
-        config.input_shape = input_shape
-        config.resize_shape = input_shape
-        print('convert input shape is',input_shape,'*'*30)
 
     if config.norm_ways is None:
         normalizations = None
@@ -153,20 +144,6 @@ if __name__ == '__main__':
                 drop_last=False,
                 num_workers=8)
             keras_fit(net,coarse_train_loader, coarse_val_loader)
-    elif test == 'convert':
-        train_loader = None
-        load_caffe_weight = True
-        net = psp_convert(dataset_name=args.dataset_name,
-                          load_caffe_weight=load_caffe_weight)
-        if load_caffe_weight:
-            keras_fit(model=net,
-                            train_loader=train_loader, val_loader=val_loader, config=config)
-        else:
-            net.load_state_dict(torch.load(
-                psp_convert_config[args.dataset_name]['params']))
-            keras_fit(model=net,
-                            train_loader=train_loader, val_loader=val_loader, config=config)
-
     elif test == 'summary':
         net = get_net(config)
         config_str = json.dumps(config, indent=2, sort_keys=True)

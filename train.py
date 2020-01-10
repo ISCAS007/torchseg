@@ -16,7 +16,6 @@ from models.psp_edge import psp_edge
 from models.psp_global import psp_global
 from models.psp_dict import psp_dict
 from models.psp_fractal import psp_fractal
-from models.psp_caffe import psp_caffe
 from utils.augmentor import Augmentations
 from utils.torch_tools import keras_fit
 from utils.disc_tools import str2bool
@@ -25,8 +24,8 @@ if __name__ == '__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--net_name',
                         help='net name for semantic segmentaion',
-                        choices=['pspnet','psp_edge','psp_global','psp_caffe','psp_fractal','psp_dict'],
-                        default='psp_caffe')
+                        choices=['pspnet','psp_edge','psp_global','psp_fractal','psp_dict'],
+                        default='pspnet')
 
     parser.add_argument("--backbone_name",
                         help="backbone name",
