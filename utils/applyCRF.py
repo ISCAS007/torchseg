@@ -67,9 +67,8 @@ def apply_crf(image_dir,result_dir,output_dir=None):
         output_file=result_file.replace(result_dir,output_dir).replace(mask_suffix,img_suffix)
         os.makedirs(os.path.dirname(output_file),exist_ok=True)
 
-        #imsave(output_file, MAP.reshape(anno_rgb.shape))
+        imsave(output_file, MAP.reshape(anno_rgb.shape))
         print(f"Saving to: {output_file}" )
-        break
 
 if __name__ == '__main__':
     """
