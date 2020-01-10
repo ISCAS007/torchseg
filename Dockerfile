@@ -14,8 +14,9 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86
     ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
     echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
     echo "conda activate base" >> ~/.bashrc && \
+    . /opt/conda/etc/profile.d/conda.sh && \
     conda update conda && \
-    conda create -n torch1.0 -f conda.yml && \
+    conda env create -n torch1.0 -f conda.yml && \
     apt-get autoclean && \
     conda clean --all --yes
 
