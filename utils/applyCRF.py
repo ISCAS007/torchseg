@@ -66,7 +66,7 @@ def apply_crf(image_dir,result_dir,output_dir=None):
         MAP = np.argmax(Q, axis=0)
         MAP = colorize[MAP]
 
-        output_file=result_file.replace(result_dir,output_dir).replace(mask_suffix,img_suffix)
+        output_file=result_file.replace(result_dir,output_dir)
         os.makedirs(os.path.dirname(output_file),exist_ok=True)
 
         imsave(output_file, MAP.reshape(anno_rgb.shape))

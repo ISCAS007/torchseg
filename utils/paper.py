@@ -40,7 +40,7 @@ def merge_image(images,wgap=5,hgap=5,col_num=9,resize_img_w=48):
 
     return merge_img
 
-def motionseg_generate_table(note='',allow_none=False):
+def motionseg_generate_table(note=''):
     """
     summary the davis benchmark value
     """
@@ -48,9 +48,7 @@ def motionseg_generate_table(note='',allow_none=False):
     csv_files=glob.glob(os.path.join(root_path,'**','global_results-*.csv'),recursive=True)
     csv_files=[f for f in csv_files if f.find(note)>=0]
 
-    if not allow_none:
-        assert len(csv_files)>0
-
+    assert len(csv_files)>0
 
     if len(csv_files)>0:
         tables=[]
@@ -62,9 +60,6 @@ def motionseg_generate_table(note='',allow_none=False):
 
         results=pd.concat(tables)
         print(tabulate(results.sort_values('J&F-Mean'),tablefmt='pipe',headers='keys'))
-        return results
-    elif allow_none:
-        return None
 
 if __name__ == '__main__':
     fire.Fire()
