@@ -6,6 +6,7 @@ import os
 from skimage.io import imread, imsave
 from pydensecrf.utils import unary_from_labels, create_pairwise_bilateral, create_pairwise_gaussian, unary_from_softmax
 import glob
+from tqdm import tqdm
 
 def apply_crf(image_dir,result_dir,output_dir=None):
     if output_dir is None:
@@ -21,7 +22,8 @@ def apply_crf(image_dir,result_dir,output_dir=None):
     print(len(result_files),len(result_masks))
 
     img_suffix='.jpg'
-    for result_file in result_masks:
+    tqdm_set=tqdm(result_masks)
+    for result_file in tqdm_set:
         img_file=result_file.replace(result_dir,image_dir).replace(mask_suffix,img_suffix)
 
         assert os.path.exists(img_file),f'{img_file}'
@@ -68,7 +70,9 @@ def apply_crf(image_dir,result_dir,output_dir=None):
         os.makedirs(os.path.dirname(output_file),exist_ok=True)
 
         imsave(output_file, MAP.reshape(anno_rgb.shape))
-        print(f"Saving to: {output_file}" )
+#        print(f"Saving to: {output_file}" )
+        output_file_info=output_file.split(os.sep)
+        tqdm_set.set_postfix(video=output_file_info[-2],file=output_file_info[-1])
 
 if __name__ == '__main__':
     """
