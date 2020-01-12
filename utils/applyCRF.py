@@ -42,7 +42,8 @@ def apply_crf(image_dir,result_dir,output_dir=None):
         labels[1, :, :] = out
         labels[0, :, :] = 1 - out
 
-        colors = [0, 255]
+        # colors = [0, 255]
+        colors=[0,1]
         colorize = np.empty((len(colors), 1), np.uint8)
         colorize[:,0] = colors
 
