@@ -486,7 +486,7 @@ def fine_tune_config(config):
         config['root_path']=os.path.expanduser('~/cvdataset/SegTrackv2')
     elif config.dataset=='BMCnet':
         config['root_path']=os.path.expanduser('~/cvdataset/BMCnet')
-    elif config.dataset=='DAVIS2017':
+    elif config.dataset.upper() in ['DAVIS2017','DAVIS2016']:
         config['root_path']=os.path.expanduser('~/cvdataset/DAVIS')
     elif config.dataset in ['all','all2','all3']:
         pass
@@ -508,18 +508,14 @@ def get_dataset(config,split):
         xxx_dataset=segtrackv2_dataset(config,split,normalizations=normer,augmentations=augmentations)
     elif config.dataset=='BMCnet':
         xxx_dataset=bmcnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-    elif config.dataset=='DAVIS2017':
+    elif config.dataset.upper() in ['DAVIS2017','DAVIS2016']:
         xxx_dataset=davis_dataset(config,split,normalizations=normer,augmentations=augmentations)
     elif config.dataset=='all':
-        config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
-        fbms=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        config['root_path']=os.path.expanduser('~/cvdataset/cdnet2014')
-        cdnet=cdnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        config['root_path']=os.path.expanduser('~/cvdataset/SegTrackv2')
-        segtrackv2=segtrackv2_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        config['root_path']=os.path.expanduser('~/cvdataset/BMCnet')
-        bmcnet=bmcnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        xxx_dataset=td.ConcatDataset([fbms,cdnet,segtrackv2,bmcnet])
+        dataset_set=[]
+        for d in ['FBMS','cdnet2014','segtrackv2','BMCnet','DAVIS2017','DAVIS2016']:
+            config.dataset=d
+            dataset_set.append(get_dataset(config,split))
+        xxx_dataset=td.ConcatDataset(dataset_set)
     elif config.dataset=='all3':
         config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
         fbms=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)

@@ -8,6 +8,8 @@ cd ~/git/torchseg
 
 # about 1 hour
 python utils/davis_benchmark.py --results_path ~/git/gnu/code/davis2017-evaluation/results/semi-supervised/osvos --task semi-supervised --set val
+
+# note, donot support image range from [0,255], only support image range from [0,object_idx]
 """
 import os
 import sys

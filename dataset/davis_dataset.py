@@ -17,7 +17,13 @@ class davis_dataset(motionseg_dataset):
             assert False,'unknown split {} for davis'.format(split)
 
         self.split=split
-        self.year=2017
+        if config.dataset.upper()=='DAVIS2017':
+            self.year=2017
+        elif config.dataset.upper()=='DAVIS2016':
+            self.year=2016
+        else:
+            assert False
+
         self.neighbor_type = 'gap'
         self.neighbor_gap = self.config.frame_gap
         self.annotation_suffix = '.png'
