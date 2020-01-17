@@ -264,12 +264,13 @@ def compute_fps(config):
 
     fps_summary_file=os.path.expanduser('~/tmp/result/fps.json')
     with open(fps_summary_file,'w+') as f:
-        if os.path.exists(fps_summary_file):
+        try:
             fps_summary=json.load(f)
-        else:
+        except:
             fps_summary=dict()
-        fps_summary[config.note]=fps
-        json.dump(fps_summary,f)
+        finally:
+            fps_summary[config.note]=fps
+            json.dump(fps_summary,f)
 
 def test(config):
     model=get_load_convert_model(config)
