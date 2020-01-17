@@ -6,7 +6,8 @@ from models.motion_stn import motion_stn, motion_net, stn_loss
 from models.motionseg.motion_utils import (Metric_Acc,Metric_Mean,get_parser,
                                            get_default_config,get_dataset,
                                            fine_tune_config,get_model,
-                                           poly_lr_scheduler)
+                                           poly_lr_scheduler,
+                                           get_load_convert_model)
 from utils.torch_tools import init_writer
 from utils.losses import jaccard_loss,dice_loss
 import torch.nn.functional as F
@@ -22,10 +23,9 @@ import torch.multiprocessing as mp
 import random
 import torch.backends.cudnn as cudnn
 import cv2
-import glob
 from easydict import EasyDict as edict
 from utils.davis_benchmark import benchmark
-from utils.disc_tools import get_newest_file
+import json
 
 def get_dist_module(config):
     if config['net_name'] in ['motion_stn','motion_net']:
@@ -239,25 +239,43 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
     if is_main_process(config):
         writer.close()
 
-def test(config):
-    if config.checkpoint_path is None:
-        log_dir = os.path.join(config['log_dir'], config['net_name'],
-                               config['dataset'], config['note'])
-
-        checkpoint_path_list=glob.glob(os.path.join(log_dir,'*','*.pkl'))
-        assert len(checkpoint_path_list)>0,f'{log_dir} do not have checkpoint'
-        checkpoint_path = get_newest_file(checkpoint_path_list)
-    else:
-        checkpoint_path=config.checkpoint_path
-
-    model=get_model(config)
+def compute_fps(config):
+    batch_size=config.batch_size
+    model=get_load_convert_model(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.to(device)
-    model.load_state_dict(torch.load(checkpoint_path))
-    model.eval()
 
+    split='val'
+    xxx_dataset=get_dataset(config,split)
+    xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=False,num_workers=batch_size,pin_memory=True)
 
-    if config.dataset.lower()=='DAVIS2017'.lower():
+    tqdm_step = tqdm(xxx_loader, desc='steps', leave=False)
+    counter=0.0
+    start_time=time.time()
+    for step,data in enumerate(tqdm_step):
+        frames=data['images']
+        images = [img.to(device).float() for img in frames]
+        outputs=model.forward(images)
+        counter+=outputs.shape[0]
+
+        if counter>100:
+            break
+    fps=counter/(time.time()-start_time)
+    print(f'fps={fps}')
+
+    fps_summary_file=os.path.expanduser('~/tmp/result/fps.json')
+    with open(fps_summary_file,'w+') as f:
+        if os.path.exists(fps_summary_file):
+            fps_summary=json.load(f)
+        else:
+            fps_summary=dict()
+        fps_summary[config.note]=fps
+        json.dump(fps_summary,f)
+
+def test(config):
+    model=get_load_convert_model(config)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    if config.dataset.upper() in ['DAVIS2017','DAVIS2016']:
         if config.app=='test':
             split_set=['val']
         elif config.app=='benchmark':
@@ -381,6 +399,8 @@ if __name__ == '__main__':
         sys.exit(0)
     elif args.app in ['test','benchmark']:
         test(config)
+    elif args.app == 'fps':
+        compute_fps(config)
     elif config.use_sync_bn:
         dist_train(config)
     else:

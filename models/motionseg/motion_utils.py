@@ -17,10 +17,12 @@ from models.Anet.motion_anet import motion_anet
 from models.motionseg.motion_mix import motion_mix,motion_mix_flow
 from models.motionseg.motion_filter import motion_filter,motion_filter_flow
 from models.motionseg.motion_attention import motion_attention,motion_attention_flow
+from utils.disc_tools import get_newest_file
 from easydict import EasyDict as edict
 import torch.utils.data as td
 import os
 import warnings
+import glob
 
 class Metric_Acc():
     def __init__(self,exception_value=1):
@@ -146,7 +148,7 @@ def get_parser():
 
     parser.add_argument('--app',
                         help='application name, train(train and val), test(run benchmark for val dataset, save model output), benchmark(run benchmark for test dataset), summary(view model), dataset(view dataset), viz(visualization)',
-                        choices=['train','summary','dataset','viz','test','benchmark'],
+                        choices=['train','summary','dataset','viz','test','benchmark','fps'],
                         default='train')
 
     parser.add_argument("--net_name",
@@ -537,6 +539,32 @@ def get_dataset(config,split):
 
 def get_model(config):
     model=globals()[config['net_name']](config)
+    return model
+
+def get_checkpoint_path(config):
+    if config.checkpoint_path is None:
+        log_dir = os.path.join(config['log_dir'], config['net_name'],
+                               config['dataset'], config['note'])
+
+        checkpoint_path_list=glob.glob(os.path.join(log_dir,'*','*.pkl'))
+        assert len(checkpoint_path_list)>0,f'{log_dir} do not have checkpoint'
+        checkpoint_path = get_newest_file(checkpoint_path_list)
+    else:
+        checkpoint_path=config.checkpoint_path
+
+    return checkpoint_path
+
+def get_load_convert_model(config):
+    """
+    get load and convert model
+    """
+    checkpoint_path=get_checkpoint_path(config)
+    model=get_model(config)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.load_state_dict(torch.load(checkpoint_path))
+    model.to(device)
+    model.eval()
+
     return model
 
 def poly_lr_scheduler(config, optimizer, iter,
