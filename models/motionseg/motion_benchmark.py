@@ -136,9 +136,14 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
 
         if config.dataset=='FBMS':
             save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset,config.note))
-        elif config.dataset.lower()=='DAVIS2017'.lower():
+        elif config.dataset.upper() in ['DAVIS2017']:
             save_path=get_save_path(gt_path,
                                     os.path.join(config.root_path,'Annotations_unsupervised/480p'),
+                                    output_root_path)
+            print(gt_path,config.root_path,output_root_path,save_path)
+        elif config.dataset.upper() in ['DAVIS2016']:
+            save_path=get_save_path(gt_path,
+                                    os.path.join(config.root_path,'Annotations/480p'),
                                     output_root_path)
             print(gt_path,config.root_path,output_root_path,save_path)
         else:
