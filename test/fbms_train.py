@@ -255,7 +255,7 @@ def compute_fps(config):
         frames=data['images']
         images = [img.to(device).float() for img in frames]
         outputs=model.forward(images)
-        counter+=outputs.shape[0]
+        counter+=outputs['masks'][0].shape[0]
 
         if counter>100:
             break
