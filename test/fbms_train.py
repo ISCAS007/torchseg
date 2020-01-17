@@ -272,8 +272,10 @@ def compute_fps(config):
         except:
             fps_summary=dict()
         finally:
+            f.seek(0)
             fps_summary[config.note]=fps
             json.dump(fps_summary,f)
+            f.truncate()
 
 def test(config):
     model=get_load_convert_model(config)
