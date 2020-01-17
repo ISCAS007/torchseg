@@ -24,7 +24,7 @@ import glob
 
 def get_save_path(gt_path,dataset_root_path,output_root_path):
     save_path=gt_path.replace(dataset_root_path,output_root_path)
-    assert save_path!=gt_path,'cannot overwrite gt path'
+    assert save_path!=gt_path,f'cannot overwrite gt path {gt_path} by {save_path}'
 
     return save_path
 
