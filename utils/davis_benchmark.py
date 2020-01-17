@@ -82,5 +82,9 @@ if __name__ == '__main__':
     parser.add_argument('--results_path', type=str, help='Path to the folder containing the sequences folders',
                         required=True)
     args, _ = parser.parse_known_args()
+    if args.results_path.find('DAVIS2016')>=0:
+        os.environ['DAVIS_YEAR']='2016'
+    else:
+        os.environ['DAVIS_YEAR']='2017'
     benchmark(args)
 
