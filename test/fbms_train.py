@@ -250,16 +250,19 @@ def compute_fps(config):
 
     tqdm_step = tqdm(xxx_loader, desc='steps', leave=False)
     counter=0.0
-    start_time=time.time()
+    total_time=0.0
+
     for step,data in enumerate(tqdm_step):
         frames=data['images']
         images = [img.to(device).float() for img in frames]
+        start_time=time.time()
         outputs=model.forward(images)
+        total_time+=(time.time()-start_time)
         counter+=outputs['masks'][0].shape[0]
 
         if counter>100:
             break
-    fps=counter/(time.time()-start_time)
+    fps=counter/total_time
     print(f'fps={fps}')
 
     fps_summary_file=os.path.expanduser('~/tmp/result/fps.json')
