@@ -33,7 +33,11 @@ class davis_dataset(motionseg_dataset):
         self.resolution = '480p'
         self.image_folder = 'JPEGImages'
         self.imageset_folder = 'ImageSets'
-        self.annotation_folder = 'Annotations' if task == 'semi-supervised' else 'Annotations_unsupervised'
+
+        if self.year==2017:
+            self.annotation_folder = 'Annotations' if task == 'semi-supervised' else 'Annotations_unsupervised'
+        else:
+            self.annotation_folder = 'Annotations'
 
         self.root_path=config.root_path
         self.main_input_path_list=self.get_main_input_path_list(split)
