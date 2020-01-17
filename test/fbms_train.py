@@ -266,7 +266,7 @@ def compute_fps(config):
     print(f'fps={fps}')
 
     fps_summary_file=os.path.expanduser('~/tmp/result/fps.json')
-    with open(fps_summary_file,'w+') as f:
+    with open(fps_summary_file,'r+') as f:
         try:
             fps_summary=json.load(f)
         except:
