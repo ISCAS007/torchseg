@@ -6,18 +6,22 @@ import torch.nn.functional as F
 import torch
 import os
 from utils.disc_tools import str2bool
-
+from models.custom_layers import AttentionLayer
+import warnings
 
 class local_bn(TN.Module):
     def __init__(self, num_features, eps=1e-5, momentum=0.1):
         super().__init__()
+
         self.bn = TN.BatchNorm2d(num_features=num_features,
                                  eps=eps,
-                                 momentum=momentum,
-                                 affine=True)
-        self.use_bn = True
+                                 momentum=momentum)
+
         if 'torchseg_use_bn' in os.environ.keys():
+            warnings.warn('use bn')
             self.use_bn = str2bool(os.environ['torchseg_use_bn'])
+        else:
+            self.use_bn=True
 
         for m in self.modules():
             if isinstance(m, TN.Conv2d):
@@ -146,18 +150,18 @@ class upsample_bilinear(TN.Module):
         """
         super().__init__()
         self.output_shape = output_shape
-        self.center_channels=512
+        self.center_channels=min(512,in_channels)
         self.conv_bn_relu = conv_bn_relu(in_channels=in_channels,
-                                         out_channels=512,
+                                         out_channels=self.center_channels,
                                          kernel_size=3,
                                          stride=1,
                                          padding=1,
                                          eps=eps,
                                          momentum=momentum)
-        
+
         # for single stream network, the last conv not need bias?
         bias=str2bool(os.environ['torchseg_use_bias'])
-        self.conv = TN.Conv2d(in_channels=512,
+        self.conv = TN.Conv2d(in_channels=self.center_channels,
                               out_channels=out_channels,
                               kernel_size=1,
                               padding=0,
@@ -172,14 +176,16 @@ class upsample_bilinear(TN.Module):
                 TN.init.constant_(m.bias, 0)
 
     # TODO upsampel feature is self.conv_bn_relu(x) or self.conv(x)
-    def forward(self, x, need_upsample_feature=False):
+    def forward(self, x, need_upsample_feature=False,need_raw_result=False):
         self.center_feature = x = self.conv_bn_relu(x)
-        x = self.conv(x)
+        raw_result = x = self.conv(x)
         x = F.interpolate(x, size=self.output_shape,
                           mode='bilinear', align_corners=True)
 
         if need_upsample_feature:
             return self.center_feature, x
+        elif need_raw_result:
+            return raw_result,x
         else:
             return x
 
@@ -197,10 +203,10 @@ class upsample_subclass(TN.Module):
         self.sub_class_number=in_channels//out_channels
         assert self.sub_class_number>1
         self.midnet=conv_bn_relu(in_channels,self.class_number*self.sub_class_number)
-        
+
         self.use_sigmoid=use_sigmoid
         self.sigmoid=TN.Sigmoid()
-        
+
     def forward(self,x):
         x=self.midnet(x)
         b,c,h,w=x.shape
@@ -500,7 +506,7 @@ class transform_fractal(TN.Module):
         fractal_paths = []
         if fusion_type == 'route':
             raise NotImplementedError
-        
+
         bias=str2bool(os.environ['torchseg_use_bias'])
         if depth == 1:
             path = TN.Sequential(TN.Conv2d(in_channels=in_channels,
@@ -680,16 +686,16 @@ class transform_segnet(TN.Module):
         super().__init__()
         self.config=config
         self.layers=[]
-        
+
         self.concat_layers=[]
-        if not hasattr(self.config.model,'merge_type'):
+        if not hasattr(self.config,'merge_type'):
             self.merge_type='mean'
         else:
-            self.merge_type=self.config.model.merge_type
-            
+            self.merge_type=self.config.merge_type
+
         in_c=out_c=0
         for idx in range(6):
-            if idx<self.config.model.upsample_layer:
+            if idx<self.config.upsample_layer:
                 self.layers.append(None)
                 self.concat_layers.append(None)
             elif idx==5:
@@ -719,8 +725,8 @@ class transform_segnet(TN.Module):
                 in_c=backbone.get_feature_map_channel(idx+1)
                 out_c=backbone.get_feature_map_channel(idx)
 #                print('idx,in_c,out_c',idx,in_c,out_c)
-                
-                if self.config.model.use_none_layer and idx>3:
+
+                if self.config.use_none_layer and idx>3:
                     layer=TN.Sequential(conv_bn_relu(in_channels=in_c,
                                                      out_channels=out_c,
                                                      kernel_size=3,
@@ -753,20 +759,20 @@ class transform_segnet(TN.Module):
                                                     padding=0))
                 else:
                     assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
-            
+
         self.model_layers=TN.ModuleList([layer for layer in self.layers if layer is not None])
         if self.merge_type=='concat':
             self.merge_layers=TN.ModuleList([layer for layer in self.concat_layers if layer is not None])
         else:
             assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
-        
-    def forward(self,x):
+
+    def single_forward(self,x):
         assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
         assert len(x)==6
-        
+
 #        for idx in range(6):
 #            print(idx,x[idx].shape)
-        for idx in range(5,self.config.model.upsample_layer-1,-1):
+        for idx in range(5,self.config.upsample_layer-1,-1):
             if idx==5:
                 feature=x[idx]
                 feature=self.layers[idx](feature)
@@ -775,15 +781,18 @@ class transform_segnet(TN.Module):
                 feature=self.layers[idx](feature)
 #                print(idx,feature.shape,x[idx].shape)
                 feature+=x[idx]
-                
+
         return feature
-    
-    def forward(self,main,aux):
+
+    def forward(self,main,aux=None):
+        if aux is None:
+            return self.single_forward(main)
+
         for x in [main,aux]:
             assert isinstance(x,(list,tuple)),'input for segnet should be list or tuple'
             assert len(x)==6
-        
-        for idx in range(5,self.config.model.upsample_layer-1,-1):
+
+        for idx in range(5,self.config.upsample_layer-1,-1):
             if idx==5:
                 if self.merge_type=='concat':
                     feature=torch.cat([main[idx],aux[idx]],dim=1)
@@ -799,9 +808,9 @@ class transform_segnet(TN.Module):
                 else:
                     assert self.merge_type=='mean','unknown merge type %s'%self.merge_type
                     feature+=main[idx]+aux[idx]
-                    
+
                 feature=self.layers[idx](feature)
-                
+
         return feature
 
 class GlobalAvgPool2d(TN.Module):
@@ -818,33 +827,33 @@ class GlobalAvgPool2d(TN.Module):
 
 
 def get_midnet(config, midnet_input_shape, midnet_out_channels):
-    if hasattr(config.model, 'midnet_name'):
-        midnet_name = config.model.midnet_name
+    if hasattr(config, 'midnet_name'):
+        midnet_name = config.midnet_name
     else:
         midnet_name = 'psp'
 
-    if hasattr(config.model, 'eps'):
-        eps = config.model.eps
+    if hasattr(config, 'eps'):
+        eps = config.eps
     else:
         eps = 1e-5
 
-    if hasattr(config.model, 'momentum'):
-        momentum = config.model.momentum
+    if hasattr(config, 'momentum'):
+        momentum = config.momentum
     else:
         momentum = 0.1
 
-    os.environ['torchseg_use_bn'] = str(config.model.use_bn)
-    os.environ['torchseg_use_dropout'] = str(config.model.use_dropout)
-    os.environ['torchseg_use_bias'] = str(config.model.use_bias)
-    
+    os.environ['torchseg_use_bn'] = str(config.use_bn)
+    os.environ['torchseg_use_dropout'] = str(config.use_dropout)
+    os.environ['torchseg_use_bias'] = str(config.use_bias)
+
     print('use_bn',os.environ['torchseg_use_bn'])
     print('use_dropout',os.environ['torchseg_use_dropout'])
     print('use_bias',os.environ['torchseg_use_bias'])
-    
+
     if midnet_name == 'psp':
         #        print('midnet is psp'+'*'*50)
-        midnet_pool_sizes = config.model.midnet_pool_sizes
-        midnet_scale = config.model.midnet_scale
+        midnet_pool_sizes = config.midnet_pool_sizes
+        midnet_scale = config.midnet_scale
         midnet = transform_psp(midnet_pool_sizes,
                                midnet_scale,
                                midnet_input_shape,
@@ -853,42 +862,44 @@ def get_midnet(config, midnet_input_shape, midnet_out_channels):
                                momentum=momentum)
     elif midnet_name == 'aspp':
         #        print('midnet is aspp'+'*'*50)
-        output_stride = 2**config.model.upsample_layer
+        output_stride = 2**config.upsample_layer
         midnet = transform_aspp(output_stride=output_stride,
                                 input_shape=midnet_input_shape,
                                 out_channels=midnet_out_channels,
                                 eps=eps,
                                 momentum=momentum)
 
-    return midnet
+    attention=AttentionLayer(config,midnet_out_channels)
+    final_net=TN.Sequential(midnet,attention)
+    return final_net
 
 
 def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
     if aux:
-        upsample_type = config.model.auxnet_type
-        upsample_layer = config.model.auxnet_layer
+        upsample_type = config.auxnet_type
+        upsample_layer = config.auxnet_layer
     else:
-        upsample_type = config.model.upsample_type
-        upsample_layer = config.model.upsample_layer
+        upsample_type = config.upsample_type
+        upsample_layer = config.upsample_layer
 
-    input_shape = config.model.input_shape
-    if hasattr(config.model, 'eps'):
-        eps = config.model.eps
+    input_shape = config.input_shape
+    if hasattr(config, 'eps'):
+        eps = config.eps
     else:
         eps = 1e-5
 
-    if hasattr(config.model, 'momentum'):
-        momentum = config.model.momentum
+    if hasattr(config, 'momentum'):
+        momentum = config.momentum
     else:
         momentum = 0.1
 
-    os.environ['torchseg_use_bn'] = str(config.model.use_bn)
-    os.environ['torchseg_use_dropout'] = str(config.model.use_dropout)
-    os.environ['torchseg_use_bias'] = str(config.model.use_bias)
-    
+    os.environ['torchseg_use_bn'] = str(config.use_bn)
+    os.environ['torchseg_use_dropout'] = str(config.use_dropout)
+    os.environ['torchseg_use_bias'] = str(config.use_bias)
+
     if upsample_type == 'duc':
         #        print('upsample is duc'+'*'*50)
-        r = 2**3 if config.model.use_none_layer else 2**upsample_layer
+        r = 2**3 if config.use_none_layer else 2**upsample_layer
         decoder = upsample_duc(midnet_out_channels,
                                class_number, r, eps=eps, momentum=momentum)
     elif upsample_type == 'bilinear':
@@ -899,7 +910,7 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
         decoder = upsample_fcn(midnet_out_channels,
                                class_number, input_shape[0:2])
     elif upsample_type == 'subclass':
-        use_sigmoid=config.model.subclass_sigmoid
+        use_sigmoid=config.subclass_sigmoid
         decoder = upsample_subclass(midnet_out_channels,class_number,input_shape[0:2],use_sigmoid)
     else:
         assert False, 'unknown upsample type %s' % upsample_type

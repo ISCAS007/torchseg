@@ -19,15 +19,15 @@ class psp_edge(TN.Module):
         super().__init__()
         self.config = config
         self.name = self.__class__.__name__
-        self.backbone = backbone(config.model)
-        if hasattr(self.config.model, 'backbone_freeze'):
-            if self.config.model.backbone_freeze:
+        self.backbone = backbone(config)
+        if hasattr(self.config, 'backbone_freeze'):
+            if self.config.backbone_freeze:
                 print('freeze backbone weights'+'*'*30)
                 freeze_layer(self.backbone)
 
-        self.upsample_layer = self.config.model.upsample_layer
-        self.class_number = self.config.model.class_number
-        self.input_shape = self.config.model.input_shape
+        self.upsample_layer = self.config.upsample_layer
+        self.class_number = self.config.class_number
+        self.input_shape = self.config.input_shape
         self.dataset_name = self.config.dataset.name
         self.ignore_index = self.config.dataset.ignore_index
         self.edge_class_num = self.config.dataset.edge_class_num
@@ -40,8 +40,8 @@ class psp_edge(TN.Module):
                                  self.midnet_input_shape,
                                  self.midnet_out_channels)
 
-        if hasattr(self.config.model, 'edge_seg_order'):
-            self.edge_seg_order = self.config.model.edge_seg_order
+        if hasattr(self.config, 'edge_seg_order'):
+            self.edge_seg_order = self.config.edge_seg_order
             print('the edge and seg order is %s'%self.edge_seg_order,'*'*30)
             assert self.edge_seg_order in ['same','first','later'],'unexcepted edge seg order %s'%self.edge_seg_order
         else:
@@ -73,7 +73,7 @@ class psp_edge(TN.Module):
                                          padding=0)
             self.seg_decoder = get_suffix_net(
                 self.config, 512, self.class_number)
-            
+
 
     def forward(self, x):
         feature_map = self.backbone.forward(x, self.upsample_layer)

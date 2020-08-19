@@ -121,3 +121,6 @@ notebooks/raw
 dataset/FBMS
 dataset/cdnet2014
 dataset/SegTrackv2
+models/examples
+models/keras
+models/mxnet

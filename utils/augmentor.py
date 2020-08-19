@@ -12,17 +12,18 @@ from utils.disc_tools import show_images
 from easydict import EasyDict as edict
 from torchvision import transforms as TT
 from utils import joint_transforms as JT
+from utils import semseg_transform as ST
 from dataset.dataset_generalize import image_normalizations
 from functools import partial
 
 
 class ImageAugmenter:
     def __init__(self, config):
-        propability=config.aug.propability
-        use_imgaug=config.aug.use_imgaug
-        
+        propability=config.propability
+        use_imgaug=config.use_imgaug
+
         self.use_imgaug = use_imgaug
-        
+
         # use imgaug to do data augmentation
         if self.use_imgaug:
             sometimes = lambda aug: iaa.Sometimes(propability, aug)
@@ -68,7 +69,7 @@ class ImageAugmenter:
 class ImageTransformer(object):
     def __init__(self, config):
         self.config = config
-        self.use_iaa = config.aug.use_imgaug
+        self.use_iaa = config.use_imgaug
         self.crop_size_list=None
 
     def transform_image_and_mask_tt(self, image, mask, angle=None, crop_size=None):
@@ -93,9 +94,9 @@ class ImageTransformer(object):
         transforms = []
 
         if crop_size is not None:
-            if self.config.aug.pad_for_crop:
+            if self.config.pad_for_crop:
                 transforms.append(partial(self.padding_transform,crop_size=crop_size,
-                padding_image=[123,116,103],padding_mask=self.config.dataset.ignore_index))
+                padding_image=[123,116,103],padding_mask=self.config.ignore_index))
             transforms.append(partial(self.crop_transform, crop_size=crop_size))
         if angle is not None:
             transforms.append(partial(self.rotate_transform, rotate_angle=angle))
@@ -119,33 +120,33 @@ class ImageTransformer(object):
 
     def transform_image_and_mask(self, image, mask):
         config=self.config
-        
-        if self.config.aug.use_rotate:
+
+        if self.config.use_rotate:
             a = np.random.rand()
-            angle = a * config.aug.rotate_max_angle
+            angle = a * config.rotate_max_angle
         else:
             angle = None
-        
+
         # image_size = height, width , channel
         image_size=image.shape
         # crop_size <= image_size
         crop_size = None
-        if not config.aug.keep_crop_ratio:
+        if not config.keep_crop_ratio:
             # may not keep image height:width ratio
             # make sure crop size <= image size
-            min_crop_size = config.aug.min_crop_size
+            min_crop_size = config.min_crop_size
             if not isinstance(min_crop_size,(list,tuple)):
                 min_crop_size=[min_crop_size]*2
             if len(min_crop_size)==1:
                 min_crop_size=min_crop_size*2
-                
-            max_crop_size = config.aug.max_crop_size
+
+            max_crop_size = config.max_crop_size
             if not isinstance(max_crop_size,(list,tuple)):
                 max_crop_size=max_crop_size*2
             if len(max_crop_size)==1:
                 max_crop_size=[max_crop_size[0],max_crop_size[0]]
-            
-            crop_size_step=config.aug.crop_size_step
+
+            crop_size_step=config.crop_size_step
             if crop_size_step>0:
                 if self.crop_size_list is None:
                     crop_size_list=[[min_crop_size[0]],
@@ -154,7 +155,7 @@ class ImageTransformer(object):
                         while crop_size_list[i][-1]+crop_size_step<max_crop_size[i]:
                             crop_size_list[i].append(crop_size_list[i][-1]+crop_size_step)
                     self.crop_size_list=crop_size_list
-                
+
                 assert len(self.crop_size_list)==2
                 crop_size=[random.choice(self.crop_size_list[0]),
                           random.choice(self.crop_size_list[1])]
@@ -164,7 +165,7 @@ class ImageTransformer(object):
                 th = (min_crop_size[0] + (max_crop_size[0] - min_crop_size[0]) * a)
                 tw = (min_crop_size[1] + (max_crop_size[1] - min_crop_size[1]) * a)
                 crop_size = [int(th), int(tw)]
-            
+
             # change crop_size to make sure crop_size* <= image_size
             # note in deeplabv3_plus, the author padding the image_size with mean+ignore_label
             # to make sure crop_size <= image_size*
@@ -182,14 +183,14 @@ class ImageTransformer(object):
         else:
             # keep image height:width ratio
             # make sure crop size <= image size
-            crop_ratio = config.aug.crop_ratio
+            crop_ratio = config.crop_ratio
             h, w = mask.shape
-            
+
             # use random crop ratio
             if type(crop_ratio) == list or type(crop_ratio) == tuple:
                 ratio_max = max(crop_ratio)
                 ratio_min = min(crop_ratio)
-                
+
                 assert ratio_max<=1.0
                 a = np.random.rand()
                 th = (ratio_min + (ratio_max - ratio_min) * a) * h
@@ -201,18 +202,18 @@ class ImageTransformer(object):
 
         a = np.random.rand()
         hflip = False
-        if config.aug.horizontal_flip and a<0.5:
+        if config.horizontal_flip and a<0.5:
                 hflip = True
 
         a = np.random.rand()
         vflip = False
-        if config.aug.vertical_flip and a<0.5:
+        if config.vertical_flip and a<0.5:
             vflip = True
-        
-        if config.aug.debug:
+
+        if config.debug:
             print('angle is',angle)
             print('crop_size is',crop_size)
-            
+
         if self.use_iaa:
             return self.transform_image_and_mask_iaa(image,
                                                      mask,
@@ -303,38 +304,39 @@ class ImageTransformer(object):
         new_mask = cv2.flip(mask, 0)
         return new_image, new_mask
 
-    @staticmethod 
+    @staticmethod
     def padding_transform(image,mask,crop_size,padding_image=0,padding_mask=0):
         if image.shape[0] >= crop_size[0] and image.shape[1] >=crop_size[1]:
-            return image,mask 
+            return image,mask
         else:
             new_image=np.zeros(shape=crop_size,dtype=np.uint8)
             new_image=padding_image
             new_mask=np.zeros(shape=crop_size,dtype=np.uint8)
-            new_mask=padding_mask 
-            new_image[0:image.shape[0],0:image.shape[1],:]=image 
-            new_mask[0:image.shape[0],0:image.shape[1],:]=mask 
+            new_mask=padding_mask
+            new_image[0:image.shape[0],0:image.shape[1],:]=image
+            new_mask[0:image.shape[0],0:image.shape[1],:]=mask
             return new_image, new_mask
 
-def get_default_augmentor_config():
-    config = edict()
-    config.aug=edict()
-    config.aug.propability=0.25
-    config.aug.use_rotate=True
-    config.aug.rotate_max_angle=15
-    
-    config.aug.keep_crop_ratio=True
+def get_default_augmentor_config(config=None):
+    if config is None:
+        config = edict()
+
+    config.propability=0.25
+    config.use_rotate=True
+    config.rotate_max_angle=15
+
+    config.keep_crop_ratio=True
     # height:480, width: 480-720
-    config.aug.min_crop_size=480
-    config.aug.max_crop_size=[480,720]
+    config.min_crop_size=480
+    config.max_crop_size=[480,720]
 
     # height: image height * random(0.85,1.0)
     # width : image width * random(0.85,1.0)
-    config.aug.crop_ratio = [0.85, 1.0]
-    config.aug.horizontal_flip = True
-    config.aug.vertical_flip = False
-    config.aug.debug = False
-    config.aug.use_imgaug=True
+    config.crop_ratio = [0.85, 1.0]
+    config.horizontal_flip = True
+    config.vertical_flip = False
+    config.debug = False
+    config.use_imgaug=True
     return config
 
 
@@ -342,16 +344,42 @@ class Augmentations(object):
     def __init__(self, config=None):
         if config is None:
             config = get_default_augmentor_config()
-        # augmentation for image
-        self.aug = ImageAugmenter(config=config)
-        # augmentation for image and mask
-        self.tran = ImageTransformer(config=config)
+
+        if hasattr(config,'use_semseg'):
+            self.use_semseg=config.use_semseg
+        else:
+            self.use_semseg=False
+
+        if self.use_semseg:
+            value_scale = 255
+            mean = [0.485, 0.456, 0.406]
+            mean = [item * value_scale for item in mean]
+            std = [0.229, 0.224, 0.225]
+            std = [item * value_scale for item in std]
+
+            self.tran = ST.Compose([
+                ST.RandScale([0.5, 2.0]),
+                ST.RandRotate([-10,10], padding=mean, ignore_label=255),
+                ST.RandomGaussianBlur(),
+                ST.RandomHorizontalFlip(),
+                ST.Crop(config.input_shape, crop_type='rand', padding=mean, ignore_label=255)])
+        else:
+            # augmentation for image
+            self.aug = ImageAugmenter(config=config)
+            # augmentation for image and mask
+            self.tran = ImageTransformer(config=config)
 
     def transform(self, image, mask=None):
-        if mask is None:
-            return self.aug.augument_image(image)
+        if self.use_semseg:
+            if mask is None:
+                return image
+            else:
+                return self.tran(image,mask)
         else:
-            return self.tran.transform_image_and_mask(image, mask)
+            if mask is None:
+                return self.aug.augument_image(image)
+            else:
+                return self.tran.transform_image_and_mask(image, mask)
 
 
 if __name__ == '__main__':

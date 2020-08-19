@@ -38,8 +38,6 @@ class motionseg_dataset(td.Dataset):
         self.input_shape=tuple(config.input_shape)
         self.root_path=config.root_path
         self.frame_gap=config.frame_gap
-        self.use_optical_flow=config.use_optical_flow
-        self.ignore_pad_area=config.ignore_pad_area
 
     def __get_image__(self,index):
         """
@@ -47,33 +45,28 @@ class motionseg_dataset(td.Dataset):
         """
         assert False
 
+    def get_result_path(self,save_dir,main_path):
+        """
+        return save path for benchmark
+        """
+        assert False
+
     def __getitem__(self,index):
-        frame_images,gt_image,main_path,aux_path,gt_path=self.__get_image__(index)
+        frame_images,gt_images,main_path,aux_path,gt_path=self.__get_image__(index)
 
         # augmentation dataset
         if self.split=='train' and self.augmentations is not None:
             frame_images=[self.augmentations.transform(img) for img in frame_images]
 
-        # resize image
-        resize_frame_images=[cv2.resize(img,self.input_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
+
+        # resize image, opencv resize image with (width,height), but input_shape is [height,width]
+        resize_shape=tuple([self.input_shape[1],self.input_shape[0]])
+        resize_frame_images=[cv2.resize(img,resize_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
 
         if self.split=='train':
-            resize_gt_image=cv2.resize(gt_image,self.input_shape,interpolation=cv2.INTER_NEAREST)
+            resize_gt_images=[cv2.resize(img,resize_shape,interpolation=cv2.INTER_NEAREST) for img in gt_images]
         else:
-            resize_gt_image=gt_image
-
-        # ignore_area, 0 for not ignore, 255 for ignore
-        ignore_area=np.zeros_like(resize_gt_image)
-        if self.split=='train':
-            if self.ignore_pad_area>0:
-                ignore_area[0:self.ignore_pad_area,:]=255
-                ignore_area[-self.ignore_pad_area:,:]=255
-                ignore_area[:,0:self.ignore_pad_area]=255
-                ignore_area[:,-self.ignore_pad_area:]=255
-
-        # only in cdnet2014, 255(85 in gt image) stands for ignore add
-        if self.config.dataset=='cdnet2014':
-            ignore_area[resize_gt_image==255]=255
+            resize_gt_images=gt_images
 
         # normalize image
         if self.normalizations is not None:
@@ -83,33 +76,29 @@ class motionseg_dataset(td.Dataset):
         resize_frame_images=[img.transpose((2,0,1)) for img in resize_frame_images]
 
         #resize_gt_image=(resize_gt_image!=0).astype(np.uint8)
-        resize_gt_image[ignore_area==255]=255
-        resize_gt_image=np.expand_dims(resize_gt_image,0)
+#        resize_gt_image[ignore_area==255]=255
+        resize_gt_images=[np.expand_dims(img,0) for img in resize_gt_images]
 
-
-        if self.use_optical_flow:
-            flow_path=main2flow(main_path)
+        flow_path=main2flow(main_path)
+        if os.path.exists(flow_path):
             flow_file=open(flow_path,'r')
             a=np.fromfile(flow_file,np.uint8,count=4)
             b=np.fromfile(flow_file,np.int32,count=2)
             flow=np.fromfile(flow_file,np.float32).reshape((b[1],b[0],2))
             flow=np.clip(flow,a_min=-50,a_max=50)/50.0
-            optical_flow=cv2.resize(flow,self.input_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
-            if self.split=='val_path':
-                return {'images':[resize_frame_images[0],optical_flow],
-                        'gt':resize_gt_image,
-                        'gt_path':gt_path,
-                        'shape':frame_images[0].shape}
-            else:
-                return [resize_frame_images[0],optical_flow],resize_gt_image
+            optical_flow=cv2.resize(flow,resize_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
         else:
-            if self.split=='val_path':
-                return {'images':resize_frame_images,
-                        'gt':resize_gt_image,
-                        'gt_path':gt_path,
-                        'shape':frame_images[0].shape}
-            else:
-                return resize_frame_images,resize_gt_image
+            optical_flow=0
+
+        data={'images':resize_frame_images,
+              'labels':resize_gt_images,
+              'gt_path':gt_path,
+              'main_path':main_path,
+              'aux_path':aux_path,
+              'shape':frame_images[0].shape,
+              'optical_flow':optical_flow}
+
+        return data
 
 class segtrackv2_dataset(motionseg_dataset):
     """

@@ -3,7 +3,8 @@
 
 import numpy as np
 from utils import eval_segm
-        
+import cv2
+
 class runningScore(object):
 
     def __init__(self, n_classes):
@@ -33,7 +34,7 @@ class runningScore(object):
 #        acc_cls = np.diag(hist) / hist.sum(axis=1)
         diag=np.diag(hist)
         acc_cls = np.divide(diag,hist.sum(axis=1),out=np.zeros_like(diag),where=diag!=0)
-        
+
         acc_cls = np.nanmean(acc_cls)
         iu = np.divide(diag,(hist.sum(axis=1) + hist.sum(axis=0) - np.diag(hist)),out=np.zeros_like(diag),where=diag!=0)
         mean_iu = np.nanmean(iu)
@@ -62,12 +63,12 @@ def get_scores(label_trues,label_preds):
             height*=shape[i]
         else:
             width*=shape[i]
-            
+
     label_trues_2d=label_trues.reshape((height,width))
     label_preds_2d=label_preds.reshape((height,width))
-    
+
     cl, n_cl = eval_segm.union_classes(label_preds_2d, label_trues_2d)
-    
+
     return {'Overall Acc: \t': eval_segm.pixel_accuracy(label_preds_2d,label_trues_2d),
             'Mean Acc : \t': eval_segm.mean_accuracy(label_preds_2d,label_trues_2d),
             'FreqW IoU : \t': eval_segm.frequency_weighted_IU(label_preds_2d,label_trues_2d),
@@ -79,7 +80,7 @@ def get_fmeasure(gt,pred,fmeasure_only=True):
         gt_img=cv2.imread(gt,cv2.IMREAD_GRAYSCALE)
     else:
         gt_img=gt
-     
+
     if isinstance(pred,str):
         pred_img=cv2.imread(pred,cv2.IMREAD_GRAYSCALE)
     else:
@@ -93,7 +94,7 @@ def get_fmeasure(gt,pred,fmeasure_only=True):
     precision=tp/(tp+fp+1e-5)
     recall=tp/(tp+fn+1e-5)
     fmeasure=2*precision*recall/(precision+recall+1e-5)
-    
+
     if fmeasure_only:
         return fmeasure
     else:

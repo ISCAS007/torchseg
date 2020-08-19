@@ -10,20 +10,20 @@ class fcn(TN.Module):
         super().__init__()
         self.config=config
         self.name=self.__class__.__name__
-        
-        self.backbone=backbone(config.model,use_none_layer=config.model.use_none_layer)
-        self.upsample_layer = self.config.model.upsample_layer
-        self.class_number = self.config.model.class_number
-        self.input_shape = self.config.model.input_shape
+
+        self.backbone=backbone(config,use_none_layer=config.use_none_layer)
+        self.upsample_layer = self.config.upsample_layer
+        self.class_number = self.config.class_number
+        self.input_shape = self.config.input_shape
         self.dataset_name=self.config.dataset.name
         self.ignore_index=self.config.dataset.ignore_index
-        
+
         self.midnet_input_shape=self.backbone.get_output_shape(self.upsample_layer,self.input_shape)
         self.midnet_out_channels=self.midnet_input_shape[1]
         self.decoder=get_suffix_net(config,
                                     self.midnet_out_channels,
                                     self.class_number)
-        
+
     def forward(self,x):
         x=self.backbone.forward(x,self.upsample_layer)
         x=self.decoder(x)
@@ -37,8 +37,8 @@ class fcn32s(TN.Module):
         self.config=config
         self.name=self.__class__.__name__
         self.learned_billinear = False
-        self.n_classes = self.config.model.class_number
-        self.class_number = self.config.model.class_number
+        self.n_classes = self.config.class_number
+        self.class_number = self.config.class_number
         self.dataset_name=self.config.dataset.name
         self.ignore_index=self.config.dataset.ignore_index
 
@@ -151,8 +151,8 @@ class fcn16s(TN.Module):
         self.config=config
         self.name=self.__class__.__name__
         self.learned_billinear = False
-        self.n_classes = self.config.model.class_number
-        self.class_number = self.config.model.class_number
+        self.n_classes = self.config.class_number
+        self.class_number = self.config.class_number
         self.dataset_name=self.config.dataset.name
         self.ignore_index=self.config.dataset.ignore_index
 
@@ -270,8 +270,8 @@ class fcn8s(TN.Module):
         self.config=config
         self.name=self.__class__.__name__
         self.learned_billinear = False
-        self.n_classes = self.config.model.class_number
-        self.class_number = self.config.model.class_number
+        self.n_classes = self.config.class_number
+        self.class_number = self.config.class_number
         self.dataset_name=self.config.dataset.name
         self.ignore_index=self.config.dataset.ignore_index
 

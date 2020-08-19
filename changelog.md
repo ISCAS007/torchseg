@@ -1,3 +1,44 @@
 # changelog
 - 2018/10/25 fix bug in data augmentation, add test dataset + keras_benchmark + model save
 - 2018/10/25 update hyperopt loop, from random to stable combination
+- 2019/10/22 update from torch0.4 to torch1.0, TensorboardX.SummaryWriter(log_dir --> logdir)
+- 2019/11/01 add sync_bn (test == dist)
+- 2019/11/09 add sync_bn for motionseg
+- 2019/11/12 for torch1.1+, learning rate schedule step should after optimizer.step()
+- 2019/11/27 add input_format for fbms dataset and panet2, so there are bugs for other dataset and network structure
+- 2019/12/16 add davis dataset
+
+# todo
+- [x] [pspnet](models/pspnet.py)
+    - [x] [train on corse dataset and then finetune + optimizer config(not adam)](https://github.com/ZijunDeng/pytorch-semantic-segmentation/issues/6)
+    - [x] [slice/slide + flipped prediction/evaluation](https://github.com/Vladkryvoruchko/PSPNet-Keras-tensorflow/issues/12)
+    - [x] official pspnet layer setting
+        - https://raw.githubusercontent.com/hszhao/PSPNet/master/evaluation/prototxt/pspnet101_cityscapes_713.prototxt
+        - [resnet-101](https://dgschwend.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85) [ethereon](https://ethereon.github.io/netscope/#/gist/d9f00f2a9703e66c56ae7f2cca970e85)
+        - [resnet-101-deploy](https://dgschwend.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150) [ethereon](https://ethereon.github.io/netscope/#/gist/ace481c81a5faea2a04d5e49dca09150)
+        - [pspnet101 cityscapes 713](https://dgschwend.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79) [ethereon](https://ethereon.github.io/netscope/#/gist/3266b24bf7d2705ae3929b2408774d79)
+- [x] [convolution pose machine](https://github.com/CMU-Perceptual-Computing-Lab/convolutional-pose-machines-release/tree/master/model)
+    - [x] [FLIC](https://ethereon.github.io/netscope/#/gist/c37f3ec677831ca706115fb7238b52a9)
+    - [x] [LEEDS_PC]
+    - [x] [MPI]
+- [x] pspnet + edge
+    - [x] multi input, output, loss, log
+    - [x] edge before pspnet or after pspnet
+        - [x] psp_edge
+        - [x] psp_hed [pytorch-hed](https://github.com/buntyke/pytorch-hed/blob/master/model.py) [caffe-hed](https://ethereon.github.io/netscope/#/gist/cc277790d05d8d87d131d222a6b7f613)
+    - [x] Series connection or Parallel connection
+    - [x] change edge width with epoch
+- [x] pspnet + global
+    - very different from keras version, from single dilation to multi dilation
+- [x] pspnet + dict learning
+    - dict net after upsample net (conv feature can be upsampled with duc, but dict feature may not fit for upsample)
+- [ ] pspnet + fractal filters (random number of filters)
+    - [x] max/mean feature
+    - [ ] int parameter a learning for route (choice=int(a), a is the index for right class, for different class, we have different index)
+    - [x] before upsample, otherwise will out of memory.
+- [ ] multi outputs metrics support like keras
+- [x] [benchmark](test/benchmark_test.py)
+    - [x] dataset loader with path
+    - [x] upsample predict results
+    - [ ] ~~crop + merge predict results~~
+    - [x] train id --> label id

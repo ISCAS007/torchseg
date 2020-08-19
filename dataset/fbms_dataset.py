@@ -38,6 +38,9 @@ class fbms_dataset(motionseg_dataset):
         else:
             assert False
 
+        # image file
+        self.img_files=[self.get_frames(gt_file)[0] for gt_file in self.gt_files]
+
     def __len__(self):
         return len(self.gt_files)
 
@@ -111,7 +114,16 @@ class fbms_dataset(motionseg_dataset):
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
         gt_image=cv2.imread(self.gt_files[index],cv2.IMREAD_GRAYSCALE)
 
-        labels=np.zeros_like(gt_image)
-        labels[gt_image>0]=1
+        # find aux_gt_file
+        if aux_file in self.img_files:
+            aux_index=self.img_files.index(aux_file)
+            aux_gt_image=cv2.imread(self.gt_files[aux_index],cv2.IMREAD_GRAYSCALE)
+        else:
+            aux_gt_image=np.zeros_like(gt_image)
 
+        labels=[]
+        for gt in [gt_image,aux_gt_image]:
+            label=np.zeros_like(gt)
+            label[gt>0]=1
+            labels.append(label)
         return frame_images,labels,main_file,aux_file,gt_file

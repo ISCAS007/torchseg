@@ -19,13 +19,13 @@ model_urls = {
     'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
 }
 
-
 class Bottleneck(nn.Module):
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, momentum=0.1, dilation=1):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
+
         self.bn1 = nn.BatchNorm2d(planes, momentum=momentum)
         if dilation == 1:
             self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
@@ -72,7 +72,7 @@ class ResNet(nn.Module):
         self.in_channels=in_channels
         self.use_none_layer=use_none_layer
         super(ResNet, self).__init__()
-        
+
         # for pspnet, the layer1_in_channels=128
         # but from checkpoint, the layer1_in_channels=64, make layer1 unchanged!!!
         self.layer1_in_channels=64
@@ -83,7 +83,7 @@ class ResNet(nn.Module):
             self.modify_resnet_head=str2bool(os.environ['modify_resnet_head'])
         else:
             self.modify_resnet_head=modify_resnet_head
-            
+
         if self.modify_resnet_head:
             self.prefix_net = nn.Sequential(self.conv_bn_relu(in_channels=in_channels,
                                                               out_channels=64,
@@ -112,7 +112,7 @@ class ResNet(nn.Module):
                                             self.bn1,
                                             self.relu,
                                             self.maxpool)
-        
+
         self.layer1 = self._make_layer(
             block, 64, layers[0], index=1, momentum=momentum)
         self.layer2 = self._make_layer(
@@ -129,7 +129,7 @@ class ResNet(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
-                
+
     def load_state_dict(self,state_dict):
         model_dict = self.state_dict()
 #        print('model',len(model_dict))
@@ -143,16 +143,16 @@ class ResNet(nn.Module):
 #                print(k,v.shape)
         # 1. filter out unnecessary keys
         pretrained_dict = {k: v for k, v in state_dict.items() if k in model_dict}
-        
+
         if not self.modify_resnet_head:
             assert 'conv1.weight' in pretrained_dict
             assert 'bn1.weight' in pretrained_dict
-        
+
         # 2. overwrite entries in the existing state dict
-        model_dict.update(pretrained_dict) 
+        model_dict.update(pretrained_dict)
         # 3. load the new state dict
         super().load_state_dict(model_dict)
-    
+
     def conv_bn_relu(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False):
         seq = nn.Sequential(nn.Conv2d(in_channels=in_channels,
                                       out_channels=out_channels,
@@ -165,7 +165,7 @@ class ResNet(nn.Module):
                             nn.ReLU(inplace=True))
 
         return seq
-    
+
     def _make_layer(self, block, planes, blocks, index=1, stride=1, momentum=0.1):
         if self.use_none_layer is False:
             dilation = 1
@@ -186,7 +186,6 @@ class ResNet(nn.Module):
             in_channels = self.inplanes
 
         downsample = None
-
         if stride != 1 or self.inplanes != planes * block.expansion:
             if dilation != 1 and self.use_none_layer:
                 downsample_stride = 1
@@ -212,7 +211,7 @@ class ResNet(nn.Module):
     def forward(self, x, upsample_layer=None):
         if upsample_layer is None:
             upsample_layer=self.upsample_layer
-            
+
         x = self.prefix_net(x)
         if upsample_layer==1:
             return x
@@ -228,7 +227,7 @@ class ResNet(nn.Module):
         x = self.layer4(x)
         if upsample_layer==5:
             return x
-        
+
         assert False,'upsample_layer=%d, not in [1-5]'%self.upsample_layer
         return x
 
@@ -270,13 +269,13 @@ def get_backbone(momentum):
             m.in_channels = 128
         elif '0.downsample.0' == n:
             m.in_channels = 128
-    
+
     # modify BN and ReLU config
     for layer in [layer1, layer2, layer3, layer4]:
         for n, m in layer.named_modules():
             if isinstance(m, nn.BatchNorm2d):
                 m.momentum = momentum
-                
+
     for n, m in layer3.named_modules():
         if 'conv2' in n:
             m.dilation, m.padding, m.stride = (2, 2), (2, 2), (1, 1)
@@ -297,11 +296,11 @@ def get_backbone(momentum):
 if __name__ == '__main__':
     net = resnet101(momentum=0.5)
     fack_net=get_backbone(momentum=0.5)
-    
+
     seq_true=nn.Sequential(net.layer1,net.layer2,net.layer3,net.layer4)
     for a,b in zip(seq_true.modules(),fack_net.modules()):
 #        assert type(a)==type(b),'type not equal %s!=%s'%(type(a),type(b))
-        
+
         if isinstance(a, nn.BatchNorm2d):
             assert a.momentum==b.momentum,'momentum not equal'
         elif isinstance(a,nn.Conv2d):

@@ -72,9 +72,9 @@ def get_dataset_generalize_config(config, dataset_name):
                        'bottle','bus','car','cat','chair',
                        'cow','diningtable','dog','horse','motorbike',
                        'person','pottedplant','sheep','sofa','train','tvmonitor']
-        config.counts=[182014429, 1780580, 758311, 2232247, 1514260, 
+        config.counts=[182014429, 1780580, 758311, 2232247, 1514260,
                        1517186, 4375622, 3494749, 6752515, 2861091,
-                       2060925, 3381632, 4344951, 2283739, 2888641, 
+                       2060925, 3381632, 4344951, 2283739, 2888641,
                        11995853, 1670340, 2254463, 3612229, 3984238, 2349235]
         config.ignore_index = 255
     elif dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
@@ -89,7 +89,7 @@ def get_dataset_generalize_config(config, dataset_name):
         counts=[704950, 285679000, 81211408, 94016248, 83734392, 17800251, 75629728, 2034717218, 335650593, 38978463, 11239214, 1259538419, 36199498, 48447819, 547202, 17860177, 3362825, 67741418, 499872, 11477088, 30426538, 878458410, 63897448, 221828972, 67323103, 7450319, 385670517, 14708028, 12990290, 2493375, 1300575, 12863955, 5448633, 22734421]
         config.counts=[counts[id] for id in config.foreground_class_ids]
         names='road,sidewalk,building,wall,fence,pole,traffic light,traffic sign,vegetation,terrain,sky,person,rider,car,truck,bus,train,motorcycle,bicycle'
-        config.names=names.split(',')
+        config.class_names=names.split(',')
         config.ignore_index = 255
     elif dataset_name == 'Cityscapes_Coarse':
         # train + val + train_extra
@@ -119,13 +119,13 @@ class dataset_generalize(TD.Dataset):
         splits = ['train', 'val', 'test', 'train_extra']
         assert self.split in splits, 'unexcepted split %s for dataset, must be one of %s' % (
             self.split, str(splits))
-        
+
         # file name for target image set
         if hasattr(self.config, 'txt_note'):
             self.imageset_filename = self.config.txt_note+'_'+self.split+'.txt'
         else:
             self.imageset_filename= self.split+'.txt'
-            
+
         if self.split == 'test':
             if hasattr(self.config, 'txt_path'):
                 txt_file = os.path.join(config.txt_path, self.imageset_filename)
@@ -134,16 +134,16 @@ class dataset_generalize(TD.Dataset):
             else:
                 image_txt_file = os.path.join(
                     config.image_txt_path, self.imageset_filename)
-                
+
                 self.image_files = self.get_files_from_txt(
                         image_txt_file, self.config.root_path)
-            
+
             assert len(self.image_files) > 0, 'No files found in %s with %s' % (
                     self.config.root_path, image_txt_file)
-            
+
             print("Found %d image files" %
                   len(self.image_files))
-        else:    
+        else:
             if hasattr(self.config, 'txt_path'):
                 txt_file = os.path.join(config.txt_path, self.imageset_filename)
                 self.image_files, self.annotation_files = self.get_files_from_txt(
@@ -169,18 +169,18 @@ class dataset_generalize(TD.Dataset):
                     self.config.root_path, image_txt_file)
                 assert len(self.annotation_files) > 0, 'No files found in %s with %s' % (
                     self.config.root_path, annotation_txt_file)
-    
+
             self.foreground_class_ids = self.config.foreground_class_ids
             self.n_classes = len(self.foreground_class_ids)+1
             if hasattr(self.config, 'ignore_index'):
                 self.ignore_index = self.config.ignore_index
             else:
                 self.ignore_index = 0
-    
+
             print("Found %d image files, %d annotation files" %
                   (len(self.image_files), len(self.annotation_files)))
             assert len(self.image_files) == len(self.annotation_files)
-            
+
             if hasattr(self.config,'dataset_use_part'):
                 if self.config.dataset_use_part > 0:
                     self.image_files=self.image_files[0:self.config.dataset_use_part]
@@ -218,11 +218,11 @@ class dataset_generalize(TD.Dataset):
         # eg root_path/leftImg8bit_trainvaltest/leftImg8bit/test/berlin/berlin_000000_000019_leftImg8bit.png
         img_path = self.image_files[index]
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-        
+
         if self.split != 'test':
             # eg root_path/gtFine_trainvaltest/gtFine/test/berlin/berlin_000000_000019_gtFine_labelIds.png
             lbl_path = self.annotation_files[index]
-    
+
             if hasattr(self.config, 'print_path'):
                 if self.config.print_path:
                     print('image path:', img_path)
@@ -231,9 +231,9 @@ class dataset_generalize(TD.Dataset):
             lbl_pil = Image.open(lbl_path)
             lbl = np.array(lbl_pil, dtype=np.uint8)
             assert img is not None, 'empty image for path %s' % img_path
-    
+
             ann = np.zeros_like(lbl)+self.ignore_index
-    
+
     #        lbl_ids = np.unique(lbl)
     #        print('label image ids',lbl_ids)
             if self.ignore_index == 0:
@@ -243,34 +243,35 @@ class dataset_generalize(TD.Dataset):
                 assert self.ignore_index not in self.foreground_class_ids, 'ignore_index cannot in foregournd_class_ids if not 0'
                 for idx, class_id in enumerate(self.foreground_class_ids):
                     ann[lbl == class_id] = idx
-    
+
             if self.augmentations is not None and self.split == 'train':
                 if hasattr(self.config, 'augmentations_blur'):
                     if self.config.augmentations_blur:
                         img = self.augmentations.transform(img)
                 else:
                     img = self.augmentations.transform(img)
-                
+
                 if hasattr(self.config,'aug'):
                     img, ann = self.augmentations.transform(img, ann)
-                
+
                 assert hasattr(
                     self.config, 'resize_shape'), 'augmentations may change image to random size by random crop'
 
         if hasattr(self.config, 'resize_shape'):
             assert len(self.config.resize_shape) == 2, 'resize_shape should with len of 2 but %d' % len(
                 self.config.resize_shape)
-            img = cv2.resize(src=img, dsize=tuple(
-                self.config.resize_shape), interpolation=cv2.INTER_LINEAR)
-            
+
+            # for opencv, resize input is (w,h)
+            dsize=(self.config.resize_shape[1],self.config.resize_shape[0])
+            img = cv2.resize(src=img, dsize=dsize, interpolation=cv2.INTER_LINEAR)
+
             if self.split !='test':
-                ann = cv2.resize(src=ann, dsize=tuple(
-                    self.config.resize_shape), interpolation=cv2.INTER_NEAREST)
+                ann = cv2.resize(src=ann, dsize=dsize, interpolation=cv2.INTER_NEAREST)
 
 #        print('bgr',np.min(img),np.max(img),np.mean(img),np.std(img))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 #        print('rgb',np.min(img),np.max(img),np.mean(img),np.std(img))
-        
+
         if self.config.with_edge and self.split !='test':
             edge_img=None
             if hasattr(self.config,'edge_with_gray'):
@@ -278,23 +279,23 @@ class dataset_generalize(TD.Dataset):
                     edge_img=img
             edge = self.get_edge(
                 ann_img=ann, edge_width=self.config.edge_width, img=edge_img)
-    
+
         if self.normalizations is not None:
             img = self.normalizations.forward(img)
-        
+
         if self.bchw:
             # convert image from (height,width,channel) to (channel,height,width)
             img = img.transpose((2, 0, 1))
-        
+
         if self.config.with_edge and self.split != 'test':
             return img, ann, edge
-        
+
         if self.split == 'test':
             return {'image': img, 'filename': img_path}
         else:
             if hasattr(self.config, 'with_path'):
                 return {'image': (img, ann), 'filename': (img_path, lbl_path)}
-    
+
             return img, ann
 
     def get_edge(self, ann_img, edge_width=5, img=None):
@@ -302,7 +303,7 @@ class dataset_generalize(TD.Dataset):
             edge_class_num = self.config.edge_class_num
         else:
             edge_class_num = 2
-        
+
         assert edge_class_num>=2,'edge class number %d must > 2'%edge_class_num
         kernel = np.ones((edge_width, edge_width), np.uint8)
         if img is None:
@@ -315,7 +316,7 @@ class dataset_generalize(TD.Dataset):
             ann_edge=edge+ann_edge
         # remove ignore area in ann_img
         ann_edge[ann_img==self.ignore_index]=0
-        
+
         ann_dilation = cv2.dilate(ann_edge, kernel, iterations=1)
         if edge_class_num == 2:
             # fg=0, bg=1
@@ -326,7 +327,7 @@ class dataset_generalize(TD.Dataset):
             for class_num in range(edge_class_num-1):
                 edge_label[np.logical_and(ann_dilation>0,edge_label==(edge_class_num-1))]=class_num
                 ann_dilation = cv2.dilate(ann_dilation, kernel, iterations=1)
-                
+
         # remove ignore area in ann_img
         edge_label[ann_img==self.ignore_index]=self.ignore_index
         return edge_label
@@ -370,7 +371,7 @@ class image_normalizations():
 
     def backward(self, x_rgb):
         x = np.zeros_like(x_rgb)
-        
+
         if x.ndim == 3:
             for i in range(3):
                 x[:, :, i] = x_rgb[:, :, i]*self.std_rgb[i]+self.mean_rgb[i]

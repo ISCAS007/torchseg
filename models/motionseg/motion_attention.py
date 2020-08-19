@@ -81,7 +81,9 @@ class transform_attention(nn.Module):
                 if self.filter_type=='main':
                     merge_c=sum([value for key,value in channels.items() if key.find('main')>=0])+init_c
 
-                self.attention_layers.append(AttentionLayer(config,merge_c,filter_c))
+                # dual attention module will run of memory for HR layer
+                is_lr_layer=(idx==self.deconv_layer)
+                self.attention_layers.append(AttentionLayer(config,merge_c,filter_c,is_lr_layer))
 
             else:
                 self.attention_layers.append(None)

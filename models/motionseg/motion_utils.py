@@ -5,6 +5,7 @@ from dataset.fbms_dataset import fbms_dataset
 from dataset.cdnet_dataset import cdnet_dataset
 from dataset.segtrackv2_dataset import segtrackv2_dataset
 from dataset.bmcnet_dataset import bmcnet_dataset
+from dataset.davis_dataset import davis_dataset
 from dataset.dataset_generalize import image_normalizations
 from utils.augmentor import Augmentations
 from models.motionseg.motion_fcn import motion_fcn,motion_fcn2,motion_fcn_stn,motion_fcn2_flow,motion_fcn_flow
@@ -16,10 +17,12 @@ from models.Anet.motion_anet import motion_anet
 from models.motionseg.motion_mix import motion_mix,motion_mix_flow
 from models.motionseg.motion_filter import motion_filter,motion_filter_flow
 from models.motionseg.motion_attention import motion_attention,motion_attention_flow
+from utils.disc_tools import get_newest_file
 from easydict import EasyDict as edict
 import torch.utils.data as td
 import os
 import warnings
+import glob
 
 class Metric_Acc():
     def __init__(self,exception_value=1):
@@ -144,8 +147,8 @@ def get_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--app',
-                        help='application name',
-                        choices=['train','summary','dataset','viz'],
+                        help='application name, train(train and val), test(run benchmark for val dataset, save model output), benchmark(run benchmark for test dataset), summary(view model), dataset(view dataset), viz(visualization)',
+                        choices=['train','summary','dataset','viz','test','benchmark','fps'],
                         default='train')
 
     parser.add_argument("--net_name",
@@ -161,7 +164,7 @@ def get_parser():
 
     parser.add_argument('--dataset',
                         help='dataset name (FBMS)',
-                        choices=['FBMS','cdnet2014','segtrackv2','BMCnet','all','all2','all3'],
+                        choices=['FBMS','cdnet2014','segtrackv2','BMCnet','DAVIS2017','DAVIS2016','all','all2','all3'],
                         default='cdnet2014')
 
     backbone_names=['vgg'+str(number) for number in [11,13,16,19,21]]
@@ -177,10 +180,9 @@ def get_parser():
                         choices=backbone_names,
                         default=None)
 
-    parser.add_argument('--flow_backbone',
-                        help='deprecated backbone for flow network(vgg11), currently motion_panet2 support only',
-                        choices=backbone_names,
-                        default='vgg11')
+    parser.add_argument('--input_format',
+                        help='input format [Background(B),Neighbor Image(N),Optical Flow(O),Neighbor GroundTruth(G),None(-)] (-)',
+                        default='-')
 
     parser.add_argument('--accumulate',
                         help='batch size accumulate (1)',
@@ -245,11 +247,6 @@ def get_parser():
                         type=str2bool,
                         default=False)
 
-    parser.add_argument('--use_aux_input',
-                        help='use aux image as input or not(True)',
-                        type=str2bool,
-                        default=True)
-
     parser.add_argument('--always_merge_flow',
                         help='@deprecated merge flow at every deconv layer or not (False)',
                         type=str2bool,
@@ -259,6 +256,7 @@ def get_parser():
                         help="save model or not",
                         type=str2bool,
                         default=True)
+
     parser.add_argument("--stn_loss_weight",
                         help="stn loss weight (1.0)",
                         type=float,
@@ -281,6 +279,12 @@ def get_parser():
                         help="use feature or images to compute stn loss",
                         choices=['images','features'],
                         default='images')
+
+    parser.add_argument('--use_sync_bn',
+                        help='use distribution trainning and sync batch norm(False)',
+                        type=str2bool,
+                        default=False)
+
     parser.add_argument("--note",
                         help="note for model",
                         default='test')
@@ -381,72 +385,87 @@ def get_parser():
                         type=float,
                         default=1.0)
 
+    parser.add_argument('--loss_name',
+                        help='use iou loss or not, iou loss not support ignore_index',
+                        choices=['ce','dice','iou'],
+                        default='ce')
+
+    parser.add_argument('--seed',
+                        help='distribution training seed(None)',
+                        type=int,
+                        default=None)
+
+    # 2020/01/08
+    parser.add_argument('--checkpoint_path',
+                        help='the checkpoint path to load for test and validation',
+                        default=None)
+
     return parser
 
 def get_default_config():
     config=edict()
-    config.input_shape=[224,224]
-    config.backbone_name='vgg11'
-    config.upsample_layer=1
-    config.deconv_layer=5
-    config.use_none_layer=False
-    config.net_name='motion_unet'
-    config.backbone_freeze=False
-    config.backbone_pretrained=True
-    config.freeze_layer=1
-    config.freeze_ratio=0.0
-    config.modify_resnet_head=False
-    config.layer_preference='last'
-    config.merge_type='concat'
-    config.always_merge_flow=False
-    config.use_aux_input=True
-
-    config.use_part_number=1000
-    config.ignore_pad_area=0
-    config.dataset='cdnet2014'
-    config.frame_gap=5
-    config.log_dir=os.path.expanduser('~/tmp/logs/motion')
-    config.init_lr=1e-4
-
-    config.use_bn=False
-    config.use_dropout=False
-    config.use_bias=True
-    config.upsample_type='bilinear'
-    config.note='test'
-    config.batch_size=4
     config.accumulate=1
-    config.epoch=30
+    config.always_merge_flow=False
     config.app='train'
-    config.save_model=True
-    config.stn_loss_weight=1.0
-    config.motion_loss_weight=1.0
-    config.pose_mask_reg=1.0
-    config.norm_stn_pose=False
-    config.stn_object='images'
-    config.sparse_ratio=0.5
-    config.sparse_conv=False
-    config.psp_scale=5
-
-    config.upsample_type='bilinear'
-    config.subclass_sigmoid=False
-    config.flow_backbone='vgg11'
-    config.main_panet=False
-    config.aux_panet=False
-    # note, false for flow
-    config.share_backbone=None
-    config.fusion_type='all'
-    config.decode_main_layer=1
-    config.min_channel_number=0
-    config.max_channel_number=1024
-    config.smooth_ratio=8
-    config.filter_type='main'
-    config.filter_feature=None
     config.attention_type='c'
     config.aux_backbone=None
-    config.optimizer='adam'
     config.aux_freeze=3
-    config.filter_relu=True
+    config.aux_panet=False
+    config.backbone_freeze=False
+    config.backbone_name='vgg11'
+    config.backbone_pretrained=True
+    config.batch_size=4
+    config.checkpoint_path=None
+    config.dataset='cdnet2014'
+    config.decode_main_layer=1
+    config.deconv_layer=5
+    config.epoch=30
     config.exception_value=1.0
+    config.filter_feature=None
+    config.filter_relu=True
+    config.filter_type='main'
+    config.frame_gap=5
+    config.freeze_layer=1
+    config.freeze_ratio=0.0
+    config.fusion_type='all'
+    config.ignore_pad_area=0
+    config.init_lr=1e-4
+    config.input_shape=[224,224]
+    config.input_format='-'
+    config.layer_preference='last'
+    config.log_dir=os.path.expanduser('~/tmp/logs/motion')
+    config.loss_name='ce'
+    config.main_panet=False
+    config.max_channel_number=1024
+    config.merge_type='concat'
+    config.min_channel_number=0
+    config.modify_resnet_head=False
+    config.motion_loss_weight=1.0
+    config.net_name='motion_unet'
+    config.norm_stn_pose=False
+    config.note='test'
+    config.optimizer='adam'
+    config.pose_mask_reg=1.0
+    config.psp_scale=5
+    config.save_model=True
+    config.seed=None
+    config.share_backbone=None
+    config.smooth_ratio=8
+    config.sparse_conv=False
+    config.sparse_ratio=0.5
+    config.stn_loss_weight=1.0
+    config.stn_object='images'
+    config.subclass_sigmoid=False
+    config.upsample_layer=1
+    config.upsample_type='bilinear'
+    config.upsample_type='bilinear'
+    config.use_bias=True
+    config.use_bn=False
+    config.use_dropout=False
+    config.use_none_layer=False
+    config.use_part_number=1000
+    config.use_sync_bn=False
+
     return config
 
 def fine_tune_config(config):
@@ -469,6 +488,8 @@ def fine_tune_config(config):
         config['root_path']=os.path.expanduser('~/cvdataset/SegTrackv2')
     elif config.dataset=='BMCnet':
         config['root_path']=os.path.expanduser('~/cvdataset/BMCnet')
+    elif config.dataset.upper() in ['DAVIS2017','DAVIS2016']:
+        config['root_path']=os.path.expanduser('~/cvdataset/DAVIS')
     elif config.dataset in ['all','all2','all3']:
         pass
     else:
@@ -489,16 +510,14 @@ def get_dataset(config,split):
         xxx_dataset=segtrackv2_dataset(config,split,normalizations=normer,augmentations=augmentations)
     elif config.dataset=='BMCnet':
         xxx_dataset=bmcnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
+    elif config.dataset.upper() in ['DAVIS2017','DAVIS2016']:
+        xxx_dataset=davis_dataset(config,split,normalizations=normer,augmentations=augmentations)
     elif config.dataset=='all':
-        config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
-        fbms=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        config['root_path']=os.path.expanduser('~/cvdataset/cdnet2014')
-        cdnet=cdnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        config['root_path']=os.path.expanduser('~/cvdataset/SegTrackv2')
-        segtrackv2=segtrackv2_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        config['root_path']=os.path.expanduser('~/cvdataset/BMCnet')
-        bmcnet=bmcnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        xxx_dataset=td.ConcatDataset([fbms,cdnet,segtrackv2,bmcnet])
+        dataset_set=[]
+        for d in ['FBMS','cdnet2014','segtrackv2','BMCnet','DAVIS2017','DAVIS2016']:
+            config.dataset=d
+            dataset_set.append(get_dataset(config,split))
+        xxx_dataset=td.ConcatDataset(dataset_set)
     elif config.dataset=='all3':
         config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
         fbms=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
@@ -520,6 +539,32 @@ def get_dataset(config,split):
 
 def get_model(config):
     model=globals()[config['net_name']](config)
+    return model
+
+def get_checkpoint_path(config):
+    if config.checkpoint_path is None:
+        log_dir = os.path.join(config['log_dir'], config['net_name'],
+                               config['dataset'], config['note'])
+
+        checkpoint_path_list=glob.glob(os.path.join(log_dir,'*','*.pkl'))
+        assert len(checkpoint_path_list)>0,f'{log_dir} do not have checkpoint'
+        checkpoint_path = get_newest_file(checkpoint_path_list)
+    else:
+        checkpoint_path=config.checkpoint_path
+
+    return checkpoint_path
+
+def get_load_convert_model(config):
+    """
+    get load and convert model
+    """
+    checkpoint_path=get_checkpoint_path(config)
+    model=get_model(config)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.load_state_dict(torch.load(checkpoint_path))
+    model.to(device)
+    model.eval()
+
     return model
 
 def poly_lr_scheduler(config, optimizer, iter,

@@ -17,24 +17,24 @@ from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
 from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
 from tqdm import tqdm, trange
 import glob
-
+import torch.nn.functional as F
 
 def get_loader(config):
-    if config.dataset.norm_ways is None:
+    if config.norm_ways is None:
         normalizations = None
     else:
-        normalizations = image_normalizations(config.dataset.norm_ways)
+        normalizations = image_normalizations(config.norm_ways)
 
-    if config.args.augmentation:
+    if config.augmentation:
         augmentations = Augmentations(config)
     else:
         augmentations = None
 
     # must change batch size here!!!
-    batch_size = config.args.batch_size
+    batch_size = config.batch_size
 
     train_dataset = dataset_generalize(
-        config.dataset, split='train',
+        config, split='train',
         augmentations=augmentations,
         normalizations=normalizations)
     train_loader = TD.DataLoader(
@@ -42,9 +42,9 @@ def get_loader(config):
         batch_size=batch_size,
         shuffle=True,
         drop_last=True,
-        num_workers=4)
+        num_workers=config.num_workers)
 
-    val_dataset = dataset_generalize(config.dataset,
+    val_dataset = dataset_generalize(config,
                                      split='val',
                                      augmentations=None,
                                      normalizations=normalizations)
@@ -53,7 +53,7 @@ def get_loader(config):
         batch_size=batch_size,
         shuffle=True,
         drop_last=False,
-        num_workers=2)
+        num_workers=config.num_workers)
 
     return train_loader, val_loader
 
@@ -127,6 +127,9 @@ def freeze_layer(layer):
         param.requires_grad = False
 
 
+def is_main_process(config):
+    return not config.mp_dist or (config.mp_dist and config.rank % config.ngpus_per_node == 0)
+
 def train_val(model, optimizer, scheduler, loss_fn_dict,
               metric_fn_dict, running_metrics,
               loader, config, epoch, summary_all, loader_name,
@@ -137,6 +140,7 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
         model.train()
     else:
         model.eval()
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     losses_dict = {}
@@ -144,16 +148,19 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
     for k, v in metric_fn_dict.items():
         metric_fn_dict[k].reset()
 
-    grads_dict = {}
-    
-    accumulate=0
-    tqdm_step = tqdm(loader, desc='steps', leave=False)
+    assert config.accumulate>=1
+    total_loss=0
+    if is_main_process(config):
+        tqdm_step = tqdm(loader, desc='steps', leave=False)
+    else:
+        tqdm_step = loader
+
     for i, (datas) in enumerate(tqdm_step):
         if loader_name == 'train' and scheduler is None:
             # work only for sgd and no other scheduler
             poly_lr_scheduler(optimizer,
                               iter=epoch*len(loader)+i,
-                              max_iter=config.args.n_epoch*len(loader))
+                              max_iter=config.n_epoch*len(loader))
 
         # support for w/o edge
         if len(datas) == 2:
@@ -170,6 +177,15 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                             'edge': edges, 'img': images}
         else:
             assert False, 'unexcepted loader output size %d' % len(datas)
+
+        if config.test=='dist':
+            images=images.cuda(config.gpu,non_blocking=True)
+            for key,value in targets_dict.items():
+                targets_dict[key]=value.cuda(config.gpu,non_blocking=True)
+
+        if config.net_name in ['GlobalLocalNet']:
+            h,w=config.origin_input_shape
+            targets_dict['seg']=targets_dict['seg'][:,h//4:(h*3)//4,w//4:(w*3)//4]
 
         outputs = model.forward(images)
 
@@ -193,7 +209,7 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
         if loader_name == 'train':
             # return adaptive reg loss, edge loss, aux loss and seg loss weight (train only)
             loss_weight_dict = get_loss_weight(
-                step=i+epoch*len(loader), max_step=config.args.n_epoch*len(loader), config=config)
+                step=i+epoch*len(loader), max_step=config.n_epoch*len(loader), config=config)
         else:
             # use 1.0 by default
             loss_weight_dict = None
@@ -202,49 +218,32 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
         loss_dict = get_loss(outputs_dict, targets_dict, loss_fn_dict, config,
                              model, loss_weight_dict=loss_weight_dict, prefix_note=loader_name)
         # not support test
-        if config.args.center_loss is not None:
+        if config.center_loss is not None:
             center_loss=center_loss_model(model.center_feature,labels)
             loss_dict['%s/center_loss'%loader_name]=center_loss
-            loss_dict['%s/total_loss' % loader_name]+=config.args.center_loss_weight*center_loss
+            loss_dict['%s/total_loss' % loader_name]+=config.center_loss_weight*center_loss
         # record loss for summary
         for k, v in loss_dict.items():
             if k in losses_dict.keys():
                 losses_dict[k].append(v.data.cpu().numpy())
             else:
                 losses_dict[k] = [v.data.cpu().numpy()]
-                    
-        if loader_name == 'train':
-            # loss backward and update weight (train only)
-            loss_dict['%s/total_loss' % loader_name].backward()
-            
-            # record grad for summary (train only)
-            for key_prefix in ['first_grad', 'last_grad']:
-                for key_suffix in ['mean', 'max']:
-                    grads_dict[key_prefix+'_'+key_suffix] = []
-            if optimizer.param_groups[0]['params'][0].grad is not None:
-                grads_dict['first_grad_mean'].append(
-                    optimizer.param_groups[0]['params'][0].grad.mean().data.cpu().numpy())
-                grads_dict['first_grad_max'].append(
-                    optimizer.param_groups[0]['params'][0].grad.max().data.cpu().numpy())
 
-            if optimizer.param_groups[-1]['params'][-1].grad is not None:
-                grads_dict['last_grad_mean'].append(
-                    optimizer.param_groups[-1]['params'][-1].grad.mean().data.cpu().numpy())
-                grads_dict['last_grad_max'].append(
-                    optimizer.param_groups[-1]['params'][-1].grad.max().data.cpu().numpy())
-            
-            accumulate+=1
-            if accumulate >= config.model.accumulate:
-                accumulate=0
+        if loader_name == 'train':
+            total_loss+=loss_dict['%s/total_loss' % loader_name]
+            if (i+1) % config.accumulate == 0:
+                total_loss=total_loss/config.accumulate
+                total_loss.backward()
+                total_loss=0
+
                 optimizer.step()
-                if config.args.center_loss is not None:
-                    for param in center_loss_model.parameters():
-                        param.grad.data *= (1. / config.args.center_loss_weight)
-                    center_optimizer.step()
                 optimizer.zero_grad()
-                if config.args.center_loss is not None:
+                if config.center_loss is not None:
+                    for param in center_loss_model.parameters():
+                        param.grad.data *= (1. / config.center_loss_weight)
+                    center_optimizer.step()
                     center_optimizer.zero_grad()
-                    
+
         if summary_metric:
             # summary_all other metric for edge and aux, not run for each epoch to save time
             running_metrics, metric_fn_dict = update_metric(outputs_dict,
@@ -254,7 +253,7 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                                                             config,
                                                             summary_all=summary_all,
                                                             prefix_note=loader_name)
-    return outputs_dict, targets_dict, running_metrics, metric_fn_dict, grads_dict, losses_dict, loss_weight_dict
+    return outputs_dict, targets_dict, running_metrics, metric_fn_dict, losses_dict, loss_weight_dict
 
 
 def poly_lr_scheduler(optimizer, iter,
@@ -280,14 +279,14 @@ def poly_lr_scheduler(optimizer, iter,
 
 
 def get_optimizer(model, config):
-    init_lr = config.model.learning_rate if hasattr(
-        config.model, 'learning_rate') else 0.0001
-    optimizer_str = config.model.optimizer if hasattr(
-        config.model, 'optimizer') else 'adam'
-    lr_weight_decay = config.model.lr_weight_decay if hasattr(
-        config.model, 'lr_weight_decay') else 0.0001
-    lr_momentum = config.model.lr_momentum if hasattr(
-        config.model, 'lr_momentum') else 0.9
+    init_lr = config.learning_rate if hasattr(
+        config, 'learning_rate') else 0.0001
+    optimizer_str = config.optimizer if hasattr(
+        config, 'optimizer') else 'adam'
+    lr_weight_decay = config.lr_weight_decay if hasattr(
+        config, 'lr_weight_decay') else 0.0001
+    lr_momentum = config.lr_momentum if hasattr(
+        config, 'lr_momentum') else 0.9
 
     if hasattr(model, 'optimizer_params'):
         optimizer_params = model.optimizer_params
@@ -295,7 +294,7 @@ def get_optimizer(model, config):
         # optimizer_params = [p for p in model.optimizer_params if 'lr_mult' not in p.keys() or p['lr_mult']>0]
     else:
         optimizer_params = [{'params': [p for p in model.parameters() if p.requires_grad]}]
-    
+
     # init optimizer learning rate
     for i, p in enumerate(optimizer_params):
         lr_mult = p['lr_mult'] if 'lr_mult' in p.keys() else 1.0
@@ -320,8 +319,8 @@ def get_optimizer(model, config):
 
 
 def get_scheduler(optimizer, config):
-    scheduler = config.model.scheduler if hasattr(
-        config.model, 'scheduler') else None
+    scheduler = config.scheduler if hasattr(
+        config, 'scheduler') else None
     if scheduler == 'rop':
         # 'max' for acc and miou, 'min' for loss
         scheduler = rop(optimizer, 'min',
@@ -382,8 +381,8 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
 
-    if config.args.checkpoint_path is not None:
-        ckpt_path = get_ckpt_path(config.args.checkpoint_path)
+    if config.checkpoint_path is not None:
+        ckpt_path = get_ckpt_path(config.checkpoint_path)
         print('load checkpoint file from', ckpt_path)
         state_dict = torch.load(ckpt_path)
         if 'model_state' in state_dict.keys():
@@ -393,27 +392,27 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
 
     optimizer = get_optimizer(model, config)
     scheduler = get_scheduler(optimizer, config)
-    
-    if config.args.center_loss is not None:
+
+    if config.center_loss is not None:
         center_loss_model=CenterLoss(model.center_channels,model.class_number,
-                                     ignore_index=config.dataset.ignore_index,
-                                     loss_fn=config.args.center_loss).to(device)
+                                     ignore_index=config.ignore_index,
+                                     loss_fn=config.center_loss).to(device)
         center_optimizer=torch.optim.SGD(center_loss_model.parameters(), lr=0.5)
     else:
         center_loss_model=None
         center_optimizer=None
-        
+
     loss_fn_dict = get_loss_fn_dict(config)
     # for different output, generate the metric_fn_dict automaticly.
     metric_fn_dict = {}
     # output for main output
-    running_metrics = runningScore(config.model.class_number)
+    running_metrics = runningScore(config.class_number)
 
     time_str = time.strftime("%Y-%m-%d___%H-%M-%S", time.localtime())
-    log_dir = os.path.join(config.args.log_dir, model.name,
-                           config.dataset.name, config.args.note, time_str)
+    log_dir = os.path.join(config.log_dir, config.net_name,
+                           config.dataset_name, config.note, time_str)
 #    checkpoint_path = os.path.join(
-#        log_dir, "{}_{}_best_model.pkl".format(model.name, config.dataset.name))
+#        log_dir, "{}_{}_best_model.pkl".format(model.name, config.name))
     writer = None
     best_iou = 0.0
     # create loader from config
@@ -432,26 +431,26 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
 
     # eval module
     if train_loader is None:
-        config.args.n_epoch = 1
+        config.n_epoch = 1
 
-    summary_all_step=max(1,config.args.n_epoch//10)
+    summary_all_step=max(1,config.n_epoch//10)
     # 1<= summary_metric_step <=10
-    summary_metric_step=max(min(10,config.args.n_epoch//10),1)
+    summary_metric_step=max(min(10*config.accumulate,config.n_epoch//10),1)
 
-    tqdm_epoch = trange(config.args.n_epoch, desc='epoches', leave=True)
+    tqdm_epoch = trange(config.n_epoch, desc='{} epoches'.format(config.note), leave=True)
     for epoch in tqdm_epoch:
         tqdm_epoch.set_postfix(best_iou=best_iou)
         for loader, loader_name in zip(loaders, loader_names):
             if loader is None:
                 continue
-        
+
             # summary all only 10 times
             if epoch % summary_all_step == 0:
                 summary_all = True
                 summary_metric = True
             else:
                 summary_all = False
-                if epoch % summary_metric_step == 0 or epoch == config.args.n_epoch-1:
+                if epoch % summary_metric_step == 0 or epoch == config.n_epoch-1:
                     summary_metric=True
                 else:
                     summary_metric=False
@@ -465,7 +464,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                 with torch.no_grad():
                     outputs_dict, targets_dict, \
                     running_metrics, metric_fn_dict, \
-                    grads_dict, losses_dict, loss_weight_dict = train_val(
+                    losses_dict, loss_weight_dict = train_val(
                         model=model,
                         optimizer=optimizer,
                         scheduler=scheduler,
@@ -480,7 +479,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                         loader_name=loader_name,
                         center_loss_model=center_loss_model,
                         center_optimizer=center_optimizer)
-                
+
                 # use rop/poly_rop to schedule learning rate
                 if isinstance(scheduler,(poly_rop,rop)):
                     total_loss=sum(losses_dict['%s/total_loss' % loader_name])
@@ -488,7 +487,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
             else:
                 outputs_dict, targets_dict, \
                 running_metrics, metric_fn_dict, \
-                grads_dict, losses_dict, loss_weight_dict = train_val(
+                losses_dict, loss_weight_dict = train_val(
                     model=model,
                     optimizer=optimizer,
                     scheduler=scheduler,
@@ -509,7 +508,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                     scheduler.step()
 
             metric_dict, class_iou_dict = get_metric(
-                running_metrics, metric_fn_dict, 
+                running_metrics, metric_fn_dict,
                 summary_all=summary_all, prefix_note=loader_name, summary_metric=summary_metric)
             if loader_name == 'val' and summary_metric:
                 val_iou = metric_dict['val/iou']
@@ -517,7 +516,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                         (epoch, val_iou))
                 if val_iou >= best_iou:
                     best_iou = val_iou
-                    iou_save_threshold = config.args.iou_save_threshold
+                    iou_save_threshold = config.iou_save_threshold
 
                     # save the best the model if good enough
                     if best_iou >= iou_save_threshold:
@@ -527,7 +526,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                         save_model_if_necessary(model, config, checkpoint_path)
 
                 # save the last model if the best model not good enough
-                if epoch == config.args.n_epoch-1 and best_iou < iou_save_threshold:
+                if epoch == config.n_epoch-1 and best_iou < iou_save_threshold:
                     print('save the last model', '*'*30)
                     checkpoint_path = os.path.join(
                         log_dir, 'model-last-%d.pkl' % epoch)
@@ -535,23 +534,23 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
 
             # return valid image when summary_all=True
             image_dict = get_image_dict(
-                outputs_dict, targets_dict, config, 
+                outputs_dict, targets_dict, config,
                 summary_all=summary_all, prefix_note=loader_name)
-            
+
             if writer is None:
                 writer = init_writer(config=config, log_dir=log_dir)
-            
+
             # change weight and learning rate (train only)
             if loader_name == 'train':
                 weight_dict = {}
                 for k, v in loss_weight_dict.items():
                     weight_dict['%s/weight_%s' % (loader_name, k)] = v
-                    
+
                 lr_dict = get_lr_dict(optimizer, prefix_note=loader_name)
             else:
                 weight_dict = {}
                 lr_dict = {}
-            
+
             write_summary(writer=writer,
                           losses_dict=losses_dict,
                           metric_dict=metric_dict,
@@ -559,10 +558,10 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
                           lr_dict=lr_dict,
                           image_dict=image_dict,
                           weight_dict=weight_dict,
-                          grads_dict=grads_dict,
                           epoch=epoch)
     writer.close()
-    print('total epoch is %d, best iou is' % config.args.n_epoch, best_iou)
+
+    print('total epoch is %d, best iou is' % config.n_epoch, best_iou)
     return best_iou
 
 
@@ -575,19 +574,19 @@ def get_loss_fn_dict(config):
 #    else:
 #        loss_fn = torch.nn.CrossEntropyLoss(ignore_index=ignore_index)
 
-    ignore_index = config.dataset.ignore_index
+    ignore_index = config.ignore_index
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    if hasattr(config.dataset, 'counts') and config.model.use_class_weight:
-        count_sum = 1.0*np.sum(config.dataset.counts)
-        weight_raw = [count_sum/count for count in config.dataset.counts]
+    if hasattr(config, 'counts') and config.use_class_weight:
+        count_sum = 1.0*np.sum(config.counts)
+        weight_raw = [count_sum/count for count in config.counts]
         # make the total loss not change!!!
         weight_sum = np.sum(weight_raw)
-        class_number = len(config.dataset.counts)
+        class_number = len(config.counts)
         seg_weight_list = [class_number*w/weight_sum for w in weight_raw]
         seg_loss_weight = torch.tensor(
             data=seg_weight_list, dtype=torch.float32).to(device)
 
-        alpha = config.model.class_weight_alpha
+        alpha = config.class_weight_alpha
         seg_loss_weight = seg_loss_weight+(1.0-seg_loss_weight)*alpha
         print('segmentation class weight is', '*'*30)
         for idx, w in enumerate(seg_weight_list):
@@ -597,23 +596,23 @@ def get_loss_fn_dict(config):
         seg_loss_weight = None
 
     loss_fn_dict = {}
-    if config.model.focal_loss_gamma < 0:
+    if config.focal_loss_gamma < 0:
         loss_fn_dict['seg'] = torch.nn.CrossEntropyLoss(
             ignore_index=ignore_index, weight=seg_loss_weight)
     else:
-        loss_fn_dict['seg'] = FocalLoss2d(alpha=config.model.focal_loss_alpha,
-                                          gamma=config.model.focal_loss_gamma,
+        loss_fn_dict['seg'] = FocalLoss2d(alpha=config.focal_loss_alpha,
+                                          gamma=config.focal_loss_gamma,
                                           weight=seg_loss_weight,
                                           ignore_index=ignore_index,
-                                          with_grad=config.model.focal_loss_grad)
+                                          with_grad=config.focal_loss_grad)
 
-    if config.dataset.with_edge:
-        if hasattr(config.dataset, 'edge_class_num'):
-            edge_class_num = config.dataset.edge_class_num
+    if config.with_edge:
+        if hasattr(config, 'edge_class_num'):
+            edge_class_num = config.edge_class_num
         else:
             edge_class_num = 2
 
-        edge_bg_weight = config.model.edge_bg_weight
+        edge_bg_weight = config.edge_bg_weight
         if edge_class_num == 2:
             # edge fg=0, bg=1
             edge_weight_list = [1.0, edge_bg_weight]
@@ -636,21 +635,24 @@ def get_loss_weight(step, max_step, config=None):
     loss_weight_dict = {}
     loss_power = 0.9
     edge_power = aux_power = loss_power
-    edge_base_weight = aux_base_weight = 1.0
-    if config is not None:
-        if hasattr(config.model, 'edge_power'):
-            edge_power = config.model.edge_power
-        if hasattr(config.model, 'aux_power'):
-            aux_power = config.model.aux_power
-        if hasattr(config.model, 'edge_base_weight'):
-            edge_base_weight = config.model.edge_base_weight
-        if hasattr(config.model, 'aux_base_weight'):
-            aux_base_weight = config.model.aux_base_weight
+    edge_base_weight = main_base_weight = aux_base_weight = 1.0
 
-        config.model.poly_loss_weight = False
-        if hasattr(config.model, 'poly_loss_weight'):
-            if config.model.poly_loss_weight:
-                loss_weight_dict['seg'] = 1.0
+    if config is not None:
+        if hasattr(config, 'edge_power'):
+            edge_power = config.edge_power
+        if hasattr(config, 'aux_power'):
+            aux_power = config.aux_power
+        if hasattr(config, 'edge_base_weight'):
+            edge_base_weight = config.edge_base_weight
+        if hasattr(config, 'aux_base_weight'):
+            aux_base_weight = config.aux_base_weight
+        if hasattr(config, 'main_base_weight'):
+            main_base_weight = config.main_base_weight
+
+        config.poly_loss_weight = False
+        if hasattr(config, 'poly_loss_weight'):
+            if config.poly_loss_weight:
+                loss_weight_dict['seg'] = main_base_weight
                 # from small to big
                 loss_weight_dict['edge'] = edge_base_weight * \
                     (step/(1.0+max_step))**edge_power
@@ -660,7 +662,7 @@ def get_loss_weight(step, max_step, config=None):
 
                 return loss_weight_dict
 
-    loss_weight_dict['seg'] = 1.0
+    loss_weight_dict['seg'] = main_base_weight
     loss_weight_dict['edge'] = edge_base_weight
     loss_weight_dict['aux'] = aux_base_weight
 
@@ -707,9 +709,9 @@ def get_loss(outputs_dict, targets_dict, loss_fn_dict, config, model, loss_weigh
             loss_dict['%s/total_loss' % prefix_note] += loss
 
     # use weight decay instead will be better
-    if config.model.use_reg:
-        #        l1_reg = config.model.l1_reg
-        l2_reg = config.model.l2_reg
+    if config.use_reg:
+        #        l1_reg = config.l1_reg
+        l2_reg = config.l2_reg
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         l2_loss = torch.autograd.Variable(
             torch.FloatTensor(1), requires_grad=True).to(device)
@@ -752,9 +754,9 @@ def update_metric(outputs_dict,
                 value, dim=1).data.cpu().numpy()
             if key not in metric_fn_dict.keys():
                 if key.startswith(('seg','aux')):
-                    metric_fn_dict[key] = runningScore(config.model.class_number)
+                    metric_fn_dict[key] = runningScore(config.class_number)
                 elif key.startswith('edge'):
-                    metric_fn_dict[key] = runningScore(config.dataset.edge_class_num)
+                    metric_fn_dict[key] = runningScore(config.edge_class_num)
                 else:
                     assert False, 'unexcepted key %s in outputs_dict' % key
 
@@ -786,7 +788,7 @@ def get_metric(running_metrics, metric_fn_dict, summary_all=False, prefix_note='
     """
     if not summary_metric:
         return {},{}
-    
+
     metric_dict = {}
     score, class_iou = running_metrics.get_scores()
     metric_dict['%s/acc' % prefix_note] = score['Overall Acc: \t']
@@ -815,10 +817,10 @@ def get_metric(running_metrics, metric_fn_dict, summary_all=False, prefix_note='
 
 def get_image_dict(outputs_dict, targets_dict, config, summary_all=False, prefix_note='train'):
     image_dict = {}
-    if summary_all and config.args.summary_image:
+    if summary_all and config.summary_image:
         gpu_num = torch.cuda.device_count()
-        # for parallel, the true batch size for image will be config.args.batch_size//gpu_num
-        idx = np.random.randint(config.args.batch_size//gpu_num)
+        # for parallel, the true batch size for image will be config.batch_size//gpu_num
+        idx = np.random.randint(config.batch_size//gpu_num)
         # convert tensor to numpy,
         np_outputs_dict = {}
         for key, value in outputs_dict.items():
@@ -828,8 +830,8 @@ def get_image_dict(outputs_dict, targets_dict, config, summary_all=False, prefix
         for key, value in targets_dict.items():
             np_targets_dict[key] = value[idx].data.cpu().numpy()
 
-        seg_pixel_scale = 255//config.model.class_number
-        edge_pixel_scale = 255//config.dataset.edge_class_num
+        seg_pixel_scale = 255//config.class_number
+        edge_pixel_scale = 255//config.edge_class_num
 
         for k, v in np_outputs_dict.items():
             if k.startswith(('seg', 'aux')):
@@ -841,7 +843,7 @@ def get_image_dict(outputs_dict, targets_dict, config, summary_all=False, prefix
             else:
                 assert False, 'unexcepted key %s in outputs_dict' % key
 
-        normalizations = image_normalizations(config.dataset.norm_ways)
+        normalizations = image_normalizations(config.norm_ways)
         for k, v in np_targets_dict.items():
             if k == 'img':
                 org_img = v.transpose((1, 2, 0))
@@ -870,7 +872,7 @@ def get_lr_dict(optimizer, prefix_note='train'):
 
 def init_writer(config, log_dir):
     os.makedirs(log_dir, exist_ok=True)
-    writer = SummaryWriter(log_dir=log_dir)
+    writer = SummaryWriter(logdir=log_dir)
     config_str = json.dumps(config, indent=2, sort_keys=True).replace(
         '\n', '\n\n').replace('  ', '\t')
     writer.add_text(tag='config', text_string=config_str)
@@ -891,7 +893,6 @@ def write_summary(writer,
                   lr_dict,
                   image_dict,
                   weight_dict,
-                  grads_dict,
                   epoch):
     # losses_dict value is numpy
     for k, v in losses_dict.items():
@@ -917,8 +918,3 @@ def write_summary(writer,
     # summary image
     for k, v in image_dict.items():
         add_image(summary_writer=writer, name=k, image=v, step=epoch)
-
-    # summary gradients
-    for k, v in grads_dict.items():
-        if len(v) > 0:
-            writer.add_scalar('grad/'+k, np.mean(v), epoch)

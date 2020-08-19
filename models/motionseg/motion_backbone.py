@@ -7,11 +7,10 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from easydict import EasyDict as edict
+from utils.disc_tools import lcm_list
 import warnings
 from models.upsample import local_upsample
 from models.Anet.layers import Anet
-
-
 class conv_bn_relu(TN.Module):
     def __init__(self,
                  in_channels,
@@ -77,8 +76,10 @@ class motion_backbone(TN.Module):
 
         if hasattr(config,'modify_resnet_head'):
             os.environ['modify_resnet_head']=str(config.modify_resnet_head)
+            self.modify_resnet_head=config.modify_resnet_head
         else:
             os.environ['modify_resnet_head']=str(False)
+            self.modify_resnet_head=False
 
 
         self.upsample_layer=self.config.upsample_layer
@@ -89,10 +90,12 @@ class motion_backbone(TN.Module):
             config.net_name.find('panet')>=0 or \
             config.net_name.find('motion_filter')>=0 or \
             config.net_name in ['motion_anet','motion_mix','motion_mix_flow',
-                                'motion_attention','motion_attention_flow']:
+                                'motion_attention','motion_attention_flow','PSPUNet']:
             assert self.deconv_layer > self.upsample_layer,'deconv %d must > decoder %d'%(self.deconv_layer,self.upsample_layer)
         elif config.net_name.find('fcn')>=0 or config.net_name.find('motion_psp')>=0:
             self.deconv_layer = self.upsample_layer
+        elif config.net_name in ['UNet']:
+            pass
         else:
             warnings.warn('unknown net name {} for max extracted layer index'.format(config.net_name))
             assert self.deconv_layer > self.upsample_layer
@@ -193,7 +196,7 @@ class motion_backbone(TN.Module):
                         param.requires_grad = False
 
         # if modify resnet head worked, train the modified resnet head
-        if self.config.modify_resnet_head and self.config.use_none_layer and self.format=='resnet':
+        if self.modify_resnet_head and self.use_none_layer and self.format=='resnet':
             for param in self.prefix_net.parameters():
                 param.requires_grad = True
 
@@ -306,7 +309,7 @@ class motion_backbone(TN.Module):
     def get_model(self):
         if self.in_channels!=3:
             pretrained=False
-        if hasattr(self.config,'backbone_pretrained'):
+        elif hasattr(self.config,'backbone_pretrained'):
             pretrained=self.config.backbone_pretrained
         else:
             print('warning: backbone is not pretrained!!!')
@@ -322,23 +325,27 @@ class motion_backbone(TN.Module):
             return Anet(self.config)
         elif self.use_none_layer or self.in_channels !=3:
             print('use none layer'+'*'*30)
-            from models.MobileNetV2 import mobilenet2
             from models.psp_resnet import resnet50,resnet101
-            from models.psp_vgg import vgg16,vgg19,vgg16_bn,vgg19_bn,vgg11,vgg11_bn,vgg13,vgg13_bn,vgg16_gn,vgg19_gn,vgg21,vgg21_bn
+            from models.MobileNetV2 import mobilenet2
+            from models.psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
+                                        vgg11,vgg11_bn,vgg13,vgg13_bn,
+                                        vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
 
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
-                return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum,in_channels=self.in_channels)
+                return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
             elif self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained,in_c=self.in_channels)
             else:
                 return locals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
         else:
-#            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
-            from torchvision.models import vgg16,vgg19,vgg16_bn,vgg19_bn,resnet50,resnet101,vgg11,vgg11_bn,vgg13,vgg13_bn
-            from models.psp_vgg import vgg16_gn,vgg19_gn,vgg21,vgg21_bn
+            from models.psp_resnet import resnet50,resnet101
             from models.MobileNetV2 import mobilenet2
+            from models.psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
+                                        vgg11,vgg11_bn,vgg13,vgg13_bn,
+                                        vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
+#            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             from pretrainedmodels import se_resnet50
 
             assert self.in_channels==3
@@ -351,7 +358,7 @@ class motion_backbone(TN.Module):
                     return locals()[self.config.backbone_name](pretrained=None)
             else:
                 assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
-                return locals()[self.config.backbone_name](pretrained=pretrained)
+                return locals()[self.config.backbone_name](pretrained=pretrained,use_none_layer=self.use_none_layer)
 
     def get_dataframe(self):
         assert self.format=='vgg','only vgg models have features'
@@ -827,20 +834,26 @@ class transform_motion_psp(TN.Module):
             path_out_c_list.append(mean_c)
 
         path_out_c_list.append(pool_out_channels+mean_c-mean_c*N)
+        self.min_input_size=lcm_list(pool_sizes)*scale
+
+        assert height%self.min_input_size==0 and width%self.min_input_size==0,"height={},min input size={}".format(height,self.min_input_size)
+
+        h_ratio=height//self.min_input_size
+        w_ratio=width//self.min_input_size
 
         self.pool_sizes = pool_sizes
         self.scale = scale
         pool_paths = []
         for pool_size, out_c in zip(pool_sizes, path_out_c_list):
-            pool_path = TN.Sequential(TN.AvgPool2d(kernel_size=pool_size*scale,
-                                                   stride=pool_size*scale,
+            pool_path = TN.Sequential(TN.AvgPool2d(kernel_size=[h_ratio*pool_size*scale,pool_size*scale*w_ratio],
+                                                   stride=[h_ratio*pool_size*scale,pool_size*scale*w_ratio],
                                                    padding=0),
                                       conv_bn_relu(in_channels=in_channels,
                                                 out_channels=out_c,
                                                 kernel_size=1,
                                                 stride=1,
                                                 padding=0),
-                                      local_upsample(size=(height, width), mode='bilinear', align_corners=True))
+                                      local_upsample(size=(self.min_input_size*h_ratio, w_ratio*self.min_input_size), mode='bilinear', align_corners=True))
             pool_paths.append(pool_path)
 
         self.pool_paths = TN.ModuleList(pool_paths)
@@ -856,11 +869,6 @@ class transform_motion_psp(TN.Module):
     def forward(self, main,aux):
         x=torch.cat([main,aux],dim=1)
         output_slices = [x]
-        min_input_size = max(self.pool_sizes)*self.scale
-        in_size = x.shape
-        assert in_size[2] >= min_input_size, 'psp in size %d should >= %d' % (
-            in_size[2], min_input_size)
-
         for module in self.pool_paths:
             y = module(x)
             output_slices.append(y)
