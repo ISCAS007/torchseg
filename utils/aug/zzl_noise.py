@@ -35,7 +35,7 @@ def AddImpulseNoise(img,noise_density=0.2,noise_type="salt_pepper",rho=0.5):
         mask=np.logical_or(noise_area,mask)
         noise_img[noise_255]=255
         noise_img[noise_0]=0
-        print(mask.shape,img.shape,height,width)
+
 #        for x in range(width):
 #            for y in range(height):
 #                noisy=mask[x,y,:]
