@@ -20,9 +20,7 @@ from functools import partial
 class ImageAugmenter:
     def __init__(self, config):
         propability=config.propability
-        use_imgaug=config.use_imgaug
-
-        self.use_imgaug = use_imgaug
+        self.use_imgaug = config.use_imgaug
 
         # use imgaug to do data augmentation
         if self.use_imgaug:
@@ -61,6 +59,13 @@ class ImageAugmenter:
             ])
 
     def augument_image(self, image):
+        # use zzl noise
+        use_zzl_noise=True
+        if use_zzl_noise:
+            from test.aug.zzl_noise import AddImpulseNoise
+            noise_img,mask=AddImpulseNoise(image,noise_density=0.2,noise_type="salt_pepper",rho=0.5)
+            return noise_img
+        
         if self.use_imgaug:
             return self.iaa_seq.augment_image(image)
         else:
