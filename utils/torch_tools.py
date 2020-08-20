@@ -872,7 +872,7 @@ def get_lr_dict(optimizer, prefix_note='train'):
 
 def init_writer(config, log_dir):
     os.makedirs(log_dir, exist_ok=True)
-    writer = SummaryWriter(logdir=log_dir)
+    writer = SummaryWriter(log_dir)
     config_str = json.dumps(config, indent=2, sort_keys=True).replace(
         '\n', '\n\n').replace('  ', '\t')
     writer.add_text(tag='config', text_string=config_str)
