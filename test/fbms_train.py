@@ -299,7 +299,6 @@ def test(config):
                 main_path=data['main_path'][0]
                 height,width,_=data['shape']
                 height,width=height[0],width[0]
-                print(height,width)
 
                 save_path=xxx_dataset.get_result_path(save_dir,main_path)
                 assert save_path!=main_path
