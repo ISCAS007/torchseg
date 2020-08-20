@@ -21,7 +21,7 @@ class ImageAugmenter:
     def __init__(self, config):
         propability=config.propability
         self.use_imgaug = config.use_imgaug
-        self.print=True        
+#        self.print=True        
         # use imgaug to do data augmentation
         if self.use_imgaug:
             sometimes = lambda aug: iaa.Sometimes(propability, aug)
@@ -60,14 +60,14 @@ class ImageAugmenter:
 
     def augument_image(self, image):
         # use zzl noise
-        use_zzl_noise=True
-        if use_zzl_noise:
-            if self.print:
-                print('use zzl noise: '+'*'*30)
-                self.print=False
-            from utils.aug.zzl_noise import AddImpulseNoise
-            noise_img,mask=AddImpulseNoise(image,noise_density=0.2,noise_type="salt_pepper",rho=0.5)
-            return noise_img
+#        use_zzl_noise=True
+#        if use_zzl_noise:
+#            if self.print:
+#                print('use zzl noise: '+'*'*30)
+#                self.print=False
+#            from utils.aug.zzl_noise import AddImpulseNoise
+#            noise_img,mask=AddImpulseNoise(image,noise_density=0.2,noise_type="salt_pepper",rho=0.5)
+#            return noise_img
         
         if self.use_imgaug:
             return self.iaa_seq.augment_image(image)
