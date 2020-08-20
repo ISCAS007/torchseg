@@ -65,7 +65,7 @@ class ImageAugmenter:
             if self.print:
                 print('use zzl noise: '+'*'*30)
                 self.print=False
-            from test.aug.zzl_noise import AddImpulseNoise
+            from utils.aug.zzl_noise import AddImpulseNoise
             noise_img,mask=AddImpulseNoise(image,noise_density=0.2,noise_type="salt_pepper",rho=0.5)
             return noise_img
         
