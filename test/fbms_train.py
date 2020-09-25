@@ -176,9 +176,12 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                         mask_loss_value+=seg_loss_fn(mask,mask_gt)
                 elif config.net_name=='motion_diff':
                     assert 'g' in config.input_format.lower()
-                    gt_plus=(labels-resize_aux_gt).clamp_(min=0)
-                    gt_minus=(resize_aux_gt-labels).clamp_(min=0)
-                    mask_gt=torch.stack([gt_plus,gt_minus,labels])
+                    gt_plus=(labels-resize_aux_gt).clamp_(min=0).long()
+                    gt_minus=(resize_aux_gt-labels).clamp_(min=0).long()
+                    print(gt_plus.shape,
+                          gt_minus.shape,
+                          labels.shape)
+                    mask_gt=torch.stack([gt_plus,gt_minus,labels],dim=1)
                     ignore_index=255
                     mask_gt[mask_gt==ignore_index]=0
                     predict=outputs['masks']
