@@ -65,6 +65,7 @@ class motion_backbone(TN.Module):
         use_none_layer: use NoneLayer to replace MaxPool in backbone
         """
         super().__init__()
+        
         self.config=config
         if hasattr(config,'use_none_layer'):
             self.use_none_layer=config.use_none_layer

@@ -14,7 +14,6 @@ import torch.nn.functional as F
 import os
 import torch
 import time
-import torchsummary
 import sys
 from tqdm import trange,tqdm
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -53,7 +52,7 @@ def get_dist_module(config):
         else:
             seg_loss_fn=dice_loss
     elif config.net_name == 'motion_diff':
-        seg_loss_fn=torch.nn.BCEWithLogitsLoss(pos_weight=10)
+        seg_loss_fn=torch.nn.BCEWithLogitsLoss(pos_weight=torch.ones(3)*10)
     else:
         seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
 
@@ -376,7 +375,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config=get_default_config()
-
+    
+    torch.hub.set_dir(os.path.expanduser('~/.torch/models'))
+    
     if args.net_name=='motion_psp':
         if args.use_none_layer is False or args.upsample_layer<=3:
             min_size=30*config.psp_scale*2**config.upsample_layer
@@ -408,6 +409,8 @@ if __name__ == '__main__':
                 xxx_dataset.__getitem__(idx)
         sys.exit(0)
     elif args.app=='summary':
+        import torchsummary
+        
         config.gpu=0
         model,seg_loss_fn,optimizer,dataset_loaders=get_dist_module(config)
         # not work for output with dict.

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 input: I1+I2+G1 or I1+I2
-output: G2-G1, G1-G2, G1 \union G2
+output: G2-G1, G1-G2, G1 union G2
 
 note: use sigmoid as the final activation, need use specific loss: nn.BCEWithLogitsLoss()
 run: python test/fbms_train.py --net_name motion_diff --input_format ng --note test
@@ -20,6 +20,7 @@ from models.motionseg.motion_backbone import (motion_backbone,
 from models.psp_vgg import make_layers
 from models.motionseg.motion_unet import get_decoder
 from models.motionseg.motion_fcn import stn
+from models.motionseg.motion_panet import panet,get_input_channel,transform_panet2
 from easydict import EasyDict as edict
 
 class motion_diff(nn.Module):

@@ -13,7 +13,10 @@ python utils/davis_benchmark.py --results_path ~/git/gnu/code/davis2017-evaluati
 """
 import os
 import sys
-sys.path.append(os.path.expanduser('~/git/gnu/code/davis2017-evaluation'))
+if os.path.exists(os.path.expanduser('~/git/gnu/code/davis2017-evaluation')):
+    sys.path.append(os.path.expanduser('~/git/gnu/code/davis2017-evaluation'))
+else:
+    sys.path.append(os.path.expanduser('~/git/gnu/davis2017-evaluation'))
 from time import time
 import argparse
 
