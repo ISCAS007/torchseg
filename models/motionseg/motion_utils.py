@@ -17,6 +17,7 @@ from models.Anet.motion_anet import motion_anet
 from models.motionseg.motion_mix import motion_mix,motion_mix_flow
 from models.motionseg.motion_filter import motion_filter,motion_filter_flow
 from models.motionseg.motion_attention import motion_attention,motion_attention_flow
+from models.motionseg.motion_diff import motion_diff
 from utils.disc_tools import get_newest_file
 from easydict import EasyDict as edict
 import torch.utils.data as td

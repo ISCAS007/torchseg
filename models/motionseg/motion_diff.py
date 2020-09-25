@@ -4,7 +4,7 @@ input: I1+I2+G1 or I1+I2
 output: G2-G1, G1-G2, G1 \union G2
 
 note: use sigmoid as the final activation, need use specific loss: nn.BCEWithLogitsLoss()
-run: python test/fbms_train.py 
+run: python test/fbms_train.py --net_name motion_diff --input_format ng --note test
 based on motion_panet2.
 """
 
