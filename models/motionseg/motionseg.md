@@ -27,3 +27,9 @@ python models/motionseg/motion_benchmark.py showcase xxx/xxx.txt
 # obtain benchmark table
 python models/motionseg.py evaluation xxx/xxx.txt
 ```
+
+## zzl noise test
+```
+modify utils/augmentor.py --> ImageAugmenter --> __init__ and augument_image
+modify dataset/segtrackv2_dataset.py --> motionseg_dataset --> __init__ and __getitem__
+```

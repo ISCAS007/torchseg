@@ -52,6 +52,8 @@ def get_dist_module(config):
             seg_loss_fn=jaccard_loss
         else:
             seg_loss_fn=dice_loss
+    elif config.net_name == 'motion_diff':
+        seg_loss_fn=torch.nn.BCEWithLogitsLoss(pos_weight=10)
     else:
         seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
 
@@ -173,6 +175,16 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                     mask_loss_value=0
                     for mask in outputs['masks']:
                         mask_loss_value+=seg_loss_fn(mask,mask_gt)
+                elif config.net_name=='motion_diff':
+                    assert 'g' in config.input_format.lower()
+                    gt_plus=(labels-resize_aux_gt).clamp_(min=0)
+                    gt_minus=(resize_aux_gt-labels).clamp_(min=0)
+                    mask_gt=torch.stack([gt_plus,gt_minus,labels])
+                    ignore_index=255
+                    mask_gt[mask_gt==ignore_index]=0
+                    predict=outputs['masks']
+                    predict[mask_gt==ignore_index]=0
+                    mask_loss_value=seg_loss_fn(predict,mask_gt)
                 else:
                     mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(labels,dim=1))
 

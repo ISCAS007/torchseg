@@ -159,7 +159,7 @@ def get_parser():
 #                                 'motion_panet','motion_panet_flow','motion_anet',
                                  'motion_panet2','motion_panet2_flow','motion_mix','motion_mix_flow',
                                  'motion_panet2_stn','motion_filter','motion_filter_flow',
-                                 'motion_attention','motion_attention_flow'],
+                                 'motion_attention','motion_attention_flow','motion_diff'],
                         default='motion_unet')
 
     parser.add_argument('--dataset',

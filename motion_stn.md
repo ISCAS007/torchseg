@@ -19,3 +19,5 @@ there are still room for resdual attention, merge method for spatial and channel
 | filter_type | main,all | apply attention on main/all feature |
 | filter_feature | aux,all | generate attention from aux/all feature |
 | attention_type | s,c,sc,cs | s for spatial attention, c for channel attention, sc for spatial + channel attention and cs for channel + spatial attention |
+
+## input format

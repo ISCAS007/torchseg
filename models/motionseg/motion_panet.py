@@ -426,11 +426,10 @@ class motion_panet2(nn.Module):
 
         self.aux_panet=None
         if config.aux_panet:
-            in_c=2 if self.use_flow else 3
             if self.share_backbone and self.main_panet is not None:
                 self.aux_panet=self.main_panet
             else:
-                self.aux_panet=panet(config,in_c=in_c)
+                self.aux_panet=panet(config,in_c=aux_in_channels)
 
 
         self.get_midnet()
