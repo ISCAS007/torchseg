@@ -1,132 +1,11 @@
 import torch
 import argparse
 from utils.disc_tools import str2bool
-from dataset.foreground_detection_dataset_factory import get_fgdet_dataset
+from dataset.motionseg_dataset_factory import get_motionseg_dataset
 from models.motionseg.motionseg_model_factory import get_motionseg_model,get_motionseg_model_keys
 from utils.disc_tools import get_newest_file
-from easydict import EasyDict as edict
 import os
-import warnings
 import glob
-
-class Metric_Acc():
-    def __init__(self,exception_value=1):
-#        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.dtype=torch.int64
-#        self.tp=torch.tensor(0,dtype=self.dtype,device=device)
-#        self.fp=torch.tensor(0,dtype=self.dtype,device=device)
-#        self.tn=torch.tensor(0,dtype=self.dtype,device=device)
-#        self.fn=torch.tensor(0,dtype=self.dtype,device=device)
-#        self.count=torch.tensor(0,dtype=self.dtype,device=device)
-        self.tp=0
-        self.fp=0
-        self.tn=0
-        self.fn=0
-        self.count=0
-
-        ## compute avg_p,avg_r,avg_f
-        self.sum_p=0
-        self.sum_r=0
-        self.sum_f=0
-        self.img_count=0
-
-        ## when no gt, f=0/1???
-        self.exception_value=exception_value
-
-    def update(self,predicts,labels):
-        # print(labels.shape,predicts.shape)
-        if labels.shape != predicts.shape:
-            pred=torch.argmax(predicts,dim=1,keepdim=True).type_as(labels)
-        else:
-            #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            pred=(predicts>0.5).type_as(labels)
-
-        self.tp+=torch.sum(((pred==1) & (labels==1)).to(self.dtype))
-        self.fp+=torch.sum(((pred==1) & (labels==0)).to(self.dtype))
-        self.tn+=torch.sum(((pred==0) & (labels==0)).to(self.dtype))
-        self.fn+=torch.sum(((pred==0) & (labels==1)).to(self.dtype))
-
-        self.count+=torch.sum(((labels<=1)).to(self.dtype))
-
-        assert self.tp+self.fp+self.tn+self.fn==self.count, \
-        'tp={}; fp={}; tn={}; fn={}; count={} \n pred {}, labels {}'.format(self.tp,
-            self.fp,self.tn,self.fn,self.count,torch.unique(pred),torch.unique(labels))
-
-        b=pred.size(0)
-        for i in range(b):
-            tp=torch.sum(((pred[i]==1) & (labels[i]==1)).to(torch.float32))
-            fp=torch.sum(((pred[i]==1) & (labels[i]==0)).to(torch.float32))
-#            tn=torch.sum(((pred[i]==0) & (labels[i]==0)).to(torch.float32))
-            fn=torch.sum(((pred[i]==0) & (labels[i]==1)).to(torch.float32))
-
-            if tp+fn==0:
-                warnings.warn('tp+fn==0')
-                r=self.exception_value
-            else:
-                r=tp/(tp+fn)
-
-            if tp+fp==0:
-                warnings.warn('tp+fp==0')
-                p=self.exception_value
-            else:
-                p=tp/(tp+fp)
-
-            if p+r==0:
-                warnings.warn('p+r==0')
-                f=self.exception_value
-            else:
-                f=2*p*r/(p+r)
-
-            self.sum_p+=p
-            self.sum_r+=r
-            self.sum_f+=f
-        self.img_count+=b
-
-    def get_avg_metric(self):
-        return self.sum_p/self.img_count,self.sum_r/self.img_count,self.sum_f/self.img_count
-
-    def get_acc(self):
-        return (self.tp+self.tn).to(torch.float32)/(self.count.to(torch.float32)+1e-5)
-
-    def get_precision(self):
-        return self.tp.to(torch.float32)/((self.tp+self.fp).to(torch.float32)+1e-5)
-
-    def get_recall(self):
-        return self.tp.to(torch.float32)/((self.tp+self.fn).to(torch.float32)+1e-5)
-
-    def get_fmeasure(self):
-        p=self.get_precision()
-        r=self.get_recall()
-        return 2*p*r/(p+r+1e-5)
-
-    def reset(self):
-        self.tp=0
-        self.fp=0
-        self.tn=0
-        self.fn=0
-        self.count=0
-
-        self.sum_p=0
-        self.sum_r=0
-        self.sum_f=0
-        self.img_count=0
-
-
-class Metric_Mean():
-    def __init__(self):
-        self.total=0
-        self.count=0
-
-    def update(self,value):
-        self.total+=value
-        self.count+=1.0
-
-    def get_mean(self):
-        return self.total/self.count
-
-    def reset(self):
-        self.total=0
-        self.count=0
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -381,71 +260,6 @@ def get_parser():
 
     return parser
 
-def get_default_config():
-    config=edict()
-    config.accumulate=1
-    config.always_merge_flow=False
-    config.app='train'
-    config.attention_type='c'
-    config.aux_backbone=None
-    config.aux_freeze=3
-    config.aux_panet=False
-    config.backbone_freeze=False
-    config.backbone_name='vgg11'
-    config.backbone_pretrained=True
-    config.batch_size=4
-    config.checkpoint_path=None
-    config.dataset='cdnet2014'
-    config.decode_main_layer=1
-    config.deconv_layer=5
-    config.epoch=30
-    config.exception_value=1.0
-    config.filter_feature=None
-    config.filter_relu=True
-    config.filter_type='main'
-    config.frame_gap=5
-    config.freeze_layer=1
-    config.freeze_ratio=0.0
-    config.fusion_type='all'
-    config.ignore_pad_area=0
-    config.init_lr=1e-4
-    config.input_shape=[224,224]
-    config.input_format='-'
-    config.layer_preference='last'
-    config.log_dir=os.path.expanduser('~/tmp/logs/motion')
-    config.loss_name='ce'
-    config.main_panet=False
-    config.max_channel_number=1024
-    config.merge_type='concat'
-    config.min_channel_number=0
-    config.modify_resnet_head=False
-    config.motion_loss_weight=1.0
-    config.net_name='motion_unet'
-    config.norm_stn_pose=False
-    config.note='test'
-    config.optimizer='adam'
-    config.pose_mask_reg=1.0
-    config.psp_scale=5
-    config.save_model=True
-    config.seed=None
-    config.share_backbone=None
-    config.smooth_ratio=8
-    config.sparse_conv=False
-    config.sparse_ratio=0.5
-    config.stn_loss_weight=1.0
-    config.stn_object='images'
-    config.subclass_sigmoid=False
-    config.upsample_layer=1
-    config.upsample_type='bilinear'
-    config.use_bias=True
-    config.use_bn=False
-    config.use_dropout=False
-    config.use_none_layer=False
-    config.use_part_number=1000
-    config.use_sync_bn=False
-
-    return config
-
 def fine_tune_config(config):
     if config.net_name.find('flow')>=0:
         assert config.frame_gap>0
@@ -462,7 +276,7 @@ def fine_tune_config(config):
 
 def get_dataset(config,split):
     config=fine_tune_config(config)
-    return get_fgdet_dataset(config,split)
+    return get_motionseg_dataset(config,split)
 
 def get_model(config):
     return get_motionseg_model(config)

@@ -5,9 +5,11 @@ dataset loader: cdnet not support two gt file
 """
 import numpy as np
 import torch.utils.data as td
-from models.motion_stn import motion_stn, motion_net, stn_loss
-from models.motionseg.motion_utils import (Metric_Acc,Metric_Mean,get_parser,
-                                           get_default_config,get_dataset,
+from models.motion_stn import stn_loss
+from utils.metric.motionseg_metric import MotionSegMetric
+from utils.config.motionseg_config import get_default_config
+from models.motionseg.motion_utils import (get_parser,
+                                           get_dataset,
                                            fine_tune_config,get_model,
                                            poly_lr_scheduler,
                                            get_load_convert_model)
@@ -30,10 +32,7 @@ from utils.davis_benchmark import benchmark
 import json
 
 def get_dist_module(config):
-    if config['net_name'] in ['motion_stn','motion_net']:
-        model=globals()[config['net_name']]()
-    else:
-        model=get_model(config)
+    model=get_model(config)
 
     # support for cpu/gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -102,11 +101,8 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
         checkpoint_path = os.path.join(log_dir, 'model-last-%d.pkl' % config['epoch'])
 
         writer=init_writer(config,log_dir)
-
-    metric_acc=Metric_Acc(config.exception_value)
-    metric_stn_loss=Metric_Mean()
-    metric_mask_loss=Metric_Mean()
-    metric_total_loss=Metric_Mean()
+    
+    motionseg_metric=MotionSegMetric(config.exception_value)
 
     if is_main_process(config):
         tqdm_epoch = trange(config['epoch'], desc='{} epochs'.format(config.note), leave=True)
@@ -122,10 +118,7 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
             else:
                 model.eval()
 
-            metric_acc.reset()
-            metric_stn_loss.reset()
-            metric_mask_loss.reset()
-            metric_total_loss.reset()
+            motionseg_metric.reset()
 
             if is_main_process(config):
                 tqdm_step = tqdm(dataset_loaders[split], desc='steps', leave=False)
@@ -210,11 +203,12 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                     origin_mask=torch.cat([1-origin_mask,origin_mask],dim=1)
                 else:
                     origin_mask=F.interpolate(outputs['masks'][0], size=origin_labels.shape[2:4],mode='bilinear')
-
-                metric_acc.update(origin_mask,origin_labels)
-                metric_stn_loss.update(stn_loss_value.item())
-                metric_mask_loss.update(mask_loss_value.item())
-                metric_total_loss.update(total_loss_value.item())
+                
+                motionseg_metric.update({"fmeasure":(origin_mask,origin_labels),
+                                         "stn_loss":stn_loss_value.item(),
+                                         "mask_loss":mask_loss_value.item(),
+                                         "total_loss":total_loss_value.item()})
+    
                 if split=='train':
                     total_loss_value.backward()
                     if (step_acc+1)>=config.accumulate:
@@ -225,29 +219,14 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                         step_acc+=1
 
             if is_main_process(config):
-                acc=metric_acc.get_acc()
-                precision=metric_acc.get_precision()
-                recall=metric_acc.get_recall()
-                fmeasure=metric_acc.get_fmeasure()
-                avg_p,avg_r,avg_f=metric_acc.get_avg_metric()
-                mean_stn_loss=metric_stn_loss.get_mean()
-                mean_mask_loss=metric_mask_loss.get_mean()
-                mean_total_loss=metric_total_loss.get_mean()
-                writer.add_scalar(split+'/acc',acc,epoch)
-                writer.add_scalar(split+'/precision',precision,epoch)
-                writer.add_scalar(split+'/recall',recall,epoch)
-                writer.add_scalar(split+'/fmeasure',fmeasure,epoch)
-                writer.add_scalar(split+'/avg_p',avg_p,epoch)
-                writer.add_scalar(split+'/avg_r',avg_r,epoch)
-                writer.add_scalar(split+'/avg_f',avg_f,epoch)
-                writer.add_scalar(split+'/stn_loss',mean_stn_loss,epoch)
-                writer.add_scalar(split+'/mask_loss',mean_mask_loss,epoch)
-                writer.add_scalar(split+'/total_loss',mean_total_loss,epoch)
-
+                motionseg_metric.write(writer,split,epoch)
+                current_metric=motionseg_metric.fetch()
+                fmeasure=current_metric['fmeasure'].item()
+                mean_total_loss=current_metric['total_loss']
                 if split=='train':
-                    tqdm_epoch.set_postfix(train_fmeasure=fmeasure.item())
+                    tqdm_epoch.set_postfix(train_fmeasure=fmeasure)
                 else:
-                    tqdm_epoch.set_postfix(val_fmeasure=fmeasure.item())
+                    tqdm_epoch.set_postfix(val_fmeasure=fmeasure)
 
                 if epoch % 10 == 0:
                     print(split,'fmeasure=%0.4f'%fmeasure,

@@ -2,6 +2,7 @@
 """
 design patter: factory
 """
+from models.motion_stn import motion_stn, motion_net
 from models.motionseg.motion_fcn import motion_fcn,motion_fcn2,motion_fcn_stn,motion_fcn2_flow,motion_fcn_flow
 from models.motionseg.motion_unet import motion_unet,motion_unet_stn,motion_unet_flow
 from models.motionseg.motion_panet import motion_panet,motion_panet_flow,motion_panet2,motion_panet2_flow,motion_panet2_stn
@@ -22,7 +23,10 @@ def get_motionseg_model_keys():
 def get_motionseg_model(config):
     keys=globals().keys()
     keys=[k for k in keys if k.startswith('motion')]
-    if config.net_name in keys:
+    
+    if config.net_name in ['motion_stn','motion_net']:
+        return globals()[config.net_name]()
+    elif config.net_name in keys:
         return globals()[config.net_name](config)
     else:
         assert False,'net_name must in {}'.format(keys)
