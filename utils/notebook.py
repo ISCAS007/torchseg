@@ -6,7 +6,7 @@ from models.motionseg.motion_utils import get_parser,get_default_config,get_data
 import torch.utils.data as td
 import torch
 import os
-from utils.config import load_config
+from utils.configs.semanticseg_config import load_config
 from dataset.dataset_generalize import image_normalizations
 from utils.torch_tools import get_ckpt_path,load_ckpt
 from models.motionseg.motion_utils import fine_tune_config,get_model

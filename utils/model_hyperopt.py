@@ -6,7 +6,7 @@ import pandas as pd
 from utils.torch_tools import keras_fit
 from skopt.space import Real,Integer
 from skopt import gp_minimize
-from utils.config import get_hyperparams
+from utils.configs.semanticseg_config import get_hyperparams
 import torch
 from tqdm import tqdm,trange
 from time import sleep

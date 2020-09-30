@@ -4,7 +4,7 @@ import numpy as np
 import os
 from tabulate import tabulate
 
-from utils.config import load_config
+from utils.configs.semanticseg_config import load_config
 from utils.summary_to_csv import config_to_log,load_log,edict_to_pandas,today_log,recent_log,get_actual_step
 import warnings
 

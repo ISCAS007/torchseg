@@ -3,7 +3,7 @@
 low level tensorboard logs processing library
 """
 from glob import glob
-from utils.config import load_config
+from utils.configs.semanticseg_config import load_config
 from easydict import EasyDict as edict
 import pandas as pd
 import os

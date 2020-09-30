@@ -5,7 +5,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.backends.cudnn as cudnn
-from utils.config import get_net
+from utils.configs.semanticseg_config import get_net
 from utils.augmentor import Augmentations
 from dataset.dataset_generalize import dataset_generalize, image_normalizations
 from torch.nn.parallel import DistributedDataParallel as DDP
