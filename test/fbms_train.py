@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+"""
+dataset loader: cdnet not support two gt file
 
+"""
 import numpy as np
 import torch.utils.data as td
 from models.motion_stn import motion_stn, motion_net, stn_loss
@@ -52,7 +55,7 @@ def get_dist_module(config):
         else:
             seg_loss_fn=dice_loss
     elif config.net_name == 'motion_diff':
-        seg_loss_fn=torch.nn.BCEWithLogitsLoss(pos_weight=torch.ones(3)*10)
+        seg_loss_fn=torch.nn.BCEWithLogitsLoss()
     else:
         seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
 
@@ -141,6 +144,7 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                         assert False
                     elif c.lower()=='g':
                         origin_aux_gt=torch.autograd.Variable(data['labels'][1].to(device).long())
+                        #print(origin_aux_gt.shape)
                         resize_aux_gt=F.interpolate(origin_aux_gt.float(),size=config.input_shape,mode='nearest').float()
                         aux_input.append(resize_aux_gt)
                     elif c.lower()=='n':
@@ -176,17 +180,15 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                         mask_loss_value+=seg_loss_fn(mask,mask_gt)
                 elif config.net_name=='motion_diff':
                     assert 'g' in config.input_format.lower()
-                    gt_plus=(labels-resize_aux_gt).clamp_(min=0).long()
-                    gt_minus=(resize_aux_gt-labels).clamp_(min=0).long()
-                    print(gt_plus.shape,
-                          gt_minus.shape,
-                          labels.shape)
-                    mask_gt=torch.stack([gt_plus,gt_minus,labels],dim=1)
+                    gt_plus=(labels-resize_aux_gt).clamp_(min=0).float()
+                    gt_minus=(resize_aux_gt-labels).clamp_(min=0).float()
+                    mask_gt=torch.cat([gt_plus,gt_minus,labels.float()],dim=1)
                     ignore_index=255
-                    mask_gt[mask_gt==ignore_index]=0
-                    predict=outputs['masks']
+
+                    predict=outputs['masks'][0]
                     predict[mask_gt==ignore_index]=0
-                    mask_loss_value=seg_loss_fn(predict,mask_gt)
+                    mask_gt[mask_gt==ignore_index]=0
+                    mask_loss_value=seg_loss_fn(predict.float(),mask_gt.float())
                 else:
                     mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(labels,dim=1))
 
@@ -203,7 +205,11 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                     stn_loss_value=torch.tensor(0.0)
                     total_loss_value=mask_loss_value
 
-                origin_mask=F.interpolate(outputs['masks'][0], size=origin_labels.shape[2:4],mode='nearest')
+                if config.net_name=='motion_diff':
+                    origin_mask=F.interpolate(outputs['masks'][0][:,2:3,:,:], size=origin_labels.shape[2:4],mode='bilinear')
+                    origin_mask=torch.cat([1-origin_mask,origin_mask],dim=1)
+                else:
+                    origin_mask=F.interpolate(outputs['masks'][0], size=origin_labels.shape[2:4],mode='bilinear')
 
                 metric_acc.update(origin_mask,origin_labels)
                 metric_stn_loss.update(stn_loss_value.item())
@@ -374,13 +380,14 @@ def dist_train(config):
         main_worker(config.gpu,ngpus_per_node,config)
 
 if __name__ == '__main__':
+    torch.multiprocessing.set_sharing_strategy('file_system')
     parser=get_parser()
     args = parser.parse_args()
 
     config=get_default_config()
-    
+
     torch.hub.set_dir(os.path.expanduser('~/.torch/models'))
-    
+
     if args.net_name=='motion_psp':
         if args.use_none_layer is False or args.upsample_layer<=3:
             min_size=30*config.psp_scale*2**config.upsample_layer
@@ -413,7 +420,7 @@ if __name__ == '__main__':
         sys.exit(0)
     elif args.app=='summary':
         import torchsummary
-        
+
         config.gpu=0
         model,seg_loss_fn,optimizer,dataset_loaders=get_dist_module(config)
         # not work for output with dict.

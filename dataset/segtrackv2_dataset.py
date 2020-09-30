@@ -54,13 +54,13 @@ class motionseg_dataset(td.Dataset):
 
     def __getitem__(self,index):
         frame_images,gt_images,main_path,aux_path,gt_path=self.__get_image__(index)
-        
+
         if self.print:
             print('augmente validataion dataset '+'*'*30)
             self.print=False
         if self.augmentations is not None:
             frame_images=[self.augmentations.transform(img) for img in frame_images]
-            
+
         # augmentation dataset
 #        if self.split=='train' and self.augmentations is not None:
 #            frame_images=[self.augmentations.transform(img) for img in frame_images]
@@ -70,7 +70,7 @@ class motionseg_dataset(td.Dataset):
         resize_shape=tuple([self.input_shape[1],self.input_shape[0]])
         resize_frame_images=[cv2.resize(img,resize_shape,interpolation=cv2.INTER_LINEAR) for img in frame_images]
 
-        if self.split=='train':
+        if self.split in ['train','val']:
             resize_gt_images=[cv2.resize(img,resize_shape,interpolation=cv2.INTER_NEAREST) for img in gt_images]
         else:
             resize_gt_images=gt_images

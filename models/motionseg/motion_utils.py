@@ -1,26 +1,10 @@
 import torch
 import argparse
 from utils.disc_tools import str2bool
-from dataset.fbms_dataset import fbms_dataset
-from dataset.cdnet_dataset import cdnet_dataset
-from dataset.segtrackv2_dataset import segtrackv2_dataset
-from dataset.bmcnet_dataset import bmcnet_dataset
-from dataset.davis_dataset import davis_dataset
-from dataset.dataset_generalize import image_normalizations
-from utils.augmentor import Augmentations
-from models.motionseg.motion_fcn import motion_fcn,motion_fcn2,motion_fcn_stn,motion_fcn2_flow,motion_fcn_flow
-from models.motionseg.motion_unet import motion_unet,motion_unet_stn,motion_unet_flow
-from models.motionseg.motion_panet import motion_panet,motion_panet_flow,motion_panet2,motion_panet2_flow,motion_panet2_stn
-from models.motionseg.motion_sparse import motion_sparse
-from models.motionseg.motion_psp import motion_psp
-from models.Anet.motion_anet import motion_anet
-from models.motionseg.motion_mix import motion_mix,motion_mix_flow
-from models.motionseg.motion_filter import motion_filter,motion_filter_flow
-from models.motionseg.motion_attention import motion_attention,motion_attention_flow
-from models.motionseg.motion_diff import motion_diff
+from dataset.foreground_detection_dataset_factory import get_fgdet_dataset
+from models.motionseg.motionseg_model_factory import get_motionseg_model,get_motionseg_model_keys
 from utils.disc_tools import get_newest_file
 from easydict import EasyDict as edict
-import torch.utils.data as td
 import os
 import warnings
 import glob
@@ -154,13 +138,7 @@ def get_parser():
 
     parser.add_argument("--net_name",
                         help="network name",
-                        choices=['motion_stn','motion_net','motion_fcn','motion_fcn_stn',
-                                 'motion_unet','motion_unet_stn','motion_fcn2','motion_sparse',
-                                 'motion_psp','motion_fcn2_flow','motion_fcn_flow','motion_unet_flow',
-#                                 'motion_panet','motion_panet_flow','motion_anet',
-                                 'motion_panet2','motion_panet2_flow','motion_mix','motion_mix_flow',
-                                 'motion_panet2_stn','motion_filter','motion_filter_flow',
-                                 'motion_attention','motion_attention_flow','motion_diff'],
+                        choices=get_motionseg_model_keys(),
                         default='motion_unet')
 
     parser.add_argument('--dataset',
@@ -459,7 +437,6 @@ def get_default_config():
     config.subclass_sigmoid=False
     config.upsample_layer=1
     config.upsample_type='bilinear'
-    config.upsample_type='bilinear'
     config.use_bias=True
     config.use_bn=False
     config.use_dropout=False
@@ -481,66 +458,14 @@ def fine_tune_config(config):
             config.share_backbone=True
 
     config.class_number=2
-    if config.dataset=='FBMS':
-        config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
-    elif config.dataset=='cdnet2014':
-        config['root_path']=os.path.expanduser('~/cvdataset/cdnet2014')
-    elif config.dataset=='segtrackv2':
-        config['root_path']=os.path.expanduser('~/cvdataset/SegTrackv2')
-    elif config.dataset=='BMCnet':
-        config['root_path']=os.path.expanduser('~/cvdataset/BMCnet')
-    elif config.dataset.upper() in ['DAVIS2017','DAVIS2016']:
-        config['root_path']=os.path.expanduser('~/cvdataset/DAVIS')
-    elif config.dataset in ['all','all2','all3']:
-        pass
-    else:
-        assert False
-
     return config
 
 def get_dataset(config,split):
-    normer=image_normalizations(ways='-1,1')
-    augmentations = Augmentations()
     config=fine_tune_config(config)
-    if config.dataset=='FBMS':
-        xxx_dataset=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
-    elif config.dataset=='cdnet2014':
-        xxx_dataset=cdnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        print(xxx_dataset.train_set,xxx_dataset.val_set)
-    elif config.dataset=='segtrackv2':
-        xxx_dataset=segtrackv2_dataset(config,split,normalizations=normer,augmentations=augmentations)
-    elif config.dataset=='BMCnet':
-        xxx_dataset=bmcnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-    elif config.dataset.upper() in ['DAVIS2017','DAVIS2016']:
-        xxx_dataset=davis_dataset(config,split,normalizations=normer,augmentations=augmentations)
-    elif config.dataset=='all':
-        dataset_set=[]
-        for d in ['FBMS','cdnet2014','segtrackv2','BMCnet','DAVIS2017','DAVIS2016']:
-            config.dataset=d
-            dataset_set.append(get_dataset(config,split))
-        xxx_dataset=td.ConcatDataset(dataset_set)
-    elif config.dataset=='all3':
-        config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
-        fbms=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        config['root_path']=os.path.expanduser('~/cvdataset/cdnet2014')
-        cdnet=cdnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        config['root_path']=os.path.expanduser('~/cvdataset/BMCnet')
-        bmcnet=bmcnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        xxx_dataset=td.ConcatDataset([fbms,cdnet,bmcnet])
-    elif config.dataset=='all2':
-        config['root_path']=os.path.expanduser('~/cvdataset/FBMS')
-        fbms=fbms_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        config['root_path']=os.path.expanduser('~/cvdataset/cdnet2014')
-        cdnet=cdnet_dataset(config,split,normalizations=normer,augmentations=augmentations)
-        xxx_dataset=td.ConcatDataset([fbms,cdnet])
-    else:
-        assert False,'dataset={}'.format(config.dataset)
-
-    return xxx_dataset
+    return get_fgdet_dataset(config,split)
 
 def get_model(config):
-    model=globals()[config['net_name']](config)
-    return model
+    return get_motionseg_model(config)
 
 def get_checkpoint_path(config):
     if config.checkpoint_path is None:

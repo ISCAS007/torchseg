@@ -4,7 +4,7 @@ input: I1+I2+G1 or I1+I2
 output: G2-G1, G1-G2, G1 union G2
 
 note: use sigmoid as the final activation, need use specific loss: nn.BCEWithLogitsLoss()
-run: python test/fbms_train.py --net_name motion_diff --input_format ng --note test
+run: python test/fbms_train.py --net_name motion_diff --input_format ng --dataset cdnet2014/FBMS --note test
 based on motion_panet2.
 """
 
@@ -31,7 +31,7 @@ class motion_diff(nn.Module):
         self.upsample_layer=config.upsample_layer
         self.min_channel_number=config.min_channel_number
         self.max_channel_number=config.max_channel_number
-        
+
         if config.net_name.find('flow')>=0:
             self.use_flow=True
             self.share_backbone=False
@@ -40,11 +40,11 @@ class motion_diff(nn.Module):
         else:
             self.use_flow=False
             self.share_backbone=config.share_backbone
-            
+
         self.main_backbone=motion_backbone(config,use_none_layer=config.use_none_layer)
 
         aux_in_channels=get_input_channel(self.config.input_format)
-        
+
         if self.config.input_format.lower()!='n':
             self.share_backbone=False
             if config.share_backbone:
@@ -75,7 +75,7 @@ class motion_diff(nn.Module):
                 aux_config.freeze_layer=0
                 aux_config.backbone_pretrained=False
                 self.aux_backbone=motion_backbone(aux_config,use_none_layer=config.use_none_layer,in_channels=aux_in_channels)
-                
+
         self.main_panet=None
         if config.main_panet:
             self.main_panet=panet(config,in_c=3)
@@ -86,7 +86,7 @@ class motion_diff(nn.Module):
                 self.aux_panet=self.main_panet
             else:
                 self.aux_panet=panet(config,in_c=aux_in_channels)
-                
+
         self.get_midnet()
         self.midnet_out_channels=min(max(self.main_backbone.get_feature_map_channel(self.upsample_layer),
                                      self.min_channel_number),self.max_channel_number)
@@ -96,7 +96,7 @@ class motion_diff(nn.Module):
                                                  out_channels=3,
                                                  output_shape=self.input_shape[0:2])
         self.activate=nn.Sigmoid()
-        
+
     def get_midnet(self):
         keys=['main_backbone','aux_backbone','main_panet','aux_panet']
         none_backbones={'main_backbone':self.main_backbone,
@@ -125,5 +125,5 @@ class motion_diff(nn.Module):
         x=self.midnet(features)
         y=self.decoder(x)
         return {'masks':[y]}
-        
-    
+
+
