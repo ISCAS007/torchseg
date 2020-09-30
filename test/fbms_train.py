@@ -7,7 +7,7 @@ import numpy as np
 import torch.utils.data as td
 from models.motion_stn import stn_loss
 from utils.metric.motionseg_metric import MotionSegMetric
-from utils.config.motionseg_config import get_default_config
+from utils.configs.motionseg_config import get_default_config
 from models.motionseg.motion_utils import (get_parser,
                                            get_dataset,
                                            fine_tune_config,get_model,

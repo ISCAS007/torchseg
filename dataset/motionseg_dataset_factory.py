@@ -11,7 +11,7 @@ from dataset.davis_dataset import davis_dataset
 from dataset.dataset_generalize import image_normalizations
 from utils.augmentor import Augmentations
 import torch.utils.data as td
-from utils.config.motionseg_config import get_default_config, dataset_root_dict
+from utils.configs.motionseg_config import get_default_config, dataset_root_dict
 
 def get_motionseg_dataset(config,split):
     dataset_dict={"fbms":fbms_dataset,
