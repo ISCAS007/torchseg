@@ -116,13 +116,13 @@ class bmcnet_dataset(motionseg_dataset):
         aux_file=self.get_aux_file(main_file)
         
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
-        gt_file=gt_files[0]
-        gt_image=cv2.imread(gt_file,cv2.IMREAD_GRAYSCALE)
+        gt_image=cv2.imread(gt_files[0],cv2.IMREAD_GRAYSCALE)
         
         labels=[]
         label=np.zeros_like(gt_image)
         label[gt_image>0]=1
         
+        labels.append(label)
         if os.path.exists(gt_files[1]):
             aux_gt_image=cv2.imread(gt_files[1],cv2.IMREAD_GRAYSCALE)
             aux_label=np.zeros_like(aux_gt_image)
@@ -131,4 +131,4 @@ class bmcnet_dataset(motionseg_dataset):
         else:
             aux_gt_image=np.zeros_like(gt_image)
             labels.append(aux_gt_image)
-        return frame_images,labels,main_file,aux_file,gt_file
+        return frame_images,labels,main_file,aux_file,gt_files
