@@ -209,18 +209,22 @@ class segtrackv2_dataset(motionseg_dataset):
     def __get_path__(self,index):
         main_file=self.main_files[index]
         aux_file=self.get_aux_file(main_file)
-        gt_files=self.get_gt_files(main_file)
-
+        gt_files=[self.get_gt_files(main_file),self.get_gt_files(aux_file)]
+        
         return main_file,aux_file,gt_files
 
     def __get_image__(self,index):
         main_file,aux_file,gt_files=self.__get_path__(index)
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
-        gt_images=[cv2.imread(f,cv2.IMREAD_GRAYSCALE) for f in gt_files]
-        gt_image=np.zeros_like(gt_images[0])
-        for gt in gt_images:
-            gt_image+=gt
+        
+        labels=[]
+        for files in gt_files:
+            images=[cv2.imread(f,cv2.IMREAD_GRAYSCALE) for f in files]
+            image=np.zeros_like(images[0])
+            for img in images:
+                image+=img
 
-        labels=np.zeros_like(gt_image)
-        labels[gt_image>0]=1
-        return frame_images,labels,main_file,aux_file,gt_files[0]
+            label=np.zeros_like(image)
+            label[image>0]=1
+            labels.append(label)
+        return frame_images,labels,main_file,aux_file,gt_files[0][0]

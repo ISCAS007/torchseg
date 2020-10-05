@@ -12,6 +12,8 @@ from dataset.dataset_generalize import image_normalizations
 from utils.augmentor import Augmentations
 import torch.utils.data as td
 from utils.configs.motionseg_config import get_default_config, dataset_root_dict
+import numpy as np
+from utils.disc_tools import show_images
 
 def get_motionseg_dataset(config,split):
     dataset_dict={"fbms":fbms_dataset,
@@ -40,5 +42,24 @@ def get_motionseg_dataset(config,split):
 
 if __name__ == '__main__':
     config=get_default_config()
-    config.dataset='cdnet2014'
-    d=get_motionseg_dataset(config,'train')
+    keys=dataset_root_dict.keys()
+    for key in keys:
+        for split in ['train','val']:
+            config.dataset=key
+            d=get_motionseg_dataset(config,split)
+            N=len(d)
+            idx=np.random.randint(N)
+            data=d.__getitem__(idx)
+            imgs=[img.transpose((1,2,0)) for img in data['images']]
+            gts=data['labels']
+            
+            print(imgs[0].shape, gts[0].shape)
+            gts=[gt.squeeze() for gt in gts]
+            show_images(imgs+gts)
+            print('dataset={}, split={}'.format(key,split) + '*'*30)
+            print(data['main_path'],data['aux_path'],data['gt_path'])
+            for img in imgs:
+                print('img range in [{},{}]'.format(np.min(img),np.max(img)))
+                
+            for gt in gts:
+                print('gt range in {}'.format(np.unique(gt)))

@@ -106,19 +106,29 @@ class bmcnet_dataset(motionseg_dataset):
     def __get_path__(self,index):
         main_file=self.main_files[index]
         aux_file=self.get_aux_file(main_file)
-        gt_file=self.get_gt_file(main_file)
-
-        return main_file,aux_file,gt_file
+        gt_files=[self.get_gt_file(main_file),self.get_gt_file(aux_file)]
+        
+        return main_file,aux_file,gt_files
 
     def __get_image__(self,index):
-        main_file,aux_file,gt_file=self.__get_path__(index)
+        main_file,aux_file,gt_files=self.__get_path__(index)
         main_file=self.main_files[index]
         aux_file=self.get_aux_file(main_file)
-        gt_file=self.get_gt_file(main_file)
+        
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
+        gt_file=gt_files[0]
         gt_image=cv2.imread(gt_file,cv2.IMREAD_GRAYSCALE)
-
-        labels=np.zeros_like(gt_image)
-        labels[gt_image>0]=1
-
+        
+        labels=[]
+        label=np.zeros_like(gt_image)
+        label[gt_image>0]=1
+        
+        if os.path.exists(gt_files[1]):
+            aux_gt_image=cv2.imread(gt_files[1],cv2.IMREAD_GRAYSCALE)
+            aux_label=np.zeros_like(aux_gt_image)
+            aux_label[aux_gt_image>0]=1
+            labels.append(aux_label)
+        else:
+            aux_gt_image=np.zeros_like(gt_image)
+            labels.append(aux_gt_image)
         return frame_images,labels,main_file,aux_file,gt_file
