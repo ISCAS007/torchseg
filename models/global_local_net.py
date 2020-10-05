@@ -3,7 +3,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 from models.motionseg.motion_panet import motion_panet2
-from models.motionseg.motion_utils import get_default_config
+from utils.configs.motionseg_config import get_default_config
 
 class GlobalLocalNet(nn.Module):
     """

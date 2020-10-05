@@ -47,7 +47,7 @@ def prepare_input_output(config,data,device):
     frames=data['images']
     images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
     origin_labels=[torch.autograd.Variable(gt.to(device).long()) for gt in data['labels']]
-    resize_labels=[F.interpolate(gt.float(),size=config.input_shape,mode='nearest').float() for gt in labels]
+    resize_labels=[F.interpolate(gt.float(),size=config.input_shape,mode='nearest').float() for gt in origin_labels]
     
     aux_input = []
     for c in config.input_format:

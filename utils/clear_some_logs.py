@@ -28,7 +28,9 @@ def clear_some_logs(logdir=os.path.expanduser('~/tmp/logs/pytorch')):
                 elif(choice=='N'):
                     break
                 else:
-                    choice=input(prompt='Y(yes, and delete all) \n N(no, and skip the rest) \n n(no, skip this) \n y(yes, delete this): ')
+                    prompt='Y(yes, and delete all) \n N(no, and skip the rest) \n n(no, skip this) \n y(yes, delete this): '
+                    print(prompt)
+                    choice=input()
                 
                 if(choice=='Y' or choice=='y'):
                     shutil.rmtree(d)
