@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 from easydict import EasyDict as edict
 import os
-from models.motionseg.motion_utils import get_dataset,get_default_config
+from models.motionseg.motion_utils import get_dataset,get_default_config,get_model
+from utils.configs.semanticseg_config import load_config
+from dataset.motionseg_dataset_factory import motionseg_show_images
 import unittest
 import cv2
 from tqdm import trange
 import numpy as np
+import torch
 
 class Test(unittest.TestCase):
     config=get_default_config()
@@ -60,6 +63,33 @@ class Test(unittest.TestCase):
                             pixels=test_img(x,pixels)
 
                 print(dataset,split,pixels)
+        self.assertTrue(True)
+        
+    def test_motion_diff(self):
+        """
+        load model and show model output
+        """
+        #config_txt=os.path.join('~/tmp/logs/motion/motion_diff/cdnet2014/test/2020-09-25___19-16-21/config.txt')
+        config_txt=os.path.join('~/tmp/logs/motion/motion_diff/FBMS/test/2020-09-25___18-52-18/config.txt')
+        config=load_config(config_txt)
+        
+        model=get_model(config)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model.to(device)
+        model.eval()
+        for split in ['train','val']:
+            d=get_dataset(config,split)
+            N=len(d)
+            idx=np.random.randint(N)
+            data=d.__getitem__(idx)
+            frames=data['images']
+            gts=data['labels']
+            
+            outputs=model(frames)
+            predict=outputs['masks'][0]
+            print(predict.shape)
+            
+            motionseg_show_images(frames,gts,predict)
         self.assertTrue(True)
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-dataset loader: cdnet not support two gt file
+dataset loader: update to support two labels.
 
 """
 import numpy as np
@@ -8,6 +8,7 @@ import torch.utils.data as td
 from models.motion_stn import stn_loss
 from utils.metric.motionseg_metric import MotionSegMetric
 from utils.configs.motionseg_config import get_default_config
+from dataset.motionseg_dataset_factory import prepare_input_output
 from models.motionseg.motion_utils import (get_parser,
                                            get_dataset,
                                            fine_tune_config,get_model,
@@ -127,38 +128,7 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
 
             N=len(dataset_loaders[split])
             for step,data in enumerate(tqdm_step):
-                frames=data['images']
-                gt=data['labels'][0]
-                images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
-
-                aux_input = []
-                for c in config.input_format:
-                    if c.lower()=='b':
-                        assert False
-                    elif c.lower()=='g':
-                        origin_aux_gt=torch.autograd.Variable(data['labels'][1].to(device).long())
-                        #print(origin_aux_gt.shape)
-                        resize_aux_gt=F.interpolate(origin_aux_gt.float(),size=config.input_shape,mode='nearest').float()
-                        aux_input.append(resize_aux_gt)
-                    elif c.lower()=='n':
-                        aux_input.append(torch.autograd.Variable(data['images'][1].to(device).float()))
-                    elif c.lower()=='o':
-                        aux_input.append(torch.autograd.Variable(data['optical_flow'].to(device).float()))
-                    elif c.lower()=='-':
-                        pass
-                    else:
-                        assert False
-
-                if len(aux_input)>0:
-                    images[1]=torch.autograd.Variable(torch.cat(aux_input,dim=1).to(device).float())
-
-                origin_labels=torch.autograd.Variable(gt.to(device).long())
-                labels=F.interpolate(origin_labels.float(),size=config.input_shape,mode='nearest').long()
-
-                if config.use_sync_bn:
-                    images=[img.cuda(config.gpu,non_blocking=True) for img in images]
-                    origin_labels=origin_labels.cuda(config.gpu,non_blocking=True)
-                    labels=labels.cuda(config.gpu,non_blocking=True)
+                images,origin_labels,resize_labels=prepare_input_output(data=data,config=config,device=device)
 
                 if split=='train':
                     poly_lr_scheduler(config,optimizer,
@@ -167,15 +137,15 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
 
                 outputs=model.forward(images)
                 if config.net_name=='motion_anet':
-                    mask_gt=torch.squeeze(labels,dim=1)
+                    mask_gt=torch.squeeze(resize_labels[0],dim=1)
                     mask_loss_value=0
                     for mask in outputs['masks']:
                         mask_loss_value+=seg_loss_fn(mask,mask_gt)
                 elif config.net_name=='motion_diff':
                     assert 'g' in config.input_format.lower()
-                    gt_plus=(labels-resize_aux_gt).clamp_(min=0).float()
-                    gt_minus=(resize_aux_gt-labels).clamp_(min=0).float()
-                    mask_gt=torch.cat([gt_plus,gt_minus,labels.float()],dim=1)
+                    gt_plus=(resize_labels[0]-resize_labels[1]).clamp_(min=0).float()
+                    gt_minus=(resize_labels[1]-resize_labels[0]).clamp_(min=0).float()
+                    mask_gt=torch.cat([gt_plus,gt_minus,resize_labels[0].float()],dim=1)
                     ignore_index=255
 
                     predict=outputs['masks'][0]
@@ -183,13 +153,13 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                     mask_gt[mask_gt==ignore_index]=0
                     mask_loss_value=seg_loss_fn(predict.float(),mask_gt.float())
                 else:
-                    mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(labels,dim=1))
+                    mask_loss_value=seg_loss_fn(outputs['masks'][0],torch.squeeze(resize_labels[0],dim=1))
 
                 if config['net_name'].find('_stn')>=0:
                     if config['stn_object']=='features':
-                        stn_loss_value=stn_loss(outputs['features'],labels.float(),outputs['pose'],config['pose_mask_reg'])
+                        stn_loss_value=stn_loss(outputs['features'],resize_labels[0].float(),outputs['pose'],config['pose_mask_reg'])
                     elif config['stn_object']=='images':
-                        stn_loss_value=stn_loss(outputs['stn_images'],labels.float(),outputs['pose'],config['pose_mask_reg'])
+                        stn_loss_value=stn_loss(outputs['stn_images'],resize_labels[0].float(),outputs['pose'],config['pose_mask_reg'])
                     else:
                         assert False,'unknown stn object %s'%config['stn_object']
 
@@ -199,12 +169,12 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                     total_loss_value=mask_loss_value
 
                 if config.net_name=='motion_diff':
-                    origin_mask=F.interpolate(outputs['masks'][0][:,2:3,:,:], size=origin_labels.shape[2:4],mode='bilinear')
+                    origin_mask=F.interpolate(outputs['masks'][0][:,2:3,:,:], size=origin_labels[0].shape[2:4],mode='bilinear')
                     origin_mask=torch.cat([1-origin_mask,origin_mask],dim=1)
                 else:
-                    origin_mask=F.interpolate(outputs['masks'][0], size=origin_labels.shape[2:4],mode='bilinear')
+                    origin_mask=F.interpolate(outputs['masks'][0], size=origin_labels[0].shape[2:4],mode='bilinear')
                 
-                motionseg_metric.update({"fmeasure":(origin_mask,origin_labels),
+                motionseg_metric.update({"fmeasure":(origin_mask,origin_labels[0]),
                                          "stn_loss":stn_loss_value.item(),
                                          "mask_loss":mask_loss_value.item(),
                                          "total_loss":total_loss_value.item()})
