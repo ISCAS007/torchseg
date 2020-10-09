@@ -6,6 +6,7 @@ import torch.utils.data as td
 import numpy as np
 import random
 import cv2
+import warnings
 
 def main2flow(main_path,
               dataset_root_dir=os.path.expanduser('~/cvdataset'),
@@ -56,7 +57,7 @@ class motionseg_dataset(td.Dataset):
         frame_images,gt_images,main_path,aux_path,gt_path=self.__get_image__(index)
 
         if self.print:
-            print('augmente validataion dataset '+'*'*30)
+            warnings.warn('augmente validataion dataset '+'*'*30)
             self.print=False
         if self.augmentations is not None:
             frame_images=[self.augmentations.transform(img) for img in frame_images]
@@ -95,16 +96,18 @@ class motionseg_dataset(td.Dataset):
             flow=np.clip(flow,a_min=-50,a_max=50)/50.0
             optical_flow=cv2.resize(flow,resize_shape,interpolation=cv2.INTER_LINEAR).transpose((2,0,1))
         else:
-            optical_flow=0
+            h,w=resize_shape
+            optical_flow=np.zeros((2,h,w),np.float32)
 
+        resize_gt_images=[img.astype(np.float32) for img in resize_gt_images]
         data={'images':resize_frame_images,
               'labels':resize_gt_images,
               'gt_path':gt_path,
               'main_path':main_path,
               'aux_path':aux_path,
               'shape':frame_images[0].shape,
-              'optical_flow':optical_flow}
-
+              'optical_flow':optical_flow
+              }
         return data
 
 class segtrackv2_dataset(motionseg_dataset):
@@ -210,13 +213,13 @@ class segtrackv2_dataset(motionseg_dataset):
         main_file=self.main_files[index]
         aux_file=self.get_aux_file(main_file)
         gt_files=[self.get_gt_files(main_file),self.get_gt_files(aux_file)]
-        
+
         return main_file,aux_file,gt_files
 
     def __get_image__(self,index):
         main_file,aux_file,gt_files=self.__get_path__(index)
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
-        
+
         labels=[]
         for files in gt_files:
             images=[cv2.imread(f,cv2.IMREAD_GRAYSCALE) for f in files]

@@ -16,7 +16,6 @@ import numpy as np
 from utils.disc_tools import show_images
 import torch
 import torch.nn.functional as F
-from utils.disc_tools import show_images
 
 def get_motionseg_dataset(config,split):
     dataset_dict={"fbms":fbms_dataset,
@@ -47,8 +46,8 @@ def prepare_input_output(config,data,device):
     frames=data['images']
     images = [torch.autograd.Variable(img.to(device).float()) for img in frames]
     origin_labels=[torch.autograd.Variable(gt.to(device).long()) for gt in data['labels']]
-    resize_labels=[F.interpolate(gt.float(),size=config.input_shape,mode='nearest').float() for gt in origin_labels]
-    
+    resize_labels=[F.interpolate(gt.float(),size=config.input_shape,mode='nearest').long() for gt in origin_labels]
+
     aux_input = []
     for c in config.input_format:
         if c.lower()=='b':
@@ -71,7 +70,7 @@ def prepare_input_output(config,data,device):
 
     if len(aux_input)>0:
         images[1]=torch.autograd.Variable(torch.cat(aux_input,dim=1).to(device).float())
-    
+
     if config.use_sync_bn:
         images=[img.cuda(config.gpu,non_blocking=True) for img in images]
         origin_labels=[label.cuda(config.gpu,non_blocking=True) for label in origin_labels]
@@ -82,17 +81,17 @@ def motionseg_show_images(imgs,labels=[],predict=[]):
     normer=image_normalizations(ways='-1,1')
     for img in imgs:
         print("image shape {}, range in [{},{}]".format(img.shape,np.min(img),np.max(img)))
-      
+
     for img in labels:
         print("label shape {}, range in [{},{}]".format(img.shape,np.min(img),np.max(img)))
-        
+
     for img in predict:
         print("predict shape {}, range in [{},{}]".format(img.shape,np.min(img),np.max(img)))
-    
+
     imgs=[img.transpose((1,2,0)) for img in imgs]
     imgs=[normer.backward(img).astype(np.uint8) for img in imgs]
     labels=[label.squezze() for label in labels]
-    
+
     show_images(imgs+labels+predict)
 
 if __name__ == '__main__':
@@ -107,7 +106,7 @@ if __name__ == '__main__':
             data=d.__getitem__(idx)
             imgs=[img.transpose((1,2,0)) for img in data['images']]
             gts=data['labels']
-            
+
             print(imgs[0].shape, gts[0].shape)
             gts=[gt.squeeze() for gt in gts]
             show_images(imgs+gts)
@@ -115,6 +114,6 @@ if __name__ == '__main__':
             print(data['main_path'],data['aux_path'],data['gt_path'])
             for img in imgs:
                 print('img range in [{},{}]'.format(np.min(img),np.max(img)))
-                
+
             for gt in gts:
                 print('gt range in {}'.format(np.unique(gt)))

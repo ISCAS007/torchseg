@@ -261,17 +261,17 @@ def get_parser():
     return parser
 
 def fine_tune_config(config):
-    if config.net_name.find('flow')>=0:
-        assert config.frame_gap>0
-        config.use_optical_flow=True
-        if config.share_backbone is None:
-            config.share_backbone=False
-    else:
-        config.use_optical_flow=False
-        if config.share_backbone is None:
-            config.share_backbone=True
-
-    config.class_number=2
+#    if config.net_name.find('flow')>=0:
+#        assert config.frame_gap>0
+#        config.use_optical_flow=True
+#        if config.share_backbone is None:
+#            config.share_backbone=False
+#    else:
+#        config.use_optical_flow=False
+#        if config.share_backbone is None:
+#            config.share_backbone=True
+#
+#    config.class_number=2
     return config
 
 def get_dataset(config,split):

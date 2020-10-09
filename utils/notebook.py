@@ -2,15 +2,15 @@
 notebook utils for motionseg
 """
 
-from models.motionseg.motion_utils import get_parser,get_default_config,get_dataset
+from models.motionseg.motion_utils import get_parser,get_dataset
+from utils.configs.motionseg_config import get_default_config
+from utils.configs.semanticseg_config import load_config
 import torch.utils.data as td
 import torch
 import os
-from utils.configs.semanticseg_config import load_config
 from dataset.dataset_generalize import image_normalizations
 from utils.torch_tools import get_ckpt_path,load_ckpt
 from models.motionseg.motion_utils import fine_tune_config,get_model
-from models.motion_stn import motion_stn, motion_net
 
 def get_model_and_dataset(cfg,filter_relu=None):
     if isinstance(cfg,(tuple,list)):
@@ -36,7 +36,7 @@ def get_model_and_dataset(cfg,filter_relu=None):
         for key in args.__dict__.keys():
             if key not in config.keys():
                 print('{} : unused keys {}'.format(key,args.__dict__[key]))
-   
+
     elif isinstance(cfg,str):
         config=load_config(cfg)
         default_config=get_default_config()
@@ -47,14 +47,11 @@ def get_model_and_dataset(cfg,filter_relu=None):
         config=cfg
 
     config=fine_tune_config(config)
-    
+
     if filter_relu is not None:
         config.filter_relu=filter_relu
-    
-    if config['net_name'] in ['motion_stn','motion_net']:
-        model=globals()[config['net_name']]() 
-    else:
-        model=get_model(config)
+
+    model=get_model(config)
 
     # support for cpu/gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -62,12 +59,12 @@ def get_model_and_dataset(cfg,filter_relu=None):
 
     normer=image_normalizations(ways='-1,1')
     dataset_loaders={}
-    for split in ['train','val','val_path']:
+    for split in ['train','val']:
         xxx_dataset=get_dataset(config,split)
         batch_size=config.batch_size if split=='train' else 1
         xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=True,drop_last=False,num_workers=2)
         dataset_loaders[split]=xxx_loader
-    
+
     if isinstance(cfg,str):
         log_dir=os.path.dirname(cfg)
         checkpoint_path = get_ckpt_path(log_dir)
@@ -76,5 +73,5 @@ def get_model_and_dataset(cfg,filter_relu=None):
                                config['dataset'], config['note'])
         checkpoint_path = get_ckpt_path(log_dir)
     model=load_ckpt(model,checkpoint_path)
-    
+
     return model,dataset_loaders,normer

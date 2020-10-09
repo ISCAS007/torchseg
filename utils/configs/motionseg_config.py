@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from easydict import EasyDict as edict
 import os
+import warnings
 
 dataset_root_dict={"fbms":os.path.expanduser('~/cvdataset/FBMS'),
                    "cdnet2014":os.path.expanduser('~/cvdataset/cdnet2014'),
@@ -72,4 +73,48 @@ def get_default_config():
     config.use_part_number=1000
     config.use_sync_bn=False
 
+    return config
+
+def update_default_config(args):
+    config=get_default_config()
+    if args.net_name=='motion_psp':
+        if args.use_none_layer is False or args.upsample_layer<=3:
+            min_size=30*config.psp_scale*2**config.upsample_layer
+        else:
+            min_size=30*config.psp_scale*2**3
+
+        config.input_shape=[min_size,min_size]
+
+    sort_keys=sorted(list(config.keys()))
+    for key in sort_keys:
+        if hasattr(args,key):
+            print('{} = {} (default: {})'.format(key,args.__dict__[key],config[key]))
+            config[key]=args.__dict__[key]
+        else:
+            print('{} : (default:{})'.format(key,config[key]))
+
+    for key in args.__dict__.keys():
+        if key not in config.keys():
+            print('{} : unused keys {}'.format(key,args.__dict__[key]))
+
+    if config.net_name.find('flow')>=0:
+        assert config.frame_gap>0
+        config.use_optical_flow=True
+        if config.share_backbone is None:
+            config.share_backbone=False
+    else:
+        config.use_optical_flow=False
+        if config.share_backbone is None:
+            config.share_backbone=True
+
+    config.class_number=2
+
+    # Historical compatibility
+    if config.input_format=='_':
+        config.use_aux_input=False
+    else:
+        config.use_aux_input=True
+
+    if config.use_part_number!=1000:
+        warnings.warn('optical flow may not valid when use_part_number!=1000')
     return config

@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 from easydict import EasyDict as edict
 import os
-from models.motionseg.motion_utils import get_dataset,get_default_config,get_model
+from models.motionseg.motion_utils import get_dataset,get_model
+from utils.configs.motionseg_config import get_default_config
 from utils.configs.semanticseg_config import load_config
 from dataset.motionseg_dataset_factory import motionseg_show_images
+from dataset.motionseg_dataset_factory import prepare_input_output
+import torch.utils.data as td
 import unittest
 import cv2
 from tqdm import trange
@@ -69,8 +72,8 @@ class Test(unittest.TestCase):
         """
         load model and show model output
         """
-        #config_txt=os.path.join('~/tmp/logs/motion/motion_diff/cdnet2014/test/2020-09-25___19-16-21/config.txt')
-        config_txt=os.path.join('~/tmp/logs/motion/motion_diff/FBMS/test/2020-09-25___18-52-18/config.txt')
+        #config_txt=os.path.expanduser('~/tmp/logs/motion/motion_diff/cdnet2014/test/2020-09-25___19-16-21/config.txt')
+        config_txt=os.path.expanduser('~/tmp/logs/motion/motion_diff/FBMS/test/2020-09-25___18-52-18/config.txt')
         config=load_config(config_txt)
         
         model=get_model(config)
@@ -78,18 +81,21 @@ class Test(unittest.TestCase):
         model.to(device)
         model.eval()
         for split in ['train','val']:
-            d=get_dataset(config,split)
-            N=len(d)
-            idx=np.random.randint(N)
-            data=d.__getitem__(idx)
-            frames=data['images']
-            gts=data['labels']
+            xxx_loader=get_dataset(config,split)
+            dataset_loader=td.DataLoader(dataset=xxx_loader,
+                                         batch_size=1,
+                                         shuffle=False,
+                                         drop_last=False,
+                                         num_workers=2)
+            for data in dataset_loader:
             
-            outputs=model(frames)
-            predict=outputs['masks'][0]
-            print(predict.shape)
-            
-            motionseg_show_images(frames,gts,predict)
+                images,origin_labels,resize_labels=prepare_input_output(data=data,device=device,config=config)
+                motionseg_show_images(images,origin_labels,[])
+                
+                outputs=model(frames)
+                predict=outputs['masks'][0]
+                motionseg_show_images([],[],predict)
+                break
         self.assertTrue(True)
 
 if __name__ == '__main__':

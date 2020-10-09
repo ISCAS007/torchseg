@@ -7,11 +7,11 @@ import numpy as np
 import torch.utils.data as td
 from models.motion_stn import stn_loss
 from utils.metric.motionseg_metric import MotionSegMetric
-from utils.configs.motionseg_config import get_default_config
+from utils.configs.motionseg_config import update_default_config
 from dataset.motionseg_dataset_factory import prepare_input_output
 from models.motionseg.motion_utils import (get_parser,
                                            get_dataset,
-                                           fine_tune_config,get_model,
+                                           get_model,
                                            poly_lr_scheduler,
                                            get_load_convert_model)
 from utils.torch_tools import init_writer
@@ -102,7 +102,7 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
         checkpoint_path = os.path.join(log_dir, 'model-last-%d.pkl' % config['epoch'])
 
         writer=init_writer(config,log_dir)
-    
+
     motionseg_metric=MotionSegMetric(config.exception_value)
 
     if is_main_process(config):
@@ -142,7 +142,6 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                     for mask in outputs['masks']:
                         mask_loss_value+=seg_loss_fn(mask,mask_gt)
                 elif config.net_name=='motion_diff':
-                    assert 'g' in config.input_format.lower()
                     gt_plus=(resize_labels[0]-resize_labels[1]).clamp_(min=0).float()
                     gt_minus=(resize_labels[1]-resize_labels[0]).clamp_(min=0).float()
                     mask_gt=torch.cat([gt_plus,gt_minus,resize_labels[0].float()],dim=1)
@@ -173,12 +172,12 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                     origin_mask=torch.cat([1-origin_mask,origin_mask],dim=1)
                 else:
                     origin_mask=F.interpolate(outputs['masks'][0], size=origin_labels[0].shape[2:4],mode='bilinear')
-                
+
                 motionseg_metric.update({"fmeasure":(origin_mask,origin_labels[0]),
                                          "stn_loss":stn_loss_value.item(),
                                          "mask_loss":mask_loss_value.item(),
                                          "total_loss":total_loss_value.item()})
-    
+
                 if split=='train':
                     total_loss_value.backward()
                     if (step_acc+1)>=config.accumulate:
@@ -333,39 +332,43 @@ if __name__ == '__main__':
     parser=get_parser()
     args = parser.parse_args()
 
-    config=get_default_config()
-
-    torch.hub.set_dir(os.path.expanduser('~/.torch/models'))
-
-    if args.net_name=='motion_psp':
-        if args.use_none_layer is False or args.upsample_layer<=3:
-            min_size=30*config.psp_scale*2**config.upsample_layer
-        else:
-            min_size=30*config.psp_scale*2**3
-
-        config.input_shape=[min_size,min_size]
-
-    sort_keys=sorted(list(config.keys()))
-    for key in sort_keys:
-        if hasattr(args,key):
-            print('{} = {} (default: {})'.format(key,args.__dict__[key],config[key]))
-            config[key]=args.__dict__[key]
-        else:
-            print('{} : (default:{})'.format(key,config[key]))
-
-    for key in args.__dict__.keys():
-        if key not in config.keys():
-            print('{} : unused keys {}'.format(key,args.__dict__[key]))
-
-    # update config according to basic config
-    config=fine_tune_config(config)
+    config=update_default_config(args)
 
     if args.app=='dataset':
+        dataset_loaders={}
         for split in ['train','val']:
             xxx_dataset=get_dataset(config,split)
+
             dataset_size=len(xxx_dataset)
             for idx in range(dataset_size):
                 xxx_dataset.__getitem__(idx)
+
+            if config.use_sync_bn and split=='train':
+                xxx_sampler=torch.utils.data.DistributedSampler(xxx_dataset)
+            else:
+                xxx_sampler=None
+
+            batch_size=config.batch_size if split=='train' else 1
+
+            if split=='train':
+                xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=(xxx_sampler is None),drop_last=False,num_workers=2,sampler=xxx_sampler,pin_memory=False)
+            else:
+                xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=False,num_workers=2,pin_memory=False)
+            dataset_loaders[split]=xxx_loader
+
+            for idx,data in enumerate(xxx_loader):
+                for key,value in data.items():
+                    print(idx,key,type(value))
+                    if isinstance(value,(tuple,list)):
+                        for v in value:
+                            if isinstance(v,torch.Tensor):
+                                print(v.shape,v.dtype)
+                    elif isinstance(value,torch.Tensor):
+                        print(value.shape,value.dtype)
+                    else:
+                        print(type(value))
+
+
         sys.exit(0)
     elif args.app=='summary':
         import torchsummary

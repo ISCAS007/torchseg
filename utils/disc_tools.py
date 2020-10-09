@@ -18,21 +18,61 @@ def lcm_list(l):
 
     return x
 
+def get_special_cmap(base_cmap_name='Set3',bad_color='black'):
+    cmap=plt.get_cmap(base_cmap_name)
+    cmap.set_over(bad_color)
+    cmap.set_bad(bad_color)
+    return cmap
 
-def show_images(images,titles=None,vmin=None,vmax=None):
-    fig, axes = plt.subplots(2, (len(images)+1)//2, figsize=(7, 6), sharex=True, sharey=True)
-    ax = axes.ravel()
+def get_diff(img1,img2,bg=0,out_of_roi=255):
+    assert len(img1.shape)==len(img2.shape)==2,'support only label image'
+    assert img1.dtype==img2.dtype==np.uint8,'support only uint8 label image'
 
-    for i in range(len(images)):
-        ax[i].imshow(images[i],vmin=vmin,vmax=vmax)
+    h,w=img1.shape
+    merge_image=np.zeros((h,w,3),np.uint8)
+    vmax=np.max(img1)
+    merge_image[:,:,0]=img1*(255//vmax)
+    diff=np.zeros_like(img1)
+    if bg==0:
+        diff[np.logical_and(img1==bg,img1==img2)]=0
+        diff[np.logical_and(img1!=bg,img1==img2)]=1
+        diff[np.logical_and(img1==bg,img1!=img2)]=2
+        diff[np.logical_and(img1!=bg,img1!=img2)]=3
+
+        merge_image[:,:,1]=diff*(255//3)
+    else:
+        warnings.warn('bg is not 0, there is no background?')
+        diff[img1==img2]=1
+        diff[img1!=img2]=2
+
+        merge_image[:,:,1]=diff*(255//2)
+
+    diff[img1==out_of_roi]=out_of_roi
+    merge_image[:,:,2]=255*(img1==out_of_roi).astype(np.uint8)
+    return diff,merge_image
+
+def show_images(images,titles=None,vmin=None,vmax=None,cmap=None):
+    if len(images)==1:
+        plt.imshow(images[0],vmin=vmin,vmax=vmax,cmap=cmap)
         if titles is None:
-            ax[i].set_title("image %d"%i)
+            plt.title("image")
         else:
-            ax[i].set_title(titles[i])
+            plt.title(titles[0])
+        plt.show()
+    else:
+        fig, axes = plt.subplots(2, (len(images)+1)//2, figsize=(7, 6), sharex=True, sharey=True)
+        ax = axes.ravel()
 
-    plt.show()
+        for i in range(len(images)):
+            ax[i].imshow(images[i],vmin=vmin,vmax=vmax,cmap=cmap)
+            if titles is None:
+                ax[i].set_title("image %d"%i)
+            else:
+                ax[i].set_title(titles[i])
 
-def show_tensor_list(images_tensor,title,normer=None):
+        plt.show()
+
+def show_tensor_list(images_tensor,title,normer=None,vmin=None,vmax=None,cmap=None):
     for idx,t in enumerate(images_tensor):
         batch_images=t.data.cpu().numpy()
         batch_images=batch_images.transpose((0,2,3,1))
@@ -44,7 +84,9 @@ def show_tensor_list(images_tensor,title,normer=None):
             else:
                 batch_images=normer.backward(batch_images).astype(np.uint8)
         else:
-            batch_images=np.clip(batch_images,a_min=0,a_max=1)
+            if np.max(batch_images)==255:
+                batch_images=batch_images.astype(np.uint8)
+            #batch_images=np.clip(batch_images,a_min=0,a_max=1)
 
         b,h,w,c=batch_images.shape
         image_list=np.split(batch_images,b)
@@ -55,7 +97,7 @@ def show_tensor_list(images_tensor,title,normer=None):
                 img_3=np.zeros((h,w,3),dtype=np.float)
                 img_3[:,:,0:2]=img
                 image_list[i]=img_3
-        show_images(image_list,[title[idx] for img in image_list])
+        show_images(image_list,[title[idx] for img in image_list],cmap=cmap,vmax=vmax,vmin=vmin)
 
 def str2bool(s):
     if s.lower() in ['t','true','y','yes','1']:
