@@ -39,7 +39,6 @@ class motionseg_dataset(td.Dataset):
         self.input_shape=tuple(config.input_shape)
         self.root_path=config.root_path
         self.frame_gap=config.frame_gap
-        self.print=True
 
     def __get_image__(self,index):
         """
@@ -56,15 +55,13 @@ class motionseg_dataset(td.Dataset):
     def __getitem__(self,index):
         frame_images,gt_images,main_path,aux_path,gt_path=self.__get_image__(index)
 
-        if self.print:
-            warnings.warn('augmente validataion dataset '+'*'*30)
-            self.print=False
-        if self.augmentations is not None:
-            frame_images=[self.augmentations.transform(img) for img in frame_images]
-
-        # augmentation dataset
-#        if self.split=='train' and self.augmentations is not None:
+        # autgmentation dataset when train and val
+#        if self.augmentations is not None:
 #            frame_images=[self.augmentations.transform(img) for img in frame_images]
+
+        # augmentation dataset when train
+        if self.split=='train' and self.augmentations is not None:
+            frame_images=[self.augmentations.transform(img) for img in frame_images]
 
 
         # resize image, opencv resize image with (width,height), but input_shape is [height,width]

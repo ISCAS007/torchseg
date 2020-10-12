@@ -46,7 +46,9 @@ def get_dist_module(config):
     else:
         model.to(device)
 
-    if config.loss_name in ['iou','dice']:
+    if config.net_name == 'motion_diff' or not config.net_name.startswith('motion'):
+        seg_loss_fn=torch.nn.BCEWithLogitsLoss()
+    elif config.loss_name in ['iou','dice']:
         # iou loss not support ignore_index
         assert config.dataset not in ['cdnet2014','all','all2','all3']
         assert config.ignore_pad_area==0
@@ -54,8 +56,6 @@ def get_dist_module(config):
             seg_loss_fn=jaccard_loss
         else:
             seg_loss_fn=dice_loss
-    elif config.net_name == 'motion_diff':
-        seg_loss_fn=torch.nn.BCEWithLogitsLoss()
     else:
         seg_loss_fn=torch.nn.CrossEntropyLoss(ignore_index=255)
 
@@ -84,7 +84,7 @@ def get_dist_module(config):
         batch_size=config.batch_size if split=='train' else 1
 
         if split=='train':
-            xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=(xxx_sampler is None),drop_last=False,num_workers=2,sampler=xxx_sampler,pin_memory=True)
+            xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=(xxx_sampler is None),drop_last=True,num_workers=2,sampler=xxx_sampler,pin_memory=True)
         else:
             xxx_loader=td.DataLoader(dataset=xxx_dataset,batch_size=batch_size,shuffle=False,num_workers=2,pin_memory=True)
         dataset_loaders[split]=xxx_loader
@@ -135,19 +135,27 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                               iter=epoch*N+step,
                               max_iter=config.epoch*N)
 
-                outputs=model.forward(images)
+                if config.net_name.startswith('motion'):
+                    outputs=model.forward(images)
+                else:
+                    assert config.input_format=='n'
+                    outputs=model.forward(torch.cat(images,dim=1))
+
                 if config.net_name=='motion_anet':
                     mask_gt=torch.squeeze(resize_labels[0],dim=1)
                     mask_loss_value=0
                     for mask in outputs['masks']:
                         mask_loss_value+=seg_loss_fn(mask,mask_gt)
-                elif config.net_name=='motion_diff':
+                elif config.net_name=='motion_diff' or not config.net_name.startswith('motion'):
                     gt_plus=(resize_labels[0]-resize_labels[1]).clamp_(min=0).float()
                     gt_minus=(resize_labels[1]-resize_labels[0]).clamp_(min=0).float()
                     mask_gt=torch.cat([gt_plus,gt_minus,resize_labels[0].float()],dim=1)
                     ignore_index=255
 
-                    predict=outputs['masks'][0]
+                    if config.net_name=='motion_diff':
+                        predict=outputs['masks'][0]
+                    else:
+                        predict=outputs
                     predict[mask_gt==ignore_index]=0
                     mask_gt[mask_gt==ignore_index]=0
                     mask_loss_value=seg_loss_fn(predict.float(),mask_gt.float())
@@ -167,8 +175,14 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                     stn_loss_value=torch.tensor(0.0)
                     total_loss_value=mask_loss_value
 
-                if config.net_name=='motion_diff':
-                    origin_mask=F.interpolate(outputs['masks'][0][:,2:3,:,:], size=origin_labels[0].shape[2:4],mode='bilinear')
+                if config.net_name=='motion_diff' or not config.net_name.startswith('motion'):
+                    if config.net_name=='motion_diff':
+                        predict=outputs['masks'][0]
+                    else:
+                        predict=outputs
+
+                    #predict[:,2:3,:,:]=predict[:,2:3,:,:]+predict[:,0:1,:,:]-predict[:,1:2,:,:]
+                    origin_mask=F.interpolate(predict[:,2:3,:,:], size=origin_labels[0].shape[2:4],mode='bilinear')
                     origin_mask=torch.cat([1-origin_mask,origin_mask],dim=1)
                 else:
                     origin_mask=F.interpolate(outputs['masks'][0], size=origin_labels[0].shape[2:4],mode='bilinear')
@@ -329,6 +343,7 @@ def dist_train(config):
 
 if __name__ == '__main__':
     torch.multiprocessing.set_sharing_strategy('file_system')
+    torch.hub.set_dir(os.path.expanduser('~/.torch/models'))
     parser=get_parser()
     args = parser.parse_args()
 

@@ -2,8 +2,10 @@
 """
 baseline model for motion seg
 conda activate torch1.6
-python models/motionseg/motionseg_baseline.py --dataset cdnet2014 --note baseline --baseline Unet
-python models/motionseg/motionseg_baseline.py --dataset cdnet2014 --note baseline --baseline DeepLabV3Plus --backbone_name resnet50
+python models/motionseg/motionseg_baseline.py --dataset cdnet2014 --note baseline --net_name Unet
+python models/motionseg/motionseg_baseline.py --dataset cdnet2014 --note baseline --net_name DeepLabV3Plus --backbone_name resnet50
+
+different from test/fbms_train.py, here the model is the baseline model, but in fbms_train, the model behavior like motion_diff.
 """
 
 import segmentation_models_pytorch as smp
@@ -218,22 +220,21 @@ def dist_train(config):
         main_worker(config.gpu,ngpus_per_node,config)
 
 if __name__ == '__main__':
-    torch.hub.set_dir(os.path.expanduser(''))
+    torch.hub.set_dir(os.path.expanduser('~/.torch/models'))
     parser=get_parser()
-    models=['Unet','DeepLabV3','FPN','PSPNet','Linknet',
-                                 'PSPNet','DeepLabV3Plus']
-    models+=[m.lower() for m in models]
-
-    parser.add_argument('--baseline',
-                        default='Unet',
-                        choices=models,
-                        help='the baseline model name(Unet)')
+#    models=['Unet','DeepLabV3','FPN','PSPNet','Linknet',
+#                                 'PSPNet','DeepLabV3Plus']
+#    models+=[m.lower() for m in models]
+#
+#    parser.add_argument('--baseline',
+#                        default='Unet',
+#                        choices=models,
+#                        help='the baseline model name(Unet)')
 
     args = parser.parse_args()
 
     config=update_default_config(args)
-    config.baseline=config.net_name=args.baseline
-
+#    config.baseline=config.net_name=args.baseline
 
     if config.use_sync_bn:
         dist_train(config)
