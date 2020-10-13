@@ -2,6 +2,10 @@
 """
 low level tensorboard logs processing library
 """
+
+import warnings
+warnings.filterwarnings('ignore',message='.*numpy.*')
+
 from glob import glob
 from utils.configs.semanticseg_config import load_config
 from easydict import EasyDict as edict
@@ -9,6 +13,7 @@ import pandas as pd
 import os
 import tensorflow as tf
 import time
+
 
 def edict_to_pandas(ed):
     def edict_to_dict(ed):

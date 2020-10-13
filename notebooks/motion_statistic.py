@@ -3,6 +3,8 @@
 
 # In[1]:
 
+#import warnings
+#warnings.filterwarnings('ignore',message='.*numpy.*')
 
 import pandas as pd
 from glob import glob
@@ -16,8 +18,9 @@ import argparse
 sys.path.insert(0,os.path.expanduser('~/git/torchseg'))
 print(sys.path)
 
-from utils.config import load_config
+from utils.configs.semanticseg_config import load_config
 from utils.summary_to_csv import config_to_log,load_log,edict_to_pandas,today_log,recent_log
+
 recent_log_number=100
 def summary(rootpath,tags,filter_str=None,):
     config_files=glob(os.path.join(rootpath,'**','config.txt'),recursive=True)
@@ -27,11 +30,11 @@ def summary(rootpath,tags,filter_str=None,):
         config_files=recent_log(config_files,recent_log_number)
     elif filter_str is not None:
         config_files=[f for f in config_files if f.find(filter_str)>=0]
-    
+
     if len(config_files)==0:
         print('empty config_files, \n \
               rootpath={},tags={},filter_str={}'.format(rootpath,tags,filter_str))
-        
+
     tasks=pd.DataFrame()
     for cfg in config_files:
         log=config_to_log(cfg)
@@ -40,7 +43,7 @@ def summary(rootpath,tags,filter_str=None,):
             metrics=load_log(log,tags)
             for key,value in metrics.items():
                 ed[key]=value
-            
+
             ed['dir']=cfg
             log_time=''
             for s in cfg.split(os.sep):
@@ -48,12 +51,12 @@ def summary(rootpath,tags,filter_str=None,):
                     log_time=s
                     break
             ed['log_time']=log_time
-            
+
             task=edict_to_pandas(ed)
             tasks=tasks.append(task,ignore_index=True,sort=False)
         else:
             print('cannot find log file for',cfg)
-            
+
     return tasks
 
 def dump(tags=['train/fmeasure','val/fmeasure'],
@@ -68,7 +71,7 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
         dump_group=False,
         dump_dir=True):
     dir_tags=[tags[1],'dir']
-    
+
     for idx,note in enumerate(notes):
         show_tags=[]
         show_tags=tags.copy()
@@ -76,7 +79,7 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
         if tasks.empty:
             print(note,'task is empty')
             continue
-        
+
         if note_gtags is None:
             param_list=[]
             for col in tasks.columns:
@@ -91,11 +94,11 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                 group_tags=note_gtags[idx]
             else:
                 group_tags=[]
-            
+
         show_tags+=group_tags
         show_tags+=descripe
         show_tags=list(set(show_tags))
-        
+
         # remove empty dirs
         if delete_nan:
             dirs=tasks[tasks[tags[1]].isna()]['dir'].tolist()
@@ -112,7 +115,7 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
             print('\n')
             print(tabulate(tasks[[tags[1]]+group_tags].groupby(group_tags).agg([np.mean,np.std,np.max]),tablefmt='pipe',headers='keys'))
             print('\n')
-        
+
         if note=='recent':
             sort_tags=['log_time'] if sort_tags is None or len(sort_tags)==0 else sort_tags
             print(tabulate(tasks[show_tags].sort_values(sort_tags),tablefmt='pipe',headers='keys'))
@@ -178,20 +181,20 @@ if __name__ == '__main__':
     parser.add_argument('--app',
                 default='dump_recent',
                 choices=['dump_tasks','dump_recent'])
-    
+
     parser.add_argument('--tags',
                        choices=['f','iou'],
                        default='f')
 
     args=parser.parse_args()
-    
+
     if args.tags=='f':
         tags=['train/fmeasure','val/fmeasure']
         rootpath=os.path.expanduser('~/tmp/logs/motion')
     elif args.tags=='iou':
         tags=['train/iou','val/iou']
         rootpath=os.path.expanduser('~/tmp/logs/motion')
-    
+
     if args.app=='dump_recent':
         recent_log_number=args.recent_log_number
         dump_recent(dump_dir=args.dump_dir,rootpath=rootpath,tags=tags)
@@ -206,4 +209,4 @@ if __name__ == '__main__':
             dump_dir=args.dump_dir,
             invalid_param_list=invalid_param_list,
             tags=tags,
-            rootpath=rootpath)    
+            rootpath=rootpath)
