@@ -35,7 +35,7 @@ def summary(rootpath,tags,filter_str=None,recent_log_number=100):
                     log_time=s
                     break
             ed['log_time']=log_time
-            if 'dataset_name' not in ed.keys():
+            if 'dataset_name' not in ed.keys() and 'dataset' not in ed.keys():
                 ed['dataset_name']=cfg.split(os.sep)[-4]
                 warnings.warn('obtain dataset name from config file path')
 

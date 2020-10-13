@@ -138,7 +138,7 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                 if config.net_name.startswith('motion'):
                     outputs=model.forward(images)
                 else:
-                    assert config.input_format=='n'
+                    #assert config.input_format=='n'
                     outputs=model.forward(torch.cat(images,dim=1))
 
                 if config.net_name=='motion_anet':
