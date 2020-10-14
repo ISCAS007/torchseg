@@ -13,6 +13,8 @@ from models.motionseg.motion_mix import motion_mix,motion_mix_flow
 from models.motionseg.motion_filter import motion_filter,motion_filter_flow
 from models.motionseg.motion_attention import motion_attention,motion_attention_flow
 from models.motionseg.motion_diff import motion_diff
+from models.motionseg.changenet import motion_changenet
+from models.motionseg.flownet import motion_flownet
 import segmentation_models_pytorch as smp
 
 def get_baseline_model_keys():
