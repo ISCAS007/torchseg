@@ -175,6 +175,10 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                     stn_loss_value=torch.tensor(0.0)
                     total_loss_value=mask_loss_value
 
+                #assert not torch.isnan(total_loss_value),'find nan loss'
+                if torch.isnan(total_loss_value) or torch.isinf(total_loss_value):
+                    raise RuntimeError("find nan or inf loss")
+
                 if config.net_name=='motion_diff' or not config.net_name.startswith('motion'):
                     if config.net_name=='motion_diff':
                         predict=outputs['masks'][0]
@@ -322,7 +326,9 @@ def main_worker(gpu,ngpus_per_node,config):
 
     model,loss_fn_dict,optimizer,dataset_loaders=get_dist_module(config)
     cudnn.benchmark=True
-    train(config,model,loss_fn_dict,optimizer,dataset_loaders)
+
+    with torch.autograd.detect_anomaly():
+        train(config,model,loss_fn_dict,optimizer,dataset_loaders)
 
 def dist_train(config):
     config.dist_backend='nccl'
@@ -342,8 +348,13 @@ def dist_train(config):
         main_worker(config.gpu,ngpus_per_node,config)
 
 if __name__ == '__main__':
+    # avoid open two much file in dataloader
     torch.multiprocessing.set_sharing_strategy('file_system')
+    # detect nan in loss
+    torch.autograd.set_detect_anomaly(True)
+    # set the root dir for download model weights
     torch.hub.set_dir(os.path.expanduser('~/.torch/models'))
+
     parser=get_parser()
     args = parser.parse_args()
 
