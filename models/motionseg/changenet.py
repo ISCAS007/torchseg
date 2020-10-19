@@ -36,12 +36,16 @@ class transform_sum(nn.Module):
                 self.merge_layers.append(None)
                 continue
 
-            main_c=min(max(backbones['main_backbone'].get_feature_map_channel(idx),
-                            self.min_channel_number),self.max_channel_number)
-            aux_c=min(max(backbones['aux_backbone'].get_feature_map_channel(idx),
-                            self.min_channel_number),self.max_channel_number)
+#            main_c=min(max(backbones['main_backbone'].get_feature_map_channel(idx),
+#                            self.min_channel_number),self.max_channel_number)
+#            aux_c=min(max(backbones['aux_backbone'].get_feature_map_channel(idx),
+#                            self.min_channel_number),self.max_channel_number)
+            main_c=backbones['main_backbone'].get_feature_map_channel(idx)
+            aux_c=backbones['aux_backbone'].get_feature_map_channel(idx)
 
             out_c=self.out_channel
+
+#            print(idx,main_c,aux_c,out_c)
 
             ratio=2**(idx-1)
             main_current_layer=[conv_bn_relu(in_channels=main_c,
@@ -79,6 +83,7 @@ class transform_sum(nn.Module):
 
         fcn_features=[]
         for idx in range(self.upsample_layer,self.deconv_layer+1):
+#            print(idx,features['main_backbone'][idx].shape,features['aux_backbone'][idx].shape)
             main_f=self.main_layers[idx](features['main_backbone'][idx])
             aux_f=self.aux_layers[idx](features['aux_backbone'][idx])
             merge_f=torch.cat([main_f,aux_f],dim=1)

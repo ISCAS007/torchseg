@@ -36,7 +36,7 @@ def is_main_process(config):
     return not config.use_sync_bn or (config.use_sync_bn and config.rank % config.ngpus_per_node == 0)
 
 def get_dist_module(config):
-    model=smp.__dict__[config.baseline](encoder_name=config.backbone_name,
+    model=smp.__dict__[config.net_name](encoder_name=config.backbone_name,
                                      encoder_depth=config.deconv_layer,
                                      encoder_weights='imagenet',
                                      classes=2,
