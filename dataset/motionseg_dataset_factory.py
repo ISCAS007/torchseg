@@ -19,6 +19,7 @@ import torch.nn.functional as F
 
 def get_motionseg_dataset(config,split):
     dataset_dict={"fbms":fbms_dataset,
+                  "fbms-3d":fbms_dataset,
                   "cdnet2014":cdnet_dataset,
                   "segtrackv2":segtrackv2_dataset,
                   "bmcnet":bmcnet_dataset,
@@ -96,7 +97,8 @@ def motionseg_show_images(imgs,labels=[],predict=[]):
 
 if __name__ == '__main__':
     config=get_default_config()
-    keys=dataset_root_dict.keys()
+    #keys=dataset_root_dict.keys()
+    keys=['fbms','fbms-3d']
     for key in keys:
         for split in ['train','val']:
             config.dataset=key

@@ -22,7 +22,7 @@ def get_parser():
 
     parser.add_argument('--dataset',
                         help='dataset name (FBMS)',
-                        choices=['FBMS','cdnet2014','segtrackv2','BMCnet','DAVIS2017','DAVIS2016','all','all2','all3'],
+                        choices=['FBMS-3D','FBMS','cdnet2014','segtrackv2','BMCnet','DAVIS2017','DAVIS2016','all','all2','all3'],
                         default='cdnet2014')
 
     backbone_names=['vgg'+str(number) for number in [11,13,16,19,21]]

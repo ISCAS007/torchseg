@@ -65,7 +65,7 @@ class motion_backbone(TN.Module):
         use_none_layer: use NoneLayer to replace MaxPool in backbone
         """
         super().__init__()
-        
+
         self.config=config
         if hasattr(config,'use_none_layer'):
             self.use_none_layer=config.use_none_layer
@@ -879,7 +879,7 @@ class transform_motion_psp(TN.Module):
 
 if __name__ == '__main__':
     config=edict()
-    config.backbone_name='resnet152'
+    config.backbone_name='resnet50'
     config.layer_preference='last'
     config.upsample_layer=1
     config.deconv_layer=5
@@ -895,3 +895,6 @@ if __name__ == '__main__':
         bb=motion_backbone(config)
         bb.show_layers()
         print(bb.get_layer_shapes([224,224]))
+        for level in range(6):
+            c=bb.get_feature_map_channel(level)
+            print(level,c)

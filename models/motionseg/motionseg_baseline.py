@@ -5,7 +5,7 @@ conda activate torch1.6
 python models/motionseg/motionseg_baseline.py --dataset cdnet2014 --note baseline --net_name Unet
 python models/motionseg/motionseg_baseline.py --dataset cdnet2014 --note baseline --net_name DeepLabV3Plus --backbone_name resnet50
 
-different from test/fbms_train.py, here the model is the baseline model, but in fbms_train, the model behavior like motion_diff.
+different from test/fbms_train.py, here the model is the baseline model, use single frame to predict, but in fbms_train, the model behavior like motion_diff, use multi frame to predict.
 """
 
 import segmentation_models_pytorch as smp

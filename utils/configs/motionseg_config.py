@@ -4,6 +4,7 @@ import os
 import warnings
 
 dataset_root_dict={"fbms":os.path.expanduser('~/cvdataset/FBMS'),
+                   "fbms-3d":os.path.expanduser('~/cvdataset/FBMS-3D'),
                    "cdnet2014":os.path.expanduser('~/cvdataset/cdnet2014'),
                    "segtrackv2":os.path.expanduser('~/cvdataset/SegTrackv2'),
                    "bmcnet":os.path.expanduser('~/cvdataset/BMCnet'),

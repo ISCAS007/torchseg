@@ -6,24 +6,52 @@ import torch.utils.data as td
 import random
 import numpy as np
 import cv2
+import netpbmfile as pbm
 from dataset.segtrackv2_dataset import main2flow,motionseg_dataset
 
 class fbms_dataset(motionseg_dataset):
     def __init__(self,config,split='train',normalizations=None,augmentations=None):
         super().__init__(config,split,normalizations,augmentations)
 
+        if config.root_path.lower().find('fbms-3d')>=0:
+            self.gt_format='png'
+        else:
+            self.gt_format='ppm'
+
         if split=='train':
-            self.gt_files=glob.glob(os.path.join(self.config['root_path'],
-                                                 'Trainingset',
-                                                 '*',
+            split_dir='Trainingset'
+        else:
+            split_dir='Testset'
+
+
+
+        if self.gt_format=='ppm':
+            self.gt_files=[]
+
+            clips_dir=os.listdir(os.path.join(self.config['root_path'],split_dir))
+            for d in clips_dir:
+
+                ppm_files=glob.glob(os.path.join(self.config['root_path'],
+                                                 split_dir,
+                                                 d,
                                                  'GroundTruth',
-                                                 '*.png'),recursive=True)
+                                                 '*.'+self.gt_format),recursive=True)
+                pgm_files=glob.glob(os.path.join(self.config['root_path'],
+                                                 split_dir,
+                                                 d,
+                                                 'GroundTruth',
+                                                 '*.pgm'),recursive=True)
+                if len(ppm_files)==0:
+                    self.gt_files+=pgm_files
+                else:
+                    self.gt_files+=[f for f in ppm_files if f.find('PROB_gt.ppm')==-1]
         else:
             self.gt_files=glob.glob(os.path.join(self.config['root_path'],
-                                                 'Testset',
-                                                 '*',
-                                                 'GroundTruth',
-                                                 '*.png'),recursive=True)
+                                             split_dir,
+                                             '*',
+                                             'GroundTruth',
+                                             '*.'+self.gt_format),recursive=True)
+
 
         print('%s dataset size %d'%(split,len(self.gt_files)))
         self.gt_files.sort()
@@ -82,11 +110,20 @@ class fbms_dataset(motionseg_dataset):
             return path
 
         # gt_file=dataset/FBMS/Trainingset/bear01/GroundTruth/001_gt.png
+        # or gt_file=dataset/FBMS/Trainingset/bear01/GroundTruth/bear01_0001_gt.ppm
         path_strings=gt_file.split(os.path.sep)
-
-        index_string=path_strings[-1].split('_')[0]
-        frame_index=int(index_string)
         video_name=path_strings[-3]
+
+        if self.gt_format=='png':
+            index_string=path_strings[-1].split('_')[0]
+        else:
+            if video_name=='tennis':
+                index_string=path_strings[-1].replace(video_name,"")
+            else:
+                index_string=path_strings[-1].split('_')[1]
+            index_string=index_string.replace(".pgm","")
+        frame_index=int(index_string)
+
 
         base_path=os.path.sep.join(path_strings[0:-2])
         main_frame=get_frame_path(base_path,video_name,frame_index)
@@ -109,15 +146,28 @@ class fbms_dataset(motionseg_dataset):
         frames=self.get_frames(self.gt_files[index])
         return frames[0],frames[1],self.gt_files[index]
 
+    def imread(self,file):
+        if self.gt_format=='png':
+            gt_image=cv2.imread(file,cv2.IMREAD_GRAYSCALE)
+        else:
+            img_rgb=pbm.imread(file)
+            if len(img_rgb.shape)==3:
+                gt_image=cv2.cvtColor(img_rgb,cv2.COLOR_RGB2GRAY)
+                gt_image[gt_image==255]=0
+            else:
+                gt_image=img_rgb
+
+        return gt_image
+
     def __get_image__(self,index):
         main_file,aux_file,gt_file=self.__get_path__(index)
         frame_images=[cv2.imread(f,cv2.IMREAD_COLOR) for f in [main_file,aux_file]]
-        gt_image=cv2.imread(self.gt_files[index],cv2.IMREAD_GRAYSCALE)
+        gt_image=self.imread(self.gt_files[index])
 
         # find aux_gt_file
         if aux_file in self.img_files:
             aux_index=self.img_files.index(aux_file)
-            aux_gt_image=cv2.imread(self.gt_files[aux_index],cv2.IMREAD_GRAYSCALE)
+            aux_gt_image=self.imread(self.gt_files[aux_index])
         else:
             aux_gt_image=np.zeros_like(gt_image)
 
