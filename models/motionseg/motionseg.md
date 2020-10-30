@@ -2,7 +2,7 @@
 
 ## dataset
 - cdnet dataset
-- fbms dataset
+- fbms/fbms-3d dataset
 
 ## model
 - motion_fcn
@@ -15,7 +15,7 @@
 
 ## train
 ```
-python test/fbms_train.py --net_name motion_attention --batch_size 4 --epoch 50 --upsample_layer 2 --freeze_layer 1 --deconv_layer 5 --dataset FBMS --backbone_name vgg16_bn --note zzl --save_model True --app train 
+python test/fbms_train.py --net_name motion_attention --batch_size 4 --epoch 50 --upsample_layer 2 --freeze_layer 1 --deconv_layer 5 --dataset FBMS --backbone_name vgg16_bn --note zzl --save_model True --app train
 ```
 
 ## test

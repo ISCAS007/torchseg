@@ -8,10 +8,14 @@ import numpy as np
 import cv2
 import netpbmfile as pbm
 from dataset.segtrackv2_dataset import main2flow,motionseg_dataset
+import warnings
 
 class fbms_dataset(motionseg_dataset):
     def __init__(self,config,split='train',normalizations=None,augmentations=None):
         super().__init__(config,split,normalizations,augmentations)
+
+        #for fbms-3d, the first label may be invalid
+        self.remove_first_empty_gt=True
 
         if config.root_path.lower().find('fbms-3d')>=0:
             self.gt_format='png'
@@ -22,8 +26,6 @@ class fbms_dataset(motionseg_dataset):
             split_dir='Trainingset'
         else:
             split_dir='Testset'
-
-
 
         if self.gt_format=='ppm':
             self.gt_files=[]
@@ -42,9 +44,18 @@ class fbms_dataset(motionseg_dataset):
                                                  'GroundTruth',
                                                  '*.pgm'),recursive=True)
                 if len(ppm_files)==0:
-                    self.gt_files+=pgm_files
+                    files=pgm_files
                 else:
-                    self.gt_files+=[f for f in ppm_files if f.find('PROB_gt.ppm')==-1]
+                    files=[f for f in ppm_files if f.find('PROB_gt.ppm')==-1]
+
+                files.sort()
+                if self.remove_first_empty_gt:
+                    gt=self.imread(files[0])
+                    if np.sum(gt)==0:
+                        warnings.warn('remove invalid label',files[0])
+                        files=files[1:]
+
+                self.gt_files+=files
         else:
             self.gt_files=glob.glob(os.path.join(self.config['root_path'],
                                              split_dir,

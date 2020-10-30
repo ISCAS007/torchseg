@@ -21,3 +21,4 @@ there are still room for resdual attention, merge method for spatial and channel
 | attention_type | s,c,sc,cs | s for spatial attention, c for channel attention, sc for spatial + channel attention and cs for channel + spatial attention |
 
 ## input format
+- the aux input format, main input will always in.

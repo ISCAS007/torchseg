@@ -38,6 +38,11 @@ def get_parser():
                         choices=backbone_names,
                         default=None)
 
+    parser.add_argument('--backbone_pretrained',
+                        help='use pretrained backbone or not(True)',
+                        type=str2bool,
+                        default=True)
+
     parser.add_argument('--input_format',
                         help='input format [Background(B),Neighbor Image(N),Optical Flow(O),Neighbor GroundTruth(G),None(-)] (-)',
                         default='-')
