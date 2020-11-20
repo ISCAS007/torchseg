@@ -306,7 +306,12 @@ def get_load_convert_model(config):
     checkpoint_path=get_checkpoint_path(config)
     model=get_model(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.load_state_dict(torch.load(checkpoint_path))
+    state_dict = torch.load(checkpoint_path)
+    if 'model_state' in state_dict.keys():
+        model.load_state_dict(state_dict['model_state'])
+    else:
+        model.load_state_dict(state_dict)
+    #model.load_state_dict(torch.load(checkpoint_path))
     model.to(device)
     model.eval()
 

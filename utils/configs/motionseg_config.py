@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from easydict import EasyDict as edict
 import os
+import yaml
 import warnings
 
 dataset_root_dict={"fbms":os.path.expanduser('~/cvdataset/FBMS'),
@@ -76,7 +77,25 @@ def get_default_config():
 
     return config
 
+def load_config(config_file):
+    f=open(config_file,'r')
+    l=f.readline()
+    f.close()
+
+    d=yaml.safe_load(l)
+    config=edict(d)
+
+    return config
+
 def update_default_config(args):
+    if args.checkpoint_path is not None:
+        config_txt_path=os.path.join(os.path.dirname(args.checkpoint_path),'config.txt')
+        config=load_config(config_txt_path)
+        config.checkpoint_path=args.checkpoint_path
+        config.app=args.app
+        warnings.warn('load config from {}'.format(config_txt_path))
+        return config
+
     config=get_default_config()
     if args.net_name=='motion_psp':
         if args.use_none_layer is False or args.upsample_layer<=3:
