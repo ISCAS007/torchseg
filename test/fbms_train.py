@@ -29,6 +29,7 @@ import random
 import torch.backends.cudnn as cudnn
 import cv2
 from easydict import EasyDict as edict
+from utils.torchsummary import summary
 from utils.davis_benchmark import benchmark
 import json
 
@@ -246,7 +247,7 @@ def compute_fps(config):
         total_time+=(time.time()-start_time)
         counter+=outputs['masks'][0].shape[0]
 
-        if counter>100:
+        if counter>1000:
             break
     fps=counter/total_time
     print(f'fps={fps}')
@@ -397,13 +398,20 @@ if __name__ == '__main__':
 
         sys.exit(0)
     elif args.app=='summary':
-        import torchsummary
-
         config.gpu=0
         model,seg_loss_fn,optimizer,dataset_loaders=get_dist_module(config)
         # not work for output with dict.
-        torchsummary.summary(model, ((3, config.input_shape[0], config.input_shape[1]),
-                                     (2, config.input_shape[0], config.input_shape[1])))
+
+        if config.input_format=='n':
+            summary(model, [(3, config.input_shape[0], config.input_shape[1]),
+                            (3, config.input_shape[0], config.input_shape[1])])
+        elif config.input_format=='o':
+            summary(model, [(3, config.input_shape[0], config.input_shape[1]),
+                            (2, config.input_shape[0], config.input_shape[1])])
+        elif config.input_format=='_':
+            summary(model, [(3, config.input_shape[0], config.input_shape[1])])
+        else:
+            assert False,'unknonw input format {}'.format(config.input_format)
         sys.exit(0)
     elif args.app in ['test','benchmark']:
         test(config)
