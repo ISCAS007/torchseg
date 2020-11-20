@@ -56,7 +56,7 @@ if __name__ == '__main__':
                 choices=['dump_tasks','dump_recent'])
 
     parser.add_argument('--tags',
-                       choices=['f','iou'],
+                       choices=['f','iou','fps'],
                        default='f')
 
     args=parser.parse_args()
@@ -66,6 +66,9 @@ if __name__ == '__main__':
         rootpath=os.path.expanduser('~/tmp/logs/motion')
     elif args.tags=='iou':
         tags=['train/iou','val/iou']
+        rootpath=os.path.expanduser('~/tmp/logs/motion')
+    elif args.tags=='fps':
+        tags=['train/fmeasure','val/fmeasure','train/fps','val/fps','total_param','train_param']
         rootpath=os.path.expanduser('~/tmp/logs/motion')
 
     if args.app=='dump_recent':
