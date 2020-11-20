@@ -412,6 +412,13 @@ if __name__ == '__main__':
             summary(model, [(3, config.input_shape[0], config.input_shape[1])])
         else:
             assert False,'unknonw input format {}'.format(config.input_format)
+
+
+        total_param=sum(p.numel() for p in model.parameters())
+        train_param=sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print("#"*50+"better result")
+        print('total:{} MB, train:{} MB'.format(total_param/(1024*1024),train_param/(1024*1024)))
+
         sys.exit(0)
     elif args.app in ['test','benchmark']:
         test(config)
