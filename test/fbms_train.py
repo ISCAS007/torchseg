@@ -102,6 +102,10 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                                config['dataset'], config['note'], time_str)
         checkpoint_path = os.path.join(log_dir, 'model-last-%d.pkl' % config['epoch'])
 
+        total_param=sum(p.numel() for p in model.parameters())
+        train_param=sum(p.numel() for p in model.parameters() if p.requires_grad)
+        config.total_param=total_param/(1024*1024)
+        config.train_param=train_param/(1024*1024)
         writer=init_writer(config,log_dir)
 
     motionseg_metric=MotionSegMetric(config.exception_value)
@@ -127,6 +131,8 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
             else:
                 tqdm_step = dataset_loaders[split]
 
+            total_time=0
+            counter=0
             N=len(dataset_loaders[split])
             for step,data in enumerate(tqdm_step):
                 images,origin_labels,resize_labels=prepare_input_output(data=data,config=config,device=device)
@@ -137,7 +143,10 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                               max_iter=config.epoch*N)
 
                 if config.net_name.startswith('motion'):
+                    start_time=time.time()
                     outputs=model.forward(images)
+                    total_time+=(time.time()-start_time)
+                    counter+=outputs['masks'][0].shape[0]
                 else:
                     #assert config.input_format=='n'
                     outputs=model.forward(torch.cat(images,dim=1))
@@ -207,6 +216,8 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                         step_acc+=1
 
             if is_main_process(config):
+                fps=counter/total_time
+                writer.add_scalar(split+'/fps',fps,epoch)
                 motionseg_metric.write(writer,split,epoch)
                 current_metric=motionseg_metric.fetch()
                 fmeasure=current_metric['fmeasure'].item()
@@ -412,7 +423,6 @@ if __name__ == '__main__':
             summary(model, [(3, config.input_shape[0], config.input_shape[1])])
         else:
             assert False,'unknonw input format {}'.format(config.input_format)
-
 
         total_param=sum(p.numel() for p in model.parameters())
         train_param=sum(p.numel() for p in model.parameters() if p.requires_grad)
