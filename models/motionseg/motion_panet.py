@@ -391,6 +391,8 @@ class motion_panet2(nn.Module):
                 warnings.warn('aux backbone not worked when share_backbone')
                 if config.aux_backbone != config.backbone_name:
                     assert False
+            else:
+                warnings.warn('share main backbone {} for none aux backbone'.format(config.backbone_name))
         else:
             if self.use_aux_input:
                 if config.aux_backbone is None:

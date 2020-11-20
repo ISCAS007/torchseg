@@ -101,3 +101,6 @@ tar -czvf results.tgz results
 - `python utils/summary_to_csv.py` output best val/iou to orange tab file
 - `python test/dp_log.py` view pid and detail
 - `pipreqs --ignore models/examples,models/mxnet,utils/model_hyperopt.py --force .` pip requirements
+- `python test/fbms_train.py` motion segmentation
+- `python test/pspnet_test.py` semantic segmetnation
+- `python notbooks/motion_statistic.py --app dump_tasks --note xxx --dump_group` dump motion segmentation experiment in table format.

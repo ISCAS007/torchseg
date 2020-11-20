@@ -26,7 +26,11 @@ def summary(rootpath,tags,filter_str=None,recent_log_number=100):
         log=config_to_log(cfg)
         if log is not None:
             ed=load_config(cfg)
-            metrics=load_log(log,tags)
+            try:
+                metrics=load_log(log,tags)
+            except:
+                raise Exception('exception in process log {}'.format(log))
+
             actual_step=get_actual_step(log)
             for key,value in metrics.items():
                 ed[key]=value

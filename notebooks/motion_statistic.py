@@ -1,23 +1,8 @@
-
 # coding: utf-8
-
-import pandas as pd
-from glob import glob
-import numpy as np
-from easydict import EasyDict as edict
 import os
-import time
-import sys
-from tabulate import tabulate
 import argparse
-sys.path.insert(0,os.path.expanduser('~/git/torchseg'))
-print(sys.path)
 
-from utils.configs.semanticseg_config import load_config
-from utils.summary_to_csv import config_to_log,load_log,edict_to_pandas,today_log,recent_log,get_actual_step
-import warnings
-
-from utils.summary_to_jupyter import summary,dump
+from utils.summary_to_jupyter import dump
 
 def dump_tasks(notes,
     delete_nan=False,
@@ -35,9 +20,6 @@ def dump_tasks(notes,
         delete_nan=delete_nan,
         dump_group=dump_group,
         dump_dir=dump_dir)
-
-
-# In[63]:
 
 def dump_recent(
     tags=['train/fmeasure','val/fmeasure'],

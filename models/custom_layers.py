@@ -89,7 +89,7 @@ class SALayer(nn.Module):
         y = self.conv(attention_feature)
         return main_feature * y
 
-## Global Attention (GA) Layer
+## Global Attention (GA) Layer, ParseNet
 class GALayer(nn.Module):
     def __init__(self,main_channel,ga_channel=32,reduction=16,attention_channel=None):
         super().__init__()
