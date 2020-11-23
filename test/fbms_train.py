@@ -238,7 +238,7 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
     if is_main_process(config):
         writer.close()
 
-def compute_fps(config):
+def compute_fps(config,idx):
     batch_size=config.batch_size
     model=get_load_convert_model(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -262,7 +262,7 @@ def compute_fps(config):
         if counter>1000:
             break
     fps=counter/total_time
-    print(f'{config.backbone_name} {config.share_backbone} {config.attention_type} fps={fps}')
+    print(f'{idx}: {config.backbone_name} {config.share_backbone} {config.attention_type} fps={fps}')
 
     fps_summary_file=os.path.expanduser('~/tmp/result/fps.json')
     with open(fps_summary_file,'r+') as f:
@@ -272,7 +272,7 @@ def compute_fps(config):
             fps_summary=dict()
         finally:
             f.seek(0)
-            fps_summary[config.note+'-'+config.backbone_name+'-'+str(config.share_backbone)+'-'+config.attention_type]=fps
+            fps_summary[config.note+'-'+str(idx)+'-'+config.backbone_name+'-'+str(config.share_backbone)+'-'+config.attention_type]=fps
             json.dump(fps_summary,f)
             f.truncate()
 
@@ -436,10 +436,11 @@ if __name__ == '__main__':
     elif args.app == 'fps':
         ckpt_paths=glob.glob(os.path.join(config.log_dir,'*','*',config.note,'*','*.pkl'))
         assert len(ckpt_paths)>0,'cannot find checkpoint_path'
-        for ckpt in ckpt_paths:
+        ckpt_paths.sort()
+        for idx,ckpt in enumerate(ckpt_paths):
             args.checkpoint_path=ckpt
             config=update_default_config(args)
-            compute_fps(config)
+            compute_fps(config,idx)
     elif config.use_sync_bn:
         dist_train(config)
     else:
