@@ -27,7 +27,8 @@ def get_parser():
 
     backbone_names=['vgg'+str(number) for number in [11,13,16,19,21]]
     backbone_names+=[s+'_bn' for s in backbone_names]
-    backbone_names+=['resnet50','resnet101','MobileNetV2','se_resnet50','Anet']
+    backbone_names+=['resnet'+str(number) for number in [18,34,50,101,152]]
+    backbone_names+=['mobilenet','mobilenet_v2','MobileNetV2','se_resnet50','Anet']
     parser.add_argument('--backbone_name',
                         help='backbone for motion_fcn and motion_fcn_stn',
                         choices=backbone_names,

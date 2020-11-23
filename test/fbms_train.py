@@ -32,6 +32,7 @@ from easydict import EasyDict as edict
 from utils.torchsummary import summary
 from utils.davis_benchmark import benchmark
 import json
+import glob
 
 def get_dist_module(config):
     model=get_model(config)
@@ -261,7 +262,7 @@ def compute_fps(config):
         if counter>1000:
             break
     fps=counter/total_time
-    print(f'fps={fps}')
+    print(f'{config.backbone_name} {config.share_backbone} {config.attention_type} fps={fps}')
 
     fps_summary_file=os.path.expanduser('~/tmp/result/fps.json')
     with open(fps_summary_file,'r+') as f:
@@ -271,7 +272,7 @@ def compute_fps(config):
             fps_summary=dict()
         finally:
             f.seek(0)
-            fps_summary[config.note]=fps
+            fps_summary[config.note+'-'+config.backbone_name+'-'+str(config.share_backbone)+'-'+config.attention_type]=fps
             json.dump(fps_summary,f)
             f.truncate()
 
@@ -433,7 +434,12 @@ if __name__ == '__main__':
     elif args.app in ['test','benchmark']:
         test(config)
     elif args.app == 'fps':
-        compute_fps(config)
+        ckpt_paths=glob.glob(os.path.join(config.log_dir,'*','*',config.note,'*','*.pkl'))
+        assert len(ckpt_paths)>0,'cannot find checkpoint_path'
+        for ckpt in ckpt_paths:
+            args.checkpoint_path=ckpt
+            config=update_default_config(args)
+            compute_fps(config)
     elif config.use_sync_bn:
         dist_train(config)
     else:

@@ -178,6 +178,10 @@ class HALayer(nn.Module):
 
 class AttentionLayer(nn.Module):
     def __init__(self,config,main_c,filter_c=None,is_lr_layer=False):
+        """
+        # dual attention module will run of memory for HR layer
+        is_lr_layer: is Low Resolution layer ?
+        """
         super().__init__()
         self.config=config
         self.is_lr_layer=is_lr_layer
