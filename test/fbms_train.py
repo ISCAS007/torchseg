@@ -147,10 +147,13 @@ def train(config,model,seg_loss_fn,optimizer,dataset_loaders):
                     start_time=time.time()
                     outputs=model.forward(images)
                     total_time+=(time.time()-start_time)
-                    counter+=outputs['masks'][0].shape[0]
+                    counter+=images[0].shape[0]
                 else:
                     #assert config.input_format=='n'
+                    start_time=time.time()
                     outputs=model.forward(torch.cat(images,dim=1))
+                    total_time+=(time.time()-start_time)
+                    counter+=images[0].shape[0]
 
                 if config.net_name=='motion_anet':
                     mask_gt=torch.squeeze(resize_labels[0],dim=1)

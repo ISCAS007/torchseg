@@ -6,6 +6,13 @@ python models/motionseg/motionseg_baseline.py --dataset cdnet2014 --note baselin
 python models/motionseg/motionseg_baseline.py --dataset cdnet2014 --note baseline --net_name DeepLabV3Plus --backbone_name resnet50
 
 different from test/fbms_train.py, here the model is the baseline model, use single frame to predict, but in fbms_train, the model behavior like motion_diff, use multi frame to predict.
+
+net_name: ['Unet','UnetPlusPlus','DeepLabV3','FPN','PAN','PSPNet','Linknet','PSPNet','DeepLabV3Plus']
+    - PSPNet: deconv_layer=3(if not set upsampling)
+    - PANNet: not encoder_depth, Currently works with shape of input tensor >= [B x C x 128 x 128] for pytorch <= 1.1.0
+and with shape of input tensor >= [B x C x 256 x 256] for pytorch == 1.3.1
+    - FPN: encoder_depth=5, upampleing=4
+
 """
 
 import segmentation_models_pytorch as smp
@@ -40,11 +47,28 @@ def get_dist_module(config):
         weight='imagenet'
     else:
         weight=None
-    model=smp.__dict__[config.net_name](encoder_name=config.backbone_name,
-                                     encoder_depth=config.deconv_layer,
-                                     encoder_weights=weight,
-                                     classes=2,
-                                     in_channels=3)
+
+    if config.input_format=='-':
+        in_channels=3
+    elif config.input_format=='n':
+        in_channels=6
+    elif config.input_format=='o':
+        in_channels=5
+    else:
+        assert False,'unsupport input format {}'.format(config.input_format)
+
+    if config.net_name=='PAN':
+        model=smp.__dict__[config.net_name](encoder_name=config.backbone_name,
+                                            encoder_weights=weight,
+                                            classes=2,
+                                            in_channels=in_channels)
+    else:
+        model=smp.__dict__[config.net_name](encoder_name=config.backbone_name,
+                                            encoder_depth=config.deconv_layer,
+                                            encoder_weights=weight,
+                                            classes=2,
+                                            in_channels=in_channels)
+
 
     # support for cpu/gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

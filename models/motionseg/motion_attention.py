@@ -178,3 +178,16 @@ class motion_attention(motion_panet2):
 class motion_attention_flow(motion_attention):
     def __init__(self,config):
         super().__init__(config)
+
+class motion_attention_stn(nn.Module):
+    def __init__(self,config):
+        super().__init__()
+        self.stn=stn(config)
+        self.motion_attention=motion_attention(config)
+
+    def forward(self,imgs):
+        results=self.stn(imgs)
+        masks=self.motion_attention(results['stn_images'])
+        results['masks']=masks['masks']
+
+        return results

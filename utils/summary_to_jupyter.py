@@ -131,7 +131,14 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                 print('tags is',tags)
                 print('invalid_param_list is',invalid_param_list)
             else:
-                print(tabulate(tasks[show_tags].groupby(group_tags).mean().sort_values(tags[1]),tablefmt='pipe',headers='keys'))
+                if 'dataset' in group_tags:
+                    sort_tags=['dataset',tags[1]]
+                elif 'dataset_name' in group_tags:
+                    sort_tags=['dataset_name',tags[1]]
+                else:
+                    sort_tags=tags[1]
+
+                print(tabulate(tasks[show_tags].groupby(group_tags).mean().sort_values(sort_tags),tablefmt='pipe',headers='keys'))
                 print('\n')
                 print(tabulate(tasks[[tags[1]]+group_tags].groupby(group_tags).agg([np.mean,np.std,np.max]),tablefmt='pipe',headers='keys'))
                 print('\n')

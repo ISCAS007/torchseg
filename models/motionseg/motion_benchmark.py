@@ -8,9 +8,9 @@ for val_path mode:
     2. use_part_number support(better optical flow model support)
     3. path support
 """
-from utils.config import load_config
+from utils.configs.motionseg_config import load_config,get_default_config
 from utils.notebook import get_model_and_dataset
-from models.motionseg.motion_utils import get_parser,get_default_config,get_dataset
+from models.motionseg.motion_utils import get_parser,get_dataset
 from models.motionseg.motion_utils import fine_tune_config
 import torch.nn.functional as F
 import numpy as np
@@ -134,7 +134,7 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
     for idx in trange(N):
         img1_path,img2_path,gt_path=dataset.__get_path__(idx)
 
-        if config.dataset=='FBMS':
+        if config.dataset in ['FBMS','FBMS-3D']:
             save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset,config.note))
         elif config.dataset.upper() in ['DAVIS2017']:
             save_path=get_save_path(gt_path,

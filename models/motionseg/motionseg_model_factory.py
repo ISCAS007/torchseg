@@ -11,14 +11,14 @@ from models.motionseg.motion_psp import motion_psp
 from models.Anet.motion_anet import motion_anet
 from models.motionseg.motion_mix import motion_mix,motion_mix_flow
 from models.motionseg.motion_filter import motion_filter,motion_filter_flow
-from models.motionseg.motion_attention import motion_attention,motion_attention_flow
+from models.motionseg.motion_attention import motion_attention,motion_attention_flow,motion_attention_stn
 from models.motionseg.motion_diff import motion_diff
 from models.motionseg.changenet import motion_changenet
 import segmentation_models_pytorch as smp
 
 def get_baseline_model_keys():
-    return ['Unet','DeepLabV3','FPN','PSPNet','Linknet',
-                                 'PSPNet','DeepLabV3Plus']
+    return ['Unet','DeepLabV3','FPN','PAN','PSPNet','Linknet',
+            'UnetPlusPlus','PSPNet','DeepLabV3Plus']
 
 def get_motionseg_model_keys():
     keys=globals().keys()
