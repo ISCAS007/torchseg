@@ -148,7 +148,7 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
             sort_tags=['log_time'] if sort_tags is None or len(sort_tags)==0 else sort_tags
             print(tabulate(tasks[show_tags].sort_values(sort_tags),tablefmt='pipe',headers='keys'))
         else:
-            print(tabulate(tasks[show_tags].sort_values(sort_tags+[tags[1]]),tablefmt='pipe',headers='keys'))
+            print(tabulate(tasks[show_tags].sort_values(sort_tags),tablefmt='pipe',headers='keys'))
         print('\n')
         if dump_dir:
             print(tabulate(tasks[dir_tags].sort_values(tags[1]),tablefmt='pipe',headers='keys'))
