@@ -108,7 +108,11 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
         benchmark(config_file,output_root_path)
     def get_fmeasure(gt_path,save_path):
         gt_img=cv2.imread(gt_path,cv2.IMREAD_GRAYSCALE)
+        if gt_img is None:
+            assert False,'invalid gt_path: {}'.format(gt_path)
         pred_img=cv2.imread(save_path,cv2.IMREAD_GRAYSCALE)
+        if pred_img is None:
+            assert False,'invalid save_path: {}'.format(save_path)
 
         tp=np.sum(np.logical_and(gt_img>0,pred_img>0))
 #        tn=np.sum(np.logical_and(gt_img==0,pred_img==0))
@@ -138,14 +142,13 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
             save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset,config.note))
         elif config.dataset.upper() in ['DAVIS2017']:
             save_path=get_save_path(gt_path,
-                                    os.path.join(config.root_path,'Annotations_unsupervised/480p'),
-                                    output_root_path)
-            print(gt_path,config.root_path,output_root_path,save_path)
+                                    config.root_path,
+                                    os.path.join(output_root_path,config.dataset,config.note))
         elif config.dataset.upper() in ['DAVIS2016']:
             save_path=get_save_path(gt_path,
-                                    os.path.join(config.root_path,'Annotations/480p'),
-                                    output_root_path)
-            print(gt_path,config.root_path,output_root_path,save_path)
+                                    #os.path.join(config.root_path,'Annotations/480p'),
+                                    config.root_path,
+                                    os.path.join(output_root_path,config.dataset,config.note))
         else:
             assert False
 
@@ -163,9 +166,11 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
 
     images=[]
     for key,value in category_dict.items():
-        print(value[2])
+        print(f"key={key},value={value[2]}")
         for idx,path in enumerate(value):
             img=cv2.imread(path)
+            if img is None:
+                assert False,'invalid path: {}'.format(path)
             if np.max(img)==1:
                 img*=255
             images.append(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
