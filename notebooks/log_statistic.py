@@ -15,7 +15,9 @@ def dump_tasks(notes,
                     'test_path', 'train_path', 'val_path',
                     'use_optical_flow']):
 
-    dump(tags=tags,rootpath=rootpath,notes=notes,
+    dump(tags=tags,
+         rootpath=rootpath,
+         notes=notes,
          descripe=descripe,
          invalid_param_list=invalid_param_list,
          delete_nan=delete_nan,
@@ -29,8 +31,7 @@ def dump_recent(
     dump_dir=True,
     recent_log_number=100,
     descripe=['note','epoch'],
-    note_gtags=[['dataset','log_time','net_name'],
-               ['dataset','log_time','net_name']]):
+    note_gtags=None):
     dump(tags=tags,
          rootpath=rootpath,
          notes=notes,
@@ -73,14 +74,30 @@ if __name__ == '__main__':
         tags=['train/fmeasure','val/fmeasure']
         rootpath=os.path.expanduser('~/tmp/logs/motion')
         descripe=['note','epoch']
+        invalid_param_list=['dir','log_time','root_path',
+                    'test_path', 'train_path', 'val_path',
+                    'use_optical_flow']
+        
     elif args.tags=='iou':
         tags=['train/iou','val/iou']
         rootpath=os.path.expanduser('~/tmp/logs/pytorch')
         descripe=['note','n_epoch']
+        invalid_param_list=['dir','log_time','root_path',
+                    'test_path', 'train_path', 'val_path',
+                    'use_optical_flow','flow_backbone',
+                    'ignore_outOfRoi','exception_value',
+                    'cityscapes_split','txt_path',
+                    'decode_main_layer','gpu','ngpus_per_node',
+                    'rank']
+        
     elif args.tags=='fps':
         tags=['train/fmeasure','val/fmeasure','train/fps','val/fps','total_param','train_param']
         rootpath=os.path.expanduser('~/tmp/logs/motion')
         descripe=['note','epoch']
+        invalid_param_list=['dir','log_time','root_path',
+                    'test_path', 'train_path', 'val_path',
+                    'use_optical_flow']
+        
 
     if args.app=='dump_recent':
         recent_log_number=args.recent_log_number
@@ -90,9 +107,7 @@ if __name__ == '__main__':
                     recent_log_number=recent_log_number,
                     descripe=descripe)
     else:
-        invalid_param_list=['dir','log_time','root_path',
-                    'test_path', 'train_path', 'val_path',
-                    'use_optical_flow']+args.ignore_params
+        invalid_param_list+=args.ignore_params
         print('notes={},delete_nan={},dump_group={}'.format(args.notes,args.delete_nan,args.dump_group))
         dump_tasks(notes=args.notes,
             delete_nan=args.delete_nan,
