@@ -23,6 +23,7 @@ from models.cross_merge import cross_merge
 from models.motionnet import motionnet,motion_panet
 from models.unet import UNet,PSPUNet,AuxNet
 from models.global_local_net import GlobalLocalNet
+from models.semanticseg.semanticseg_baseline import SemanticSegBaseline
 import torch
 
 def convert_to_dilated_pool(module):
@@ -40,7 +41,13 @@ def convert_to_dilated_pool(module):
     return output_module
 
 def get_net(config):
-    model = globals()[config.net_name](config)
+    baseline_nets=['Unet','UnetPlusPlus','DeepLabV3','FPN',
+                         'PAN','PSPNet','Linknet','PSPNet','DeepLabV3Plus']
+    
+    if config.net_name in baseline_nets:
+        model = SemanticSegBaseline(config)
+    else:
+        model = globals()[config.net_name](config)
 
     if config.use_dilated_pool:
         return convert_to_dilated_pool(model)
@@ -418,7 +425,7 @@ def get_parser():
     parser.add_argument('--dataset_name',
                         help='dataset name',
                         choices=['ADEChallengeData2016', 'VOC2012', 'Kitti2015',
-                                 'Cityscapes', 'Cityscapes_Fine', 'Cityscapes_Coarse'],
+                                 'Cityscapes', 'Cityscapes_Fine', 'Cityscapes_Coarse','HuaWei'],
                         default='Cityscapes')
 
     parser.add_argument('--dataset_use_part',
@@ -468,7 +475,9 @@ def get_parser():
                                  'fcn', 'fcn8s', 'fcn16s', 'fcn32s',
                                  'merge_seg','cross_merge', 'psp_hed',
                                  'motionnet','motion_panet', 'UNet',
-                                 'PSPUNet', 'AuxNet', 'GlobalLocalNet'],
+                                 'PSPUNet', 'AuxNet', 'GlobalLocalNet']+
+                        ['Unet','UnetPlusPlus','DeepLabV3','FPN',
+                         'PAN','PSPNet','Linknet','PSPNet','DeepLabV3Plus'],
                         default='pspnet')
 
     parser.add_argument('--midnet_scale',

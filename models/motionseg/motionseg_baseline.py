@@ -16,15 +16,13 @@ and with shape of input tensor >= [B x C x 256 x 256] for pytorch == 1.3.1
 """
 
 import segmentation_models_pytorch as smp
-from segmentation_models_pytorch.encoders import get_preprocessing_fn
 
 from utils.configs.motionseg_config import update_default_config
 from dataset.motionseg_dataset_factory import prepare_input_output
 from models.motionseg.motion_utils import (get_parser,
                                            get_dataset,
-                                           get_model,
-                                           poly_lr_scheduler,
-                                           get_load_convert_model)
+                                           poly_lr_scheduler)
+
 from utils.torch_tools import init_writer
 from utils.losses import jaccard_loss,dice_loss
 from tqdm import trange,tqdm

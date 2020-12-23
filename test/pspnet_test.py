@@ -29,7 +29,7 @@ from models.unet import UNet,PSPUNet,AuxNet
 from utils.augmentor import Augmentations
 from utils.torch_tools import keras_fit
 from utils.benchmark import keras_benchmark,get_loader
-from utils.config import get_parser,get_config,get_net
+from utils.configs.semanticseg_config import get_parser,get_config,get_net
 from utils.distributed_tools import dist_train
 
 if __name__ == '__main__':

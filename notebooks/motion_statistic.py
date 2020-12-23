@@ -9,17 +9,18 @@ def dump_tasks(notes,
     dump_group=True,
     dump_dir=True,
     tags=['train/fmeasure','val/fmeasure'],
+    descripe=['note','epoch'],
     rootpath=os.path.expanduser('~/tmp/logs/motion'),
     invalid_param_list=['dir','log_time','root_path',
                     'test_path', 'train_path', 'val_path',
                     'use_optical_flow']):
 
     dump(tags=tags,rootpath=rootpath,notes=notes,
-        descripe=['note','epoch'],
-             invalid_param_list=invalid_param_list,
-        delete_nan=delete_nan,
-        dump_group=dump_group,
-        dump_dir=dump_dir)
+         descripe=descripe,
+         invalid_param_list=invalid_param_list,
+         delete_nan=delete_nan,
+         dump_group=dump_group,
+         dump_dir=dump_dir)
 
 def dump_recent(
     tags=['train/fmeasure','val/fmeasure'],
@@ -27,12 +28,19 @@ def dump_recent(
     notes=['today','recent'],
     dump_dir=True,
     recent_log_number=100,
+    descripe=['note','epoch'],
     note_gtags=[['dataset','log_time','net_name'],
                ['dataset','log_time','net_name']]):
-    dump(tags=tags,rootpath=rootpath,notes=notes,
-        note_gtags=note_gtags,sort_tags=['dataset','val/fmeasure'],
-             descripe=['note','epoch'],delete_nan=False,dump_group=False,
-        dump_dir=dump_dir,recent_log_number=recent_log_number)
+    dump(tags=tags,
+         rootpath=rootpath,
+         notes=notes,
+         note_gtags=note_gtags,
+         sort_tags=['dataset','val/fmeasure'],
+         descripe=descripe,
+         delete_nan=False,
+         dump_group=False,
+         dump_dir=dump_dir,
+         recent_log_number=recent_log_number,)
 
 
 if __name__ == '__main__':
@@ -64,16 +72,23 @@ if __name__ == '__main__':
     if args.tags=='f':
         tags=['train/fmeasure','val/fmeasure']
         rootpath=os.path.expanduser('~/tmp/logs/motion')
+        descripe=['note','epoch']
     elif args.tags=='iou':
         tags=['train/iou','val/iou']
-        rootpath=os.path.expanduser('~/tmp/logs/motion')
+        rootpath=os.path.expanduser('~/tmp/logs/pytorch')
+        descripe=['note','n_epoch']
     elif args.tags=='fps':
         tags=['train/fmeasure','val/fmeasure','train/fps','val/fps','total_param','train_param']
         rootpath=os.path.expanduser('~/tmp/logs/motion')
+        descripe=['note','epoch']
 
     if args.app=='dump_recent':
         recent_log_number=args.recent_log_number
-        dump_recent(dump_dir=args.dump_dir,rootpath=rootpath,tags=tags,recent_log_number=recent_log_number)
+        dump_recent(dump_dir=args.dump_dir,
+                    rootpath=rootpath,
+                    tags=tags,
+                    recent_log_number=recent_log_number,
+                    descripe=descripe)
     else:
         invalid_param_list=['dir','log_time','root_path',
                     'test_path', 'train_path', 'val_path',
@@ -84,5 +99,6 @@ if __name__ == '__main__':
             dump_group=args.dump_group,
             dump_dir=args.dump_dir,
             invalid_param_list=invalid_param_list,
+            descripe=descripe,
             tags=tags,
             rootpath=rootpath)

@@ -67,7 +67,7 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
         dump_dir=True,
         recent_log_number=100):
     dir_tags=[tags[1],'dir']
-
+            
     for idx,note in enumerate(notes):
         show_tags=[]
         show_tags=tags.copy()

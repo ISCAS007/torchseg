@@ -13,8 +13,13 @@ import pandas as pd
 import os
 import tensorflow as tf
 import time
+from packaging import version
 
-
+if version.parse(tf.__version__) < version.parse('2.0.0'):
+    from tensorflow.train import summary_iterator
+else:
+    from tensorflow.compat.v1.train import summary_iterator
+        
 def edict_to_pandas(ed):
     def edict_to_dict(ed):
         d=dict()
@@ -51,7 +56,8 @@ def load_log(log_file,tags=['train/acc','val/acc','train/iou','val/iou']):
     return best metrics
     """
     best_metrics={}
-    for e in tf.train.summary_iterator(log_file):
+        
+    for e in summary_iterator(log_file):
         for v in e.summary.value:
             if v.tag in tags:
                 if v.tag not in best_metrics.keys():
@@ -69,7 +75,7 @@ def get_actual_step(log_file):
     returna actual step
     """
     actual_step=0
-    for e in tf.train.summary_iterator(log_file):
+    for e in summary_iterator(log_file):
         if hasattr(e,'step'):
             actual_step=e.step
 

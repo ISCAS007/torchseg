@@ -32,11 +32,11 @@ import cv2
 import numpy as np
 from easydict import EasyDict as edict
 from PIL import Image
-
+from dataset.json2labelImg import createLabelImage
 
 def get_dataset_generalize_config(config, dataset_name):
     support_datasets = ['ADEChallengeData2016', 'VOC2012', 'Kitti2015',
-                        'Cityscapes', 'Cityscapes_Fine', 'Cityscapes_Coarse', 'ADE20K']
+                        'Cityscapes', 'Cityscapes_Fine', 'Cityscapes_Coarse', 'ADE20K', 'HuaWei']
     assert dataset_name in support_datasets, 'unknown dataset %s, not in support dataset %s' % (
         dataset_name, str(support_datasets))
     if dataset_name == 'ADEChallengeData2016':
@@ -100,6 +100,17 @@ def get_dataset_generalize_config(config, dataset_name):
         assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
         config.foreground_class_ids = [
             7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
+        config.ignore_index = 255
+    elif dataset_name == 'HuaWei':
+        # train
+        config.root_path = os.path.expanduser('~/cvdataset/huawei/segmentation')
+        assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
+        config.txt_note = 'huawei'
+        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
+        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
+        config.foreground_class_ids = [i for i in range(7)]
+        names='void,flat,human,vehicle,construction,object,nature,sky'
+        config.class_names=names.split(',')
         config.ignore_index = 255
     else:
         assert False, 'Not Implement for dataset %s' % dataset_name
@@ -228,7 +239,11 @@ class dataset_generalize(TD.Dataset):
                     print('image path:', img_path)
                     print('label path:', lbl_path)
     #        lbl = cv2.imread(lbl_path,cv2.IMREAD_GRAYSCALE)
-            lbl_pil = Image.open(lbl_path)
+            if not lbl_path.endswith(('.json')):
+                lbl_pil = Image.open(lbl_path)
+            else:
+                lbl_pil = createLabelImage(lbl_path)
+                
             lbl = np.array(lbl_pil, dtype=np.uint8)
             assert img is not None, 'empty image for path %s' % img_path
 
@@ -394,7 +409,8 @@ if __name__ == '__main__':
     config.norm = True
 #    dataset_name='ADEChallengeData2016'
 #    dataset_name='VOC2012'
-    dataset_name = 'Cityscapes_Fine'
+#    dataset_name = 'Cityscapes_Fine''
+    dataset_name = 'HuaWei'
     config = get_dataset_generalize_config(config, dataset_name)
 
     dataset = dataset_generalize(config, split='val')
