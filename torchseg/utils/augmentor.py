@@ -8,12 +8,12 @@ import numpy as np
 import cv2
 import math
 import random
-from utils.disc_tools import show_images
+
 from easydict import EasyDict as edict
 from torchvision import transforms as TT
-from utils import joint_transforms as JT
-from utils import semseg_transform as ST
-from dataset.dataset_generalize import image_normalizations
+from . import joint_transforms as JT
+from . import semseg_transform as ST
+from .disc_tools import show_images
 from functools import partial
 
 

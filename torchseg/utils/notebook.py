@@ -2,15 +2,16 @@
 notebook utils for motionseg
 """
 
-from models.motionseg.motion_utils import get_parser,get_dataset
-from utils.configs.motionseg_config import get_default_config
-from utils.configs.semanticseg_config import load_config
+
 import torch.utils.data as td
 import torch
 import os
-from dataset.dataset_generalize import image_normalizations
-from utils.torch_tools import get_ckpt_path,load_ckpt
-from models.motionseg.motion_utils import fine_tune_config,get_model
+from ...dataset.dataset_generalize import image_normalizations
+from .torch_tools import get_ckpt_path,load_ckpt
+from ...models.motionseg.motion_utils import fine_tune_config,get_model
+from ...models.motionseg.motion_utils import get_parser,get_dataset
+from .configs.motionseg_config import get_default_config
+from .configs.semanticseg_config import load_config
 
 def get_model_and_dataset(cfg,filter_relu=None):
     if isinstance(cfg,(tuple,list)):

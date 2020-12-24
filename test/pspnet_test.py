@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import torch.utils.data as TD
-import torchsummary
 import torch
 import json
 import time
@@ -13,6 +12,7 @@ from ..dataset.dataset_generalize import dataset_generalize, \
     get_dataset_generalize_config, image_normalizations
 from ..utils.augmentor import Augmentations
 from ..utils.torch_tools import keras_fit
+from ..utils import torchsummary
 from ..utils.benchmark import keras_benchmark,get_loader
 from ..utils.configs.semanticseg_config import get_parser,get_config,get_net
 from ..utils.distributed_tools import dist_train
@@ -143,22 +143,7 @@ if __name__ == '__main__':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         torchsummary.summary(net.to(device), (3, height, width))
     elif test == 'hyperopt':
-        from ..utils.model_hyperopt import psp_opt
-        config.log_dir = os.path.expanduser('~/tmp/logs/hyperopt')
-        psp_model=globals()[args.net_name]
-        config.n_calls=args.hyperopt_calls
-        config.hyperkey=args.hyperkey
-        hyperopt=psp_opt(psp_model,config,train_loader=None,val_loader=None)
-        if args.hyperopt=='tpe':
-            hyperopt.tpe()
-        elif args.hyperopt=='bayes':
-            hyperopt.bayes()
-        elif args.hyperopt=='skopt':
-            hyperopt.skopt()
-        elif args.hyperopt=='loop':
-            hyperopt.loop()
-        else:
-            assert False,'unknown hyperopt %s'%args.hyperopt
+        assert False
     elif test == 'benchmark':
         config.with_path=True
         config.augmentation=False

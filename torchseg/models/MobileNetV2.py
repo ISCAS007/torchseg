@@ -154,7 +154,7 @@ def mobilenet2(pretrained=True,in_c=3):
     return model
 
 if __name__ == '__main__':
-    import torchsummary
+    from ..utils import torchsummary
     model=mobilenet2()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     torchsummary.summary(model.to(device), (3, 224, 224))

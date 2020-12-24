@@ -6,10 +6,11 @@ voc benchmark
 import os
 import torch
 import torch.utils.data as TD
-from dataset.dataset_generalize import dataset_generalize, image_normalizations
 import glob
-from utils.disc_tools import get_newest_file
-from utils.augmentor import Augmentations
+
+from torchseg.dataset.dataset_generalize import dataset_generalize, image_normalizations
+from torchseg.utils.disc_tools import get_newest_file
+from torchseg.utils.augmentor import Augmentations
 import numpy as np
 from PIL import Image
 import cv2

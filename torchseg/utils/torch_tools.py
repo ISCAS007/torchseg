@@ -5,19 +5,18 @@ import time
 import json
 import os
 from tensorboardX import SummaryWriter
-from utils.metrics import get_scores, runningScore
-from utils.disc_tools import save_model_if_necessary, get_newest_file
-from utils.center_loss2d import CenterLoss
-from dataset.dataset_generalize import image_normalizations, dataset_generalize
-from utils.augmentor import Augmentations
+from .metrics import runningScore
+from .disc_tools import save_model_if_necessary, get_newest_file
+from .center_loss2d import CenterLoss
+from ..dataset.dataset_generalize import image_normalizations, dataset_generalize
+from .augmentor import Augmentations
+from .focalloss2d import FocalLoss2d
+from .poly_plateau import poly_rop
 import torch.utils.data as TD
-from utils.focalloss2d import FocalLoss2d
-from utils.poly_plateau import poly_rop
 from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
 from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
 from tqdm import tqdm, trange
 import glob
-import torch.nn.functional as F
 
 def get_loader(config):
     if config.norm_ways is None:

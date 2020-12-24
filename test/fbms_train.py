@@ -14,9 +14,8 @@ from torchseg.models.motionseg.motion_utils import (get_parser,
                                            get_load_convert_model)
 from torchseg.utils.torch_tools import init_writer
 from torchseg.utils.losses import jaccard_loss,dice_loss
-from torchseg.utils.torchsummary import summary
-from torchseg.utils.davis_benchmark import benchmark
 
+from torchseg.utils.torchsummary import summary
 import numpy as np
 import torch.utils.data as td
 import torch.nn.functional as F
@@ -322,7 +321,10 @@ def test(config):
                 args.set='val'
                 args.task='unsupervised'
                 args.results_path=save_dir
-                benchmark(args)
+                
+                # davis_benchmark import benchmark
+                # benchmark(args)
+                print('please run davis_benchmark {}'.format(args))
     else:
         assert False,'not supported dataset for test'
 

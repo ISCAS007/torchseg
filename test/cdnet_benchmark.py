@@ -8,8 +8,7 @@ currently support dataset
 
 """
 
-from models.motionseg.motion_benchmark import get_save_path
-from models.motionseg.motion_utils import get_dataset,get_default_config,fine_tune_config
+from torchseg.models.motionseg.motion_utils import get_dataset,get_default_config,fine_tune_config
 from tqdm import trange
 import cv2
 import os

@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 from typing import Sequence
 from collections import OrderedDict
 import numpy as np

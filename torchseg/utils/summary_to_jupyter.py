@@ -4,8 +4,8 @@ import numpy as np
 import os
 from tabulate import tabulate
 
-from utils.configs.semanticseg_config import load_config
-from utils.summary_to_csv import config_to_log,load_log,edict_to_pandas,today_log,recent_log,get_actual_step
+from .configs.semanticseg_config import load_config
+from .summary_to_csv import config_to_log,load_log,edict_to_pandas,today_log,recent_log,get_actual_step
 import warnings
 
 def summary(rootpath,tags,filter_str=None,recent_log_number=100):

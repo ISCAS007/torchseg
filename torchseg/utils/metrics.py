@@ -2,7 +2,7 @@
 # https://github.com/wkentaro/pytorch-fcn/blob/master/torchfcn/utils.py
 
 import numpy as np
-from utils import eval_segm
+from . import eval_segm
 import cv2
 
 class runningScore(object):

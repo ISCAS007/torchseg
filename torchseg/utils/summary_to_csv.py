@@ -7,7 +7,7 @@ import warnings
 warnings.filterwarnings('ignore',message='.*numpy.*')
 
 from glob import glob
-from utils.configs.semanticseg_config import load_config
+from .configs.semanticseg_config import load_config
 from easydict import EasyDict as edict
 import pandas as pd
 import os

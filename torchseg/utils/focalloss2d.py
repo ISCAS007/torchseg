@@ -6,7 +6,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 # I refered https://github.com/c0nn3r/RetinaNet/blob/master/focal_loss.py
 
 class FocalLoss2d(nn.Module):

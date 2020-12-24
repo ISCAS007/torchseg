@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from utils.metric.composite import Metric, MetricAcc, MetricMean, CompositeMetric
+from .composite import Metric, MetricAcc, MetricMean, CompositeMetric
 
 class MotionSegMetric(Metric):
     def __init__(self,exception_value=0):
