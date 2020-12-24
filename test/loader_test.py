@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import torch
-from torch.nn import Module,Conv2d
-from torch.nn import functional as F
-from torch.autograd import Variable
 import torch.utils.data as TD
 import random
-from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
+from ..dataset.dataset_generalize import dataset_generalize, get_dataset_generalize_config
 from easydict import EasyDict as edict
 import matplotlib.pyplot as plt
 

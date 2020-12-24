@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
+"""
+modify pytorch model on basic model
 
+example:
+    change the channels in classifier to 10 for vgg11
+"""
 import torchsummary
 import torch
 import torchvision

@@ -3,19 +3,22 @@
 dataset loader: update to support two labels.
 
 """
-import numpy as np
-import torch.utils.data as td
-from models.motion_stn import stn_loss
-from utils.metric.motionseg_metric import MotionSegMetric
-from utils.configs.motionseg_config import update_default_config
-from dataset.motionseg_dataset_factory import prepare_input_output
-from models.motionseg.motion_utils import (get_parser,
+from torchseg.models.motionseg.motion_stn import stn_loss
+from torchseg.utils.metric.motionseg_metric import MotionSegMetric
+from torchseg.utils.configs.motionseg_config import update_default_config
+from torchseg.dataset.motionseg_dataset_factory import prepare_input_output
+from torchseg.models.motionseg.motion_utils import (get_parser,
                                            get_dataset,
                                            get_model,
                                            poly_lr_scheduler,
                                            get_load_convert_model)
-from utils.torch_tools import init_writer
-from utils.losses import jaccard_loss,dice_loss
+from torchseg.utils.torch_tools import init_writer
+from torchseg.utils.losses import jaccard_loss,dice_loss
+from torchseg.utils.torchsummary import summary
+from torchseg.utils.davis_benchmark import benchmark
+
+import numpy as np
+import torch.utils.data as td
 import torch.nn.functional as F
 import os
 import torch
@@ -29,8 +32,6 @@ import random
 import torch.backends.cudnn as cudnn
 import cv2
 from easydict import EasyDict as edict
-from utils.torchsummary import summary
-from utils.davis_benchmark import benchmark
 import json
 import glob
 

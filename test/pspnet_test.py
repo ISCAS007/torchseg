@@ -1,36 +1,25 @@
 # -*- coding: utf-8 -*-
 import torch.utils.data as TD
-import sys
-if '.' not in sys.path:
-    sys.path.append('.')
-
-from dataset.dataset_generalize import dataset_generalize, get_dataset_generalize_config, image_normalizations
-from easydict import EasyDict as edict
 import torchsummary
-import pandas as pd
 import torch
 import json
 import time
 import os
+import sys
+if '.' not in sys.path:
+    sys.path.append('.')
 
-
-from models.pspnet import pspnet
-from models.psp_edge import psp_edge
-from models.psp_global import psp_global
-from models.psp_dict import psp_dict
-from models.psp_fractal import psp_fractal
-from models.fcn import fcn, fcn8s, fcn16s, fcn32s
-from models.psp_aux import psp_aux
-from models.psp_hed import psp_hed
-from models.merge_seg import merge_seg
-from models.cross_merge import cross_merge
-from models.motionnet import motionnet,motion_panet
-from models.unet import UNet,PSPUNet,AuxNet
-from utils.augmentor import Augmentations
-from utils.torch_tools import keras_fit
-from utils.benchmark import keras_benchmark,get_loader
-from utils.configs.semanticseg_config import get_parser,get_config,get_net
-from utils.distributed_tools import dist_train
+from ..dataset.dataset_generalize import dataset_generalize, \
+    get_dataset_generalize_config, image_normalizations
+from ..utils.augmentor import Augmentations
+from ..utils.torch_tools import keras_fit
+from ..utils.benchmark import keras_benchmark,get_loader
+from ..utils.configs.semanticseg_config import get_parser,get_config,get_net
+from ..utils.distributed_tools import dist_train
+from ..models.semanticseg.psp_edge import psp_edge
+from ..models.semanticseg.psp_dict import psp_dict 
+from ..models.semanticseg.psp_fractal import psp_fractal
+from ..models.semantciseg.psp_global import psp_global
 
 if __name__ == '__main__':
     parser=get_parser()
@@ -150,11 +139,11 @@ if __name__ == '__main__':
         print(config_str)
         print('args is '+'*'*30)
         print(args)
-        height, width = input_shape
+        height, width = config.input_shape
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         torchsummary.summary(net.to(device), (3, height, width))
     elif test == 'hyperopt':
-        from utils.model_hyperopt import psp_opt
+        from ..utils.model_hyperopt import psp_opt
         config.log_dir = os.path.expanduser('~/tmp/logs/hyperopt')
         psp_model=globals()[args.net_name]
         config.n_calls=args.hyperopt_calls

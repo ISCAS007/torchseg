@@ -2,7 +2,7 @@
 
 import subprocess
 import psutil
-from utils.config import get_parser
+from ..utils.configs.semanticseg_config import get_parser
 import time
 import pandas as pd
 #|    0      1357      C   /usr/bin/python                              157MiB |

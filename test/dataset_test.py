@@ -2,10 +2,9 @@
 """
 python -m pytest -q test/dataset_test.py
 """
-from dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
+from ..dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
 from easydict import EasyDict as edict
 import torch.utils.data as TD
-import matplotlib.pyplot as plt
 import random
 import numpy as np
 
