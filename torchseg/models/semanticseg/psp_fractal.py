@@ -6,7 +6,7 @@
 
 import torch.nn as TN
 from ..backbone import backbone
-from utils.torch_tools import freeze_layer
+from ...utils.torch_tools import freeze_layer
 from ..upsample import transform_fractal,transform_psp,upsample_duc,upsample_bilinear
 
 

@@ -8,18 +8,18 @@ import sys
 if '.' not in sys.path:
     sys.path.append('.')
 
-from ..dataset.dataset_generalize import dataset_generalize, \
+from torchseg.dataset.dataset_generalize import dataset_generalize, \
     get_dataset_generalize_config, image_normalizations
-from ..utils.augmentor import Augmentations
-from ..utils.torch_tools import keras_fit
-from ..utils import torchsummary
-from ..utils.benchmark import keras_benchmark,get_loader
-from ..utils.configs.semanticseg_config import get_parser,get_config,get_net
-from ..utils.distributed_tools import dist_train
-from ..models.semanticseg.psp_edge import psp_edge
-from ..models.semanticseg.psp_dict import psp_dict 
-from ..models.semanticseg.psp_fractal import psp_fractal
-from ..models.semantciseg.psp_global import psp_global
+from torchseg.utils.augmentor import Augmentations
+from torchseg.utils.torch_tools import keras_fit
+from torchseg.utils import torchsummary
+from torchseg.utils.benchmark import keras_benchmark
+from torchseg.utils.configs.semanticseg_config import get_parser,get_config,get_net
+from torchseg.utils.distributed_tools import dist_train
+from torchseg.models.semanticseg.psp_edge import psp_edge
+from torchseg.models.semanticseg.psp_dict import psp_dict 
+from torchseg.models.semanticseg.psp_fractal import psp_fractal
+from torchseg.models.semanticseg.psp_global import psp_global
 
 if __name__ == '__main__':
     parser=get_parser()

@@ -5,21 +5,22 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.backends.cudnn as cudnn
-from utils.configs.semanticseg_config import get_net
-from utils.augmentor import Augmentations
-from dataset.dataset_generalize import dataset_generalize, image_normalizations
+from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
+from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
 from torch.nn.parallel import DistributedDataParallel as DDP
-from utils.torch_tools import (get_optimizer,get_scheduler,get_loss_fn_dict,
-                         train_val,get_metric,get_image_dict,
-                         get_lr_dict,init_writer,write_summary,is_main_process)
-from utils.metrics import runningScore
 import random
 import time
 from tqdm import trange,tqdm
-from utils.poly_plateau import poly_rop
-from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
-from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
-from utils.disc_tools import save_model_if_necessary
+
+from .configs.semanticseg_config import get_net
+from .augmentor import Augmentations
+from ..dataset.dataset_generalize import dataset_generalize, image_normalizations
+from .metrics import runningScore
+from .torch_tools import (get_optimizer,get_scheduler,get_loss_fn_dict,
+                         train_val,get_metric,get_image_dict,
+                         get_lr_dict,init_writer,write_summary,is_main_process)
+from .poly_plateau import poly_rop
+from .disc_tools import save_model_if_necessary
 
 def get_dist_module(config):
     model=get_net(config)

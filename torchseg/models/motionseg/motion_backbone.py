@@ -7,8 +7,8 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from easydict import EasyDict as edict
-from utils.disc_tools import lcm_list
 import warnings
+from ...utils.disc_tools import lcm_list
 from ..upsample import local_upsample
 from ..Anet.layers import Anet
 class conv_bn_relu(TN.Module):
