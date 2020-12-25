@@ -2,8 +2,8 @@
 
 import unittest
 import os
-from dataset.dataset_generalize import image_normalizations
-from utils.disc_tools import show_images
+from torchseg.dataset.dataset_generalize import image_normalizations
+from torchseg.utils.disc_tools import show_images
 import cv2
 import numpy as np
 def print_img_info(img):

@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-from easydict import EasyDict as edict
 import os
-from models.motionseg.motion_utils import get_dataset,get_model
-from utils.configs.motionseg_config import get_default_config
-from utils.configs.semanticseg_config import load_config
-from dataset.motionseg_dataset_factory import motionseg_show_images
-from dataset.motionseg_dataset_factory import prepare_input_output
-from utils.disc_tools import show_images
+from torchseg.models.motionseg.motion_utils import get_dataset,get_model
+from torchseg.utils.configs.motionseg_config import get_default_config
+from torchseg.utils.configs.semanticseg_config import load_config
+from torchseg.dataset.motionseg_dataset_factory import motionseg_show_images
+from torchseg.dataset.motionseg_dataset_factory import prepare_input_output
+from torchseg.utils.disc_tools import show_images
 import torch.utils.data as td
 import unittest
 import cv2
@@ -15,7 +14,6 @@ import numpy as np
 import torch
 import glob
 import netpbmfile as pbm
-import matplotlib.pyplot as plt
 
 class Test(unittest.TestCase):
     config=get_default_config()
