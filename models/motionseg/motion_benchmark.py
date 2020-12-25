@@ -21,6 +21,7 @@ import os
 import cv2
 import matplotlib.pyplot as plt
 import glob
+import warnings
 
 def get_save_path(gt_path,dataset_root_path,output_root_path):
     save_path=gt_path.replace(dataset_root_path,output_root_path)
@@ -63,10 +64,13 @@ def merge_images(images,wgap=5,hgap=5,col_num=9,resize_img_w=48):
     N=len(images)
     max_resize_img_h=0
     h=0
+
+    col_num=min(col_num,N)
+
     for idx,img in enumerate(images):
         resize_img_h=int(img.shape[0]*resize_img_w/img.shape[1])
         max_resize_img_h=max(max_resize_img_h,resize_img_h)
-        if (idx+1)%col_num==0:
+        if (idx+1)%col_num==0 or (idx+1)==N:
             h+=max_resize_img_h
             max_resize_img_h=0
 
@@ -136,15 +140,19 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
     category_dict={}
     fmeasure_dict={}
     for idx in trange(N):
-        img1_path,img2_path,gt_path=dataset.__get_path__(idx)
+        if config.dataset.upper()=='CDNET2014':
+            img1_path,img2_path,gt_path,_=dataset.__get_path__(idx)
+        else:
+            img1_path,img2_path,gt_path=dataset.__get_path__(idx)
 
-        if config.dataset in ['FBMS','FBMS-3D']:
+        if config.dataset.upper() in ['FBMS','FBMS-3D']:
             save_path=get_save_path(gt_path,config.root_path,os.path.join(output_root_path,config.dataset,config.note))
-        elif config.dataset.upper() in ['DAVIS2017']:
+        elif config.dataset.upper() in ['DAVIS2017','DAVIS2016','CDNET2014']:
             save_path=get_save_path(gt_path,
                                     config.root_path,
                                     os.path.join(output_root_path,config.dataset,config.note))
-        elif config.dataset.upper() in ['DAVIS2016']:
+        elif config.dataset.lower() in ['segtrackv2']:
+            gt_path=gt_path[0][0]
             save_path=get_save_path(gt_path,
                                     #os.path.join(config.root_path,'Annotations/480p'),
                                     config.root_path,
@@ -152,7 +160,10 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
         else:
             assert False
 
-        category=img1_path.split('/')[-2]
+        if config.dataset.upper()=='CDNET2014':
+            category=img1_path.split('/')[-3]
+        else:
+            category=img1_path.split('/')[-2]
         fmeasure=get_fmeasure(gt_path,save_path)
         if category not in category_dict.keys():
             category_dict[category]=(img1_path,save_path,gt_path)
@@ -173,13 +184,18 @@ def showcase(config_file,output_root_path='output',generate_results=False,mode='
                 assert False,'invalid path: {}'.format(path)
             if np.max(img)==1:
                 img*=255
-            images.append(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
+            images.append(img)
 
-    merge_img=merge_images(images,col_num=9,resize_img_w=120)
+    col_num=9
+    if config.dataset.lower() == 'segtrackv2':
+        col_num=6
+
+    merge_img=merge_images(images,col_num=col_num,resize_img_w=120)
     save_merge_path=os.path.join(output_root_path,'{}_showcase_{}_{}.jpg'.format(config.dataset,split,config.net_name))
     cv2.imwrite(save_merge_path,merge_img)
     print(fmeasure_dict)
-    plt.imshow(merge_img)
+    #cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+    plt.imshow(cv2.cvtColor(merge_img,cv2.COLOR_BGR2RGB))
     plt.show()
 
 def evaluation(config_file,output_root_path='output',generate_results=False,dataset_name=''):

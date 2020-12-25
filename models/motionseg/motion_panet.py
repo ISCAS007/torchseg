@@ -396,6 +396,7 @@ class motion_panet2(nn.Module):
         else:
             if self.use_aux_input:
                 if config.aux_backbone is None:
+                    warnings.warn('use the same backbone {} as main backbone for none aux backbone but not share weights'.format(config.backbone_name))
                     config.aux_backbone=config.backbone_name
                 aux_config=edict(config.copy())
                 aux_config.backbone_name=aux_config.aux_backbone
