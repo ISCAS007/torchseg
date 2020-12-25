@@ -40,7 +40,10 @@ support_datasets = ['ADEChallengeData2016', 'VOC2012', 'Kitti2015',
                         'ADE20K', 'HuaWei', 'Cityscapes_Category']
 
 def get_dataset_generalize_config(config, dataset_name):
-    
+    cur_dir=os.path.dirname(__file__)
+    config.txt_path=os.path.join(cur_dir,'txt')
+    assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
+        
     assert dataset_name in support_datasets, 'unknown dataset %s, not in support dataset %s' % (
         dataset_name, str(support_datasets))
     if dataset_name == 'ADEChallengeData2016':
@@ -58,8 +61,7 @@ def get_dataset_generalize_config(config, dataset_name):
         config.root_path = '/media/sdb/CVDataset/ObjectSegmentation/ADE20K_2016_07_26/images'
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'ade20k'
-        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
-        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
+        
 #        config.foreground_class_ids=[i for i in range(20)]
 #        config.ignore_index=255
     elif dataset_name == 'VOC2012':
@@ -68,9 +70,6 @@ def get_dataset_generalize_config(config, dataset_name):
         config.root_path = os.path.expanduser('~/cvdataset/VOC')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'voc2012'
-        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
-        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
-#        config.txt_path = '/home/yzbx/git/torchseg/dataset/txt'
         config.foreground_class_ids = [i for i in range(21)]
         config.labels=['background','aeroplane','bicycle','bird','boat',
                        'bottle','bus','car','cat','chair',
@@ -86,8 +85,6 @@ def get_dataset_generalize_config(config, dataset_name):
         config.root_path = os.path.expanduser('~/cvdataset/Cityscapes')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'cityscapes_fine'
-        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
-        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
         config.foreground_class_ids = [
             7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
         counts=[704950, 285679000, 81211408, 94016248, 83734392, 17800251, 75629728, 2034717218, 335650593, 38978463, 11239214, 1259538419, 36199498, 48447819, 547202, 17860177, 3362825, 67741418, 499872, 11477088, 30426538, 878458410, 63897448, 221828972, 67323103, 7450319, 385670517, 14708028, 12990290, 2493375, 1300575, 12863955, 5448633, 22734421]
@@ -100,8 +97,6 @@ def get_dataset_generalize_config(config, dataset_name):
         config.root_path = os.path.expanduser('~/cvdataset/Cityscapes')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
         config.txt_note = 'cityscapes_coarse'
-        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
-        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
         config.foreground_class_ids = [
             7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
         config.ignore_index = 255
@@ -109,10 +104,7 @@ def get_dataset_generalize_config(config, dataset_name):
         # train + val + test
         config.root_path = os.path.expanduser('~/cvdataset/Cityscapes')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
-        config.txt_note = 'cityscapes_fine'
-        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
-        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
-        
+        config.txt_note = 'cityscapes_fine'        
         # need map id to category id
         config._foreground_class_ids= [
             7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
@@ -124,9 +116,8 @@ def get_dataset_generalize_config(config, dataset_name):
         # train
         config.root_path = os.path.expanduser('~/cvdataset/huawei/segmentation')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
+        
         config.txt_note = 'huawei'
-        config.txt_path=os.path.join(os.getcwd(),'dataset','txt')
-        assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
         config.foreground_class_ids = [i for i in range(1,8)]
         names='void,flat,human,vehicle,construction,object,nature,sky'
         config.class_names=names.split(',')

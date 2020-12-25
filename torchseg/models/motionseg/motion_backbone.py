@@ -326,9 +326,9 @@ class motion_backbone(TN.Module):
             return Anet(self.config)
         elif self.use_none_layer or self.in_channels !=3:
             print('use none layer'+'*'*30)
-            from models.psp_resnet import resnet18,resnet34,resnet50,resnet101
-            from models.MobileNetV2 import mobilenet2
-            from models.psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
+            from ..psp_resnet import resnet18,resnet34,resnet50,resnet101
+            from ..MobileNetV2 import mobilenet2
+            from ..psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
                                         vgg11,vgg11_bn,vgg13,vgg13_bn,
                                         vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
 
@@ -341,13 +341,13 @@ class motion_backbone(TN.Module):
             else:
                 return locals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
         else:
-            from models.psp_resnet import resnet18,resnet34,resnet50,resnet101
-            from models.MobileNetV2 import mobilenet2
-            from models.psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
+            from ..psp_resnet import resnet18,resnet34,resnet50,resnet101
+            from ..MobileNetV2 import mobilenet2
+            from ..psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
                                         vgg11,vgg11_bn,vgg13,vgg13_bn,
                                         vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
-            from pretrainedmodels import se_resnet50
+            #from pretrainedmodels import se_resnet50
 
             assert self.in_channels==3
             if self.config.backbone_name == 'MobileNetV2':

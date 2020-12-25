@@ -22,9 +22,9 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86
 
 ENV PATH /opt/conda/bin:$PATH
 ENV PYTHONPATH .
-# RUN conda create -n torch1.0 --file requirements.txt --channel conda-forge --channel pytorch
+# RUN conda create -n torch1.0 --file torchseg/requirements.txt --channel conda-forge --channel pytorch
 # RUN conda env update -f conda.yml -n base
 # RUN conda create -n torch1.0 && conda activate torch1.0 && \
-#    conda install pip && pip install -r requirements.txt # fail with eigen version
+#    conda install pip && pip install -r torchseg/requirements.txt # fail with eigen version
 # RUN conda create -n torch1.0 -f conda.yml # avoid change base
 # RUN apt-get autoclean && conda clean --all --yes

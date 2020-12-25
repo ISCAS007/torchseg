@@ -2,9 +2,7 @@
 import os
 import argparse
 
-cur_dir=os.path.dirname(os.path.abspath(__file__))
-os.chdir(cur_dir)
-from utils.summary_to_jupyter import dump
+from torchseg.utils.summary_to_jupyter import dump
 
 def dump_tasks(notes,
     delete_nan=False,

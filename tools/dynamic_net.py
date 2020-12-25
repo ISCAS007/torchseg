@@ -5,7 +5,7 @@ modify pytorch model on basic model
 example:
     change the channels in classifier to 10 for vgg11
 """
-import torchsummary
+from torchseg.utils import torchsummary
 import torch
 import torchvision
 

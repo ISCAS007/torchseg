@@ -137,7 +137,9 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                     sort_tags=['dataset_name',tags[1]]
                 else:
                     sort_tags=tags[1]
-
+                
+                show_tags+=sort_tags
+                show_tags=list(set(show_tags))
                 print(tabulate(tasks[show_tags].groupby(group_tags).mean().sort_values(sort_tags),tablefmt='pipe',headers='keys'))
                 print('\n')
                 print(tabulate(tasks[[tags[1]]+group_tags].groupby(group_tags).agg([np.mean,np.std,np.max]),tablefmt='pipe',headers='keys'))
@@ -149,6 +151,9 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
             print(tabulate(tasks[show_tags].sort_values(sort_tags),tablefmt='pipe',headers='keys'))
         else:
             sort_tags=['note'] if sort_tags is None or len(sort_tags)==0 else sort_tags
+            show_tags+=sort_tags
+            show_tags=list(set(show_tags))
+                
             print(tabulate(tasks[show_tags].sort_values(sort_tags),tablefmt='pipe',headers='keys'))
         print('\n')
         if dump_dir:
