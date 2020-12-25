@@ -73,8 +73,42 @@ def show_images(images,titles=None,vmin=None,vmax=None,cmap=None):
         plt.show()
 
 def show_tensor_list(images_tensor,title,normer=None,vmin=None,vmax=None,cmap=None):
+    """
+    show image tensor with shape [b,c,h,w], c>=2 or [b,h,w]
+    
+    Parameters
+    ----------
+    images_tensor : pytorch tensor list 
+        pytorch tensor list.
+    title : string list 
+        matplot figure title list.
+    normer : image_normalizations, optional
+        normalizations for image. The default is None.
+    vmin : TYPE, optional
+        DESCRIPTION. The default is None.
+    vmax : TYPE, optional
+        DESCRIPTION. The default is None.
+    cmap : TYPE, optional
+        DESCRIPTION. The default is None.
+
+    Returns
+    -------
+    None.
+
+    """
     for idx,t in enumerate(images_tensor):
         batch_images=t.data.cpu().numpy()
+        
+        if len(batch_images.shape)==3:
+            b,h,w=batch_images.shape
+            image_list=np.split(batch_images,b)
+            image_list=[np.squeeze(img) for img in image_list]
+            show_images(image_list,[title[idx] for img in image_list],cmap=cmap,vmax=vmax,vmin=vmin)
+            continue
+            
+        
+        b,c,h,w=batch_images.shape
+        assert c>=2,'the channel must >=2'
         batch_images=batch_images.transpose((0,2,3,1))
 
         print(idx,np.mean(batch_images),np.std(batch_images),np.max(batch_images),np.min(batch_images))

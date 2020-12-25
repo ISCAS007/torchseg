@@ -22,8 +22,6 @@ def get_loader(config,split):
     else:
         normalizations = image_normalizations(config.norm_ways)
 
-
-
     if split=='test':
         test_dataset=dataset_generalize(config,split=split,
                                     normalizations=normalizations)

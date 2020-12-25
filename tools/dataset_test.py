@@ -2,40 +2,58 @@
 """
 python -m pytest -q test/dataset_test.py
 """
-from ..dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
+from torchseg.dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
+from torchseg.dataset.json2labelImg import color_map
+from torchseg.utils.disc_tools import show_tensor_list,show_images
 from easydict import EasyDict as edict
+from PIL import Image
 import torch.utils.data as TD
-import random
 import numpy as np
+import matplotlib.pyplot as plt
 
-def test_ignore_index():
+def addColorMap(img,cmap=None):
+    if cmap is None:
+        cmap=color_map(256)
+        
+    pilImg=Image.fromarray(img,'P')
+    pilImg.putpalette(cmap)
+    pilImg=pilImg.convert('RGB')
+    
+    color_img=np.array(pilImg)
+    return color_img
+    
+def test_dataset():
     config=edict()
-    config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
-    config.cityscapes_split=random.choice(['test','val','train'])
+    config.dataset_name='Cityscapes_Category'
     config.print_path=True
     config.resize_shape=(224,224)
     config.ignore_index=255
     config.with_edge=False
-    config=get_dataset_generalize_config(config,'Cityscapes')
-    
-    fg_ids=[i for i in range(19)]
+    config.batch_size=2
+    config=get_dataset_generalize_config(config,config.dataset_name)
     
     augmentations=None
     dataset=dataset_generalize(config,split='train',augmentations=augmentations)
-    loader=TD.DataLoader(dataset=dataset,batch_size=2, shuffle=True,drop_last=False)
+    loader=TD.DataLoader(dataset=dataset,batch_size=config.batch_size, shuffle=True,drop_last=False)
+    plt.ion()
     for i, data in enumerate(loader):
         imgs, labels = data
-#        print(i,imgs.shape,labels.shape)
-        labels_ids=np.unique(labels)
-        print(labels_ids)
-        for id in labels_ids:
-            assert id == config.ignore_index or id in fg_ids,'bad id=%d'%id
-#        plt.imshow(imgs[0,0])
-#        plt.show()
-#        plt.imshow(labels[0])
-#        plt.show()
-        if i>=10:
+        print(i,imgs.shape,labels.shape)
+        
+        show_tensor_list([imgs],['img'])
+        show_tensor_list([labels],['labels'])
+        
+        np_labels=labels.data.cpu().numpy()
+        print('label id: ',np.unique(np_labels))
+        
+        image_list=np.split(np_labels,config.batch_size)
+        image_list=[np.squeeze(img) for img in image_list]
+        image_list=[addColorMap(img) for img in image_list]
+        show_images(image_list,['label']*config.batch_size)
+        if i>1:
             break
-
+    
+    plt.ioff()
+    plt.show()
 if __name__ == '__main__':
-    test_ignore_index()
+    test_dataset()

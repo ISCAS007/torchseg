@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+dataset factory for semantic segmentation
+
 get image path from txt file, then do it!
 ➜  ADEChallengeData2016 tree -L 2 .
 .
@@ -40,6 +42,7 @@ support_datasets = ['ADEChallengeData2016', 'VOC2012', 'Kitti2015',
                         'ADE20K', 'HuaWei', 'Cityscapes_Category']
 
 def get_dataset_generalize_config(config, dataset_name):
+    config.dataset_name=dataset_name
     cur_dir=os.path.dirname(__file__)
     config.txt_path=os.path.join(cur_dir,'txt')
     assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path

@@ -104,10 +104,10 @@ if __name__ == '__main__':
         keras_fit(net, train_loader, val_loader)
     elif test == 'coarse':
         net = get_net(config)
-        for dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
+        for dataset_name in ['Cityscapes_Coarse', 'Cityscapes_Fine']:
             config = get_dataset_generalize_config(
                 config, dataset_name)
-            config.dataset_name = dataset_name.lower()
+            #config.dataset_name = dataset_name.lower()
 
             coarse_train_dataset = dataset_generalize(
                 config,
@@ -115,7 +115,7 @@ if __name__ == '__main__':
                 augmentations=augmentations,
                 normalizations=normalizations)
             coarse_train_loader = TD.DataLoader(
-                dataset=train_dataset,
+                dataset=coarse_train_dataset,
                 batch_size=batch_size,
                 shuffle=True,
                 drop_last=True,
@@ -127,7 +127,7 @@ if __name__ == '__main__':
                     augmentations=augmentations,
                     normalizations=normalizations)
             coarse_val_loader = TD.DataLoader(
-                dataset=val_dataset,
+                dataset=coarse_val_dataset,
                 batch_size=batch_size,
                 shuffle=True,
                 drop_last=False,
@@ -142,8 +142,38 @@ if __name__ == '__main__':
         height, width = config.input_shape
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         torchsummary.summary(net.to(device), (3, height, width))
-    elif test == 'hyperopt':
-        assert False
+    elif test == 'huawei':
+        # train on cityscapes, validation on huawei
+        net = get_net(config)
+        config = get_dataset_generalize_config(
+                config, "Cityscapes_Category")
+        train_dataset = dataset_generalize(
+                config,
+                split='train',
+                augmentations=augmentations,
+                normalizations=normalizations)
+        train_loader = TD.DataLoader(
+            dataset=train_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            drop_last=True,
+            num_workers=8)
+        
+        config=get_dataset_generalize_config(
+                config, "HuaWei")
+        val_dataset = dataset_generalize(
+                config,
+                split='val',
+                augmentations=augmentations,
+                normalizations=normalizations)
+        val_loader = TD.DataLoader(
+            dataset=val_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            drop_last=False,
+            num_workers=8)
+        
+        
     elif test == 'benchmark':
         config.with_path=True
         config.augmentation=False
