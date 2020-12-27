@@ -4,7 +4,7 @@
 #
 
 from collections import namedtuple
-
+from .labels_huawei import label2id
 
 #--------------------------------------------------------------------------------
 # Definitions
@@ -110,8 +110,8 @@ name2label      = { label.name    : label for label in labels           }
 id2label        = { label.id      : label for label in labels           }
 # trainId to label object
 trainId2label   = { label.trainId : label for label in reversed(labels) }
-# id to catId
-id2catId = {label.id : label.categoryId for label in labels}
+# id to huawei catId, consider all label to train, ignore label.ignoreInEval
+id2catId = {label.id : label2id(label.category) for label in labels}
 
 # category to list of label objects
 category2labels = {}

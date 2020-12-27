@@ -76,6 +76,10 @@ class conv_bn_relu(TN.Module):
                  kernel_size=1,
                  padding=0,
                  stride=1,
+                 dilation=1,
+                 groups=1,
+                 bias=None,
+                 padding_mode='zeros',
                  eps=1e-5,
                  momentum=0.1,
                  inplace=False):
@@ -84,13 +88,16 @@ class conv_bn_relu(TN.Module):
         upsample_ratio: 2**upsample_layer
         """
         super().__init__()
-        bias = str2bool(os.environ['torchseg_use_bias'])
+        bias = str2bool(os.environ['torchseg_use_bias']) if bias is None else bias
         self.conv_bn_relu = TN.Sequential(TN.Conv2d(in_channels=in_channels,
                                                     out_channels=out_channels,
                                                     kernel_size=kernel_size,
                                                     padding=padding,
                                                     stride=stride,
-                                                    bias=bias),
+                                                    bias=bias,
+                                                    groups=groups,
+                                                    padding_mode=padding_mode,
+                                                    dilation=dilation),
                                           local_bn(num_features=out_channels,
                                                    eps=eps,
                                                    momentum=momentum),
@@ -137,7 +144,7 @@ class upsample_duc(TN.Module):
     def forward(self, x):
         x = self.conv_bn_relu(x)
         x = self.duc(x)
-
+        
         return x
 
 
@@ -200,7 +207,8 @@ class upsample_subclass(TN.Module):
         self.class_number=out_channels
         self.sub_class_number=in_channels//out_channels
         assert self.sub_class_number>1
-        self.midnet=conv_bn_relu(in_channels,self.class_number*self.sub_class_number)
+        self.midnet=conv_bn_relu(in_channels,
+                                 self.class_number*self.sub_class_number)
 
         self.use_sigmoid=use_sigmoid
         self.sigmoid=TN.Sigmoid()
@@ -262,8 +270,7 @@ class upsample_fcn(TN.Module):
             return upsample_feature, x
         else:
             return x
-
-
+            
 class transform_psp_caffe(TN.Module):
     """x->4x[pool->conv->bn->relu->upsample]->concat
     when input_shape is choose according to scale and pool_sizes
@@ -910,6 +917,11 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
     elif upsample_type == 'subclass':
         use_sigmoid=config.subclass_sigmoid
         decoder = upsample_subclass(midnet_out_channels,class_number,input_shape[0:2],use_sigmoid)
+    elif upsample_type == 'lossless':
+        # decoder = upsample_lossless(midnet_out_channels,class_number,input_shape[0:2],scale=4)
+        r = 2**3 if config.use_none_layer else 2**upsample_layer
+        decoder = upsample_duc(midnet_out_channels,
+                               class_number, r*4, eps=eps, momentum=momentum)
     else:
         assert False, 'unknown upsample type %s' % upsample_type
 

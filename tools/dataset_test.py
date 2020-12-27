@@ -3,24 +3,12 @@
 python -m pytest -q test/dataset_test.py
 """
 from torchseg.dataset.dataset_generalize import dataset_generalize,get_dataset_generalize_config
-from torchseg.dataset.json2labelImg import color_map
-from torchseg.utils.disc_tools import show_tensor_list,show_images
+from torchseg.utils.disc_tools import show_tensor_list,show_images,add_color_map
 from easydict import EasyDict as edict
 from PIL import Image
 import torch.utils.data as TD
 import numpy as np
 import matplotlib.pyplot as plt
-
-def addColorMap(img,cmap=None):
-    if cmap is None:
-        cmap=color_map(256)
-        
-    pilImg=Image.fromarray(img,'P')
-    pilImg.putpalette(cmap)
-    pilImg=pilImg.convert('RGB')
-    
-    color_img=np.array(pilImg)
-    return color_img
     
 def test_dataset():
     config=edict()
@@ -48,7 +36,7 @@ def test_dataset():
         
         image_list=np.split(np_labels,config.batch_size)
         image_list=[np.squeeze(img) for img in image_list]
-        image_list=[addColorMap(img) for img in image_list]
+        image_list=[add_color_map(img) for img in image_list]
         show_images(image_list,['label']*config.batch_size)
         if i>1:
             break

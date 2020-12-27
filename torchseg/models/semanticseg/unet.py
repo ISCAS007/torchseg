@@ -98,6 +98,7 @@ class PSPUNet(nn.Module):
     def forward(self,x):
         feature_map = self.backbone.forward_layers(x)
         feature_mid = self.midnet(feature_map)
+        
         x = self.decoder(feature_mid)
 
         return x

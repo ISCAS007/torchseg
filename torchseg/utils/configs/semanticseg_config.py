@@ -130,6 +130,7 @@ def get_default_config():
     config.note=None
     config.num_workers=8
     config.optimizer='adam'
+    config.output_shape=(224,224)
     config.pad_for_crop=False
     config.predict_save_path=None
     config.pre_lr_mult=1.0
@@ -149,12 +150,12 @@ def get_default_config():
     config.use_bn=True
     config.use_class_weight=False
     config.use_dropout=False
-    config.use_imgaug=True
+    config.aug_library='imgaug'
     config.use_lr_mult=False
     config.use_none_layer=False
     config.use_reg=False
     config.use_rotate=True
-    config.use_semseg=False
+    config.use_crop=True
     config.use_sync_bn=False
     config.use_dilated_pool=False
     config.sub_config=''
@@ -288,7 +289,7 @@ def load_config(config_file):
 def get_parser():
     choices = ['edge', 'global', 'dict', 'fractal',
                'summary', 'naive', 'coarse',
-               'convert','hyperopt','benchmark', 'cycle_lr',
+               'convert','huawei','benchmark', 'cycle_lr',
                'dist']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
@@ -497,7 +498,7 @@ def get_parser():
     # 2018/11/08 change default from duc to bilinear
     parser.add_argument('--upsample_type',
                         help='bilinear or duc upsample',
-                        choices=['duc', 'bilinear','fcn','subclass'],
+                        choices=['duc', 'bilinear','fcn','subclass','lossless'],
                         default='bilinear')
 
     parser.add_argument('--subclass_sigmoid',
@@ -587,7 +588,13 @@ def get_parser():
                         default=0.1)
 
     parser.add_argument('--input_shape',
-                        help='input shape, can be auto computer by midnet_scale and upsample_layer + use_none_layer',
+                        help='network input shape, can be auto computer by midnet_scale and upsample_layer + use_none_layer',
+                        type=int,
+                        nargs='*',
+                        default=None)
+    
+    parser.add_argument('--output_shape',
+                        help='network output shape, only useful for upsample_type=lossless',
                         type=int,
                         nargs='*',
                         default=None)
@@ -603,6 +610,11 @@ def get_parser():
                         default=True)
 
     parser.add_argument('--use_rotate',
+                        help='augmentations rotate',
+                        type=str2bool,
+                        default=True)
+    
+    parser.add_argument('--use_crop',
                         help='augmentations rotate',
                         type=str2bool,
                         default=True)
@@ -639,7 +651,7 @@ def get_parser():
 
     parser.add_argument('--norm_ways',
                         help='normalize image value ways',
-                        choices=['caffe','pytorch','cityscapes','-1,1','0,1'],
+                        choices=['caffe','pytorch','cityscapes','-1,1','0,1','common','huawei'],
                         default='pytorch')
 
     parser.add_argument('--hyperopt',
@@ -729,16 +741,12 @@ def get_parser():
                         default=256)
 
     # use_imgaug 2019/10/14
-    parser.add_argument('--use_imgaug',
-                        help='use img aug or tt aug (True)',
-                        type=str2bool,
-                        default=True)
-
-    # use_semseg 2019/10/14
-    parser.add_argument('--use_semseg',
-                        help='use img aug or tt aug (False)',
-                        type=str2bool,
-                        default=False)
+    parser.add_argument('--aug_library',
+                        help='use imgaug/pillow/semseg for data augmentation,\
+                            currently not support album',
+                        type=str,
+                        default='imgaug',
+                        choices=['imgaug','semseg','pillow','album'])
 
     # use_sync_bn 2019/10/22
     parser.add_argument('--use_sync_bn',

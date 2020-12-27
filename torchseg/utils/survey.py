@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-survey the image size
-class numbers
+dataset_survey: 
+    survey the image size
+    class numbers
+dataset_mean, dataset_std:
+    compute mean and std for dataset
 """
 import numpy as np
 from PIL import Image
@@ -34,3 +37,63 @@ class dataset_survey():
     def summary(self):
         print(self.size_survey)
         print(self.class_survey)
+        
+class dataset_mean():
+    def __init__(self):
+        self.reset()
+        
+    def update(self,image):
+        assert len(image.shape)==3 and image.shape[2]==3,"require rgb image with shape [h,w,3]"
+        
+        self.mean_sum+=np.mean(image,axis=(0,1))
+        self.count+=1
+        
+    def summary(self):
+        return self.mean_sum/self.count
+    
+    def reset(self):
+        self.mean_sum=np.zeros(3,np.float64)
+        self.count=0
+        
+class dataset_std():
+    def __init__(self,mean,mode='n-1'):
+        """
+        
+
+        Parameters
+        ----------
+        mean : TYPE
+            DESCRIPTION.
+        mode : String, optional
+            DESCRIPTION. The default is 'n'.
+            support mode: {n,n-1}
+        Returns
+        -------
+        None.
+
+        """
+        self.reset(mean,mode)
+        
+    def update(self,image):
+        assert len(image.shape)==3 and image.shape[2]==3,"require rgb image with shape [h,w,3]"
+        
+        h,w,c=image.shape
+        image=image.astype(np.float64)
+        for i in range(3):
+            image[:,:,i]-=self.mean[i]
+        
+        self.std_sum+=np.sum(image*image,axis=(0,1))
+        self.count+=h*w
+        
+    def summary(self):
+        if self.mode=='n':
+            return np.sqrt(self.std_sum/self.count) 
+        else:
+            return np.sqrt(self.std_sum/(self.count-1))
+            
+    
+    def reset(self,mean,mode):
+        self.mean=mean
+        self.std_sum=np.zeros(3,np.float64)
+        self.count=0
+        self.mode=mode

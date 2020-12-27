@@ -34,6 +34,8 @@ import cv2
 import numpy as np
 from easydict import EasyDict as edict
 from PIL import Image
+import warnings
+
 from .json2labelImg import createLabelImage
 from .labels_cityscapes import id2catId
 
@@ -42,6 +44,9 @@ support_datasets = ['ADEChallengeData2016', 'VOC2012', 'Kitti2015',
                         'ADE20K', 'HuaWei', 'Cityscapes_Category']
 
 def get_dataset_generalize_config(config, dataset_name):
+    if config is None:
+        config=edict()
+    
     config.dataset_name=dataset_name
     cur_dir=os.path.dirname(__file__)
     config.txt_path=os.path.join(cur_dir,'txt')
@@ -133,6 +138,29 @@ def get_dataset_generalize_config(config, dataset_name):
 
 class dataset_generalize(TD.Dataset):
     def __init__(self, config, augmentations=None, split=None, bchw=True, normalizations=None):
+        """
+        
+
+        Parameters
+        ----------
+        config : easydict.EasyDict
+            config.augmentations_blur: augmentation on image(bool).
+            config.augmentation: augmentation on image and annotation(bool).
+            
+        augmentations : TYPE, optional
+            DESCRIPTION. The default is None.
+        split : TYPE, optional
+            DESCRIPTION. The default is None.
+        bchw : TYPE, optional
+            DESCRIPTION. The default is True.
+        normalizations : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
         self.config = config
         self.augmentations = augmentations
         self.bchw = bchw
@@ -234,9 +262,28 @@ class dataset_generalize(TD.Dataset):
         return len(self.image_files)
 
     def __getitem__(self, index):
-        """__getitem__
+        """
+        return image and annotation
+        
+        1. opencv read image, PIL image read annotation
+        2. remap annotation
+        3. augmentation on image only
+        4. augmentation on image and annotation
+        5. resize image and annotation (augmentation may change image size, like crop)
+        6. convert color from BGR to RGB for image
+        7. normalization on image
+        8. chage from [H,W,C] to [C,H,W] if bchw=True
+        9. return path for split=='test' and config.with_path
+        
+        Parameters
+        ----------
+        index : TYPE
+            DESCRIPTION.
 
-        :param index:
+        Returns
+        -------
+        None.
+
         """
         self.step = self.step+1
         # eg root_path/leftImg8bit_trainvaltest/leftImg8bit/test/berlin/berlin_000000_000019_leftImg8bit.png
@@ -283,14 +330,22 @@ class dataset_generalize(TD.Dataset):
                 if hasattr(self.config, 'augmentations_blur'):
                     if self.config.augmentations_blur:
                         img = self.augmentations.transform(img)
+                    else:
+                        warnings.warn('the argument augmentations is not None but config.augmentations_blur=False')
                 else:
                     img = self.augmentations.transform(img)
+                    
 
-                if hasattr(self.config,'aug'):
+                if hasattr(self.config,'augmentation'):
+                    if self.config.augmentation:
+                        img, ann = self.augmentations.transform(img, ann)
+                    else:
+                        warnings.warn('the argument augmentations is not None but config.augmentation=False')
+                else:
                     img, ann = self.augmentations.transform(img, ann)
-
+                
                 assert hasattr(
-                    self.config, 'resize_shape'), 'augmentations may change image to random size by random crop'
+                            self.config, 'resize_shape'), 'augmentations may change image to random size by random crop'
 
         if hasattr(self.config, 'resize_shape'):
             assert len(self.config.resize_shape) == 2, 'resize_shape should with len of 2 but %d' % len(
@@ -301,13 +356,17 @@ class dataset_generalize(TD.Dataset):
             img = cv2.resize(src=img, dsize=dsize, interpolation=cv2.INTER_LINEAR)
 
             if self.split !='test':
-                ann = cv2.resize(src=ann, dsize=dsize, interpolation=cv2.INTER_NEAREST)
+                if hasattr(self.config,'upsample_type') and self.config.upsample_type =='lossless':
+                    if hasattr(self.config,'output_shape') and self.config.output_shape is not None:
+                        ann = cv2.resize(src=ann, dsize=tuple(self.config.output_shape), interpolation=cv2.INTER_NEAREST)
+                else:
+                    ann = cv2.resize(src=ann, dsize=dsize, interpolation=cv2.INTER_NEAREST)
 
 #        print('bgr',np.min(img),np.max(img),np.mean(img),np.std(img))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 #        print('rgb',np.min(img),np.max(img),np.mean(img),np.std(img))
 
-        if self.config.with_edge and self.split !='test':
+        if hasattr(self.config,'with_edge') and self.config.with_edge and self.split !='test':
             edge_img=None
             if hasattr(self.config,'edge_with_gray'):
                 if self.config.edge_with_gray:
@@ -322,7 +381,7 @@ class dataset_generalize(TD.Dataset):
             # convert image from (height,width,channel) to (channel,height,width)
             img = img.transpose((2, 0, 1))
 
-        if self.config.with_edge and self.split != 'test':
+        if hasattr(self.config,'with_edge') and self.config.with_edge and self.split != 'test':
             return img, ann, edge
 
         if self.split == 'test':
@@ -370,15 +429,20 @@ class dataset_generalize(TD.Dataset):
 
 class image_normalizations():
     def __init__(self, ways='caffe'):
+        ways=ways.lower()
         if ways == 'caffe(255-mean)' or ways == 'caffe' or ways.lower() in ['voc', 'voc2012']:
             scale = 1.0
             mean_rgb = [123.68, 116.779, 103.939]
             std_rgb = [1.0, 1.0, 1.0]
-        elif ways.lower() in ['cityscapes', 'cityscape']:
+        elif ways in ['cityscapes', 'cityscape']:
+            scale = 255.0
+            mean_rgb = [0.28689554, 0.32513303, 0.28389177]
+            std_rgb = [0.18696375, 0.19017339, 0.18720214]
+        elif ways == 'huawei':
             scale = 1.0
-            mean_rgb = [72.39239876, 82.90891754, 73.15835921]
-            std_rgb = [1.0, 1.0, 1.0]
-        elif ways == 'pytorch(1.0-mean)/std' or ways == 'pytorch':
+            mean_rgb=[124.11870038, 125.07657107, 123.00802247]
+            std_rgb = [61.99688924, 62.37700168, 66.98155404]
+        elif ways == 'pytorch(1.0-mean)/std' or ways in ['pytorch','imagenet']:
             scale = 255.0
             mean_rgb = [0.485, 0.456, 0.406]
             std_rgb = [0.229, 0.224, 0.225]

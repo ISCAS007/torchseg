@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
     # must change batch size here!!!
     batch_size = args.batch_size
-
+        
     train_dataset = dataset_generalize(
         config, split='train',
         augmentations=augmentations,
@@ -145,15 +145,21 @@ if __name__ == '__main__':
     elif test == 'huawei':
         # train on cityscapes, validation on huawei
         net = get_net(config)
-        config = get_dataset_generalize_config(
-                config, "Cityscapes_Category")
-        train_dataset = dataset_generalize(
-                config,
-                split='train',
-                augmentations=augmentations,
-                normalizations=normalizations)
+        
+        train_datasets=[]
+        for dataset_name in ['Cityscapes_Category','HuaWei']:
+            config = get_dataset_generalize_config(
+                    config, dataset_name)
+            train_dataset = dataset_generalize(
+                    config,
+                    split='train',
+                    augmentations=augmentations,
+                    normalizations=normalizations)
+            train_datasets.append(train_dataset)
+        
+        merge_dataset=TD.ConcatDataset(train_datasets)
         train_loader = TD.DataLoader(
-            dataset=train_dataset,
+            dataset=merge_dataset,
             batch_size=batch_size,
             shuffle=True,
             drop_last=True,
@@ -172,7 +178,7 @@ if __name__ == '__main__':
             shuffle=True,
             drop_last=False,
             num_workers=8)
-        
+        keras_fit(net,train_loader, val_loader)
         
     elif test == 'benchmark':
         config.with_path=True

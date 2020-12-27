@@ -5,6 +5,7 @@ import math
 import os
 import matplotlib.pyplot as plt
 import glob
+from PIL import Image
 import warnings
 
 # Minimum common multiple or least common multiple
@@ -17,6 +18,40 @@ def lcm_list(l):
        x=lcm(i,x)
 
     return x
+
+def get_color_map(N=256, normalized=False):
+    """
+    voc color map, different from matplotlib
+    """
+    def bitget(byteval, idx):
+        return ((byteval & (1 << idx)) != 0)
+
+    dtype = 'float32' if normalized else 'uint8'
+    cmap = np.zeros((N, 3), dtype=dtype)
+    for i in range(N):
+        r = g = b = 0
+        c = i
+        for j in range(8):
+            r = r | (bitget(c, 0) << 7-j)
+            g = g | (bitget(c, 1) << 7-j)
+            b = b | (bitget(c, 2) << 7-j)
+            c = c >> 3
+
+        cmap[i] = np.array([r, g, b])
+
+    cmap = cmap/255 if normalized else cmap
+    return cmap
+
+def add_color_map(img,cmap=None):
+    if cmap is None:
+        cmap=get_color_map(256)
+        
+    pilImg=Image.fromarray(img,'P')
+    pilImg.putpalette(cmap)
+    pilImg=pilImg.convert('RGB')
+    
+    color_img=np.array(pilImg)
+    return color_img
 
 def get_special_cmap(base_cmap_name='Set3',bad_color='black'):
     cmap=plt.get_cmap(base_cmap_name)

@@ -1,29 +1,40 @@
 # -*- coding: utf-8 -*-
 """
-ImageAugmenter,TorchAugmenter: apply to input image
-ImageTransformer,TorchTransformer: apply to input image and annotations
+ImageAugmenter: apply to input image
+ImageTransformer: apply to input image and annotations
+
+imgaug: use library img_aug to augment image and mask
+pillow: use the library in pillow_transform
+semseg: use the library in semseg_transform to augment iamge and mask
+
+todo: add aug_library in {imgaug,pillow,semseg,album} to augment image and mask
+reference: 
+    - https://github.com/AgaMiko/data-augmentation-review
+    - https://github.com/albumentations-team/albumentations
+    - https://github.com/aleju/imgaug
+
 """
 from imgaug import augmenters as iaa
 import numpy as np
 import cv2
-import math
 import random
 
 from easydict import EasyDict as edict
 from torchvision import transforms as TT
-from . import joint_transforms as JT
-from . import semseg_transform as ST
+from .augmentation import pillow_transform as pillow
+from .augmentation import semseg_transform as semseg
 from .disc_tools import show_images
+from .augmentation.custom import get_crop_size,rotate_while_keep_size
 from functools import partial
 
 
 class ImageAugmenter:
     def __init__(self, config):
         propability=config.propability
-        self.use_imgaug = config.use_imgaug
+        self.aug_library = config.aug_library
 #        self.print=True        
         # use imgaug to do data augmentation
-        if self.use_imgaug:
+        if self.aug_library =='imgaug':
             sometimes = lambda aug: iaa.Sometimes(propability, aug)
             blur = iaa.OneOf([
                 iaa.GaussianBlur((0, 3.0)),
@@ -46,7 +57,7 @@ class ImageAugmenter:
                  sometimes(bright)
                  ],
                 random_order=True)
-        else:
+        elif self.aug_library=='pillow':
             # use torchvision transform to do data augmentation
             tt_aug = TT.RandomApply([
                 TT.ColorJitter(brightness=10, contrast=0.05, saturation=0.05, hue=0.01),
@@ -55,8 +66,10 @@ class ImageAugmenter:
             self.tt_seq = TT.Compose([
                 TT.ToPILImage(),
                 tt_aug,
-                JT.ToNumpy(),
+                pillow.ToNumpy(),
             ])
+        else:
+            assert False,'unsupported augmentation library {}'.format(self.aug_library)
 
     def augument_image(self, image):
         # use zzl noise
@@ -69,36 +82,38 @@ class ImageAugmenter:
 #            noise_img,mask=AddImpulseNoise(image,noise_density=0.2,noise_type="salt_pepper",rho=0.5)
 #            return noise_img
         
-        if self.use_imgaug:
+        if self.aug_library=='imgaug':
             return self.iaa_seq.augment_image(image)
-        else:
+        elif self.aug_library=='semseg':
             return self.tt_seq(image)
+        else:
+            assert False,'unsupported augmentation library {}'.format(self.aug_library)
 
 class ImageTransformer(object):
     def __init__(self, config):
         self.config = config
-        self.use_iaa = config.use_imgaug
+        self.aug_library = config.aug_library
         self.crop_size_list=None
 
-    def transform_image_and_mask_tt(self, image, mask, angle=None, crop_size=None):
-        assert self.use_iaa == False
-        transforms = [JT.RandomHorizontallyFlip()]
+    def transform_image_and_mask_pillow(self, image, mask, angle=None, crop_size=None):
+        assert self.aug_library == 'pillow'
+        transforms = [pillow.RandomHorizontallyFlip()]
         if crop_size is not None:
-            transforms.append(JT.RandomCrop(size=crop_size))
+            transforms.append(pillow.RandomCrop(size=crop_size))
         if angle is not None:
-            transforms.append(JT.RandomRotate(degree=angle))
-        jt_random = JT.RandomOrderApply(transforms)
+            transforms.append(pillow.RandomRotate(degree=angle))
+        pillow_random = pillow.RandomOrderApply(transforms)
 
-        jt_transform = JT.Compose([
-            JT.ToPILImage(),
-            jt_random,
-            JT.ToNumpy(),
+        pillow_transforms = pillow.Compose([
+            pillow.ToPILImage(),
+            pillow_random,
+            pillow.ToNumpy(),
         ])
 
-        return jt_transform(image, mask)
+        return pillow_transforms(image, mask)
 
-    def transform_image_and_mask_iaa(self, image, mask, angle=None, crop_size=None, hflip=False, vflip=False):
-        assert self.use_iaa == True
+    def transform_image_and_mask_imgaug(self, image, mask, angle=None, crop_size=None, hflip=False, vflip=False):
+        assert self.aug_library == 'imgaug'
         transforms = []
 
         if crop_size is not None:
@@ -138,80 +153,15 @@ class ImageTransformer(object):
         # image_size = height, width , channel
         image_size=image.shape
         # crop_size <= image_size
-        crop_size = None
-        if not config.keep_crop_ratio:
-            # may not keep image height:width ratio
-            # make sure crop size <= image size
-            min_crop_size = config.min_crop_size
-            if not isinstance(min_crop_size,(list,tuple)):
-                min_crop_size=[min_crop_size]*2
-            if len(min_crop_size)==1:
-                min_crop_size=min_crop_size*2
-
-            max_crop_size = config.max_crop_size
-            if not isinstance(max_crop_size,(list,tuple)):
-                max_crop_size=max_crop_size*2
-            if len(max_crop_size)==1:
-                max_crop_size=[max_crop_size[0],max_crop_size[0]]
-
-            crop_size_step=config.crop_size_step
-            if crop_size_step>0:
-                if self.crop_size_list is None:
-                    crop_size_list=[[min_crop_size[0]],
-                                    [min_crop_size[1]]]
-                    for i in range(2):
-                        while crop_size_list[i][-1]+crop_size_step<max_crop_size[i]:
-                            crop_size_list[i].append(crop_size_list[i][-1]+crop_size_step)
-                    self.crop_size_list=crop_size_list
-
-                assert len(self.crop_size_list)==2
-                crop_size=[random.choice(self.crop_size_list[0]),
-                          random.choice(self.crop_size_list[1])]
-            else:
-                # just like crop_size_step=1
-                a = np.random.rand()
-                th = (min_crop_size[0] + (max_crop_size[0] - min_crop_size[0]) * a)
-                tw = (min_crop_size[1] + (max_crop_size[1] - min_crop_size[1]) * a)
-                crop_size = [int(th), int(tw)]
-
-            # change crop_size to make sure crop_size* <= image_size
-            # note in deeplabv3_plus, the author padding the image_size with mean+ignore_label
-            # to make sure crop_size <= image_size*
-            if crop_size[0] <= image_size[0] and crop_size[1] <= image_size[1]:
-                pass
-            else:
-                y=int(image_size[0]*crop_size[1]/float(crop_size[0]))
-                if y<=image_size[1]:
-                    crop_size[0]=image_size[0]
-                    crop_size[1]=y
-                else:
-                    crop_size[0]=int(image_size[1]*crop_size[0]/float(crop_size[1]))
-                    crop_size[1]=image_size[1]
-                    assert crop_size[0]<=image_size[0]
+        if self.config.use_crop:
+            crop_size,self.crop_size_list = get_crop_size(config, image_size, self.crop_size_list)
         else:
-            # keep image height:width ratio
-            # make sure crop size <= image size
-            crop_ratio = config.crop_ratio
-            h, w = mask.shape
-
-            # use random crop ratio
-            if type(crop_ratio) == list or type(crop_ratio) == tuple:
-                ratio_max = max(crop_ratio)
-                ratio_min = min(crop_ratio)
-
-                assert ratio_max<=1.0
-                a = np.random.rand()
-                th = (ratio_min + (ratio_max - ratio_min) * a) * h
-                tw = (ratio_min + (ratio_max - ratio_min) * a) * w
-                crop_size = (int(th), int(tw))
-            else:
-                assert crop_ratio<=1.0
-                crop_size = (int(crop_ratio * h), int(crop_ratio * w))
-
+            crop_size=None
+        
         a = np.random.rand()
         hflip = False
         if config.horizontal_flip and a<0.5:
-                hflip = True
+            hflip = True
 
         a = np.random.rand()
         vflip = False
@@ -222,67 +172,25 @@ class ImageTransformer(object):
             print('angle is',angle)
             print('crop_size is',crop_size)
 
-        if self.use_iaa:
-            return self.transform_image_and_mask_iaa(image,
+        if self.aug_library=='imgaug':
+            return self.transform_image_and_mask_imgaug(image,
                                                      mask,
                                                      angle=angle,
                                                      crop_size=crop_size,
                                                      hflip=hflip,
                                                      vflip=vflip)
-        else:
-            return self.transform_image_and_mask_tt(image,
+        elif self.aug_library=='pillow':
+            return self.transform_image_and_mask_pillow(image,
                                                     mask,
                                                     angle=angle,
                                                     crop_size=crop_size)
-
-    @staticmethod
-    def rotate_while_keep_size(image, rotation, interpolation):
-        def rotateImage(image, angle):
-            image_center = tuple(np.array(image.shape[1::-1]) / 2)
-            rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-            result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=interpolation)
-            return result
-
-        # Get size before we rotate
-        y, x = image.shape[0:2]
-        #        rotation=rotation*2
-        #        image_2a=rotateImage(image,rotation)
-        image_a = rotateImage(image, rotation / 2)
-        #        Y_2a,X_2a=image_2a.shape[0:2]
-        Y_a, X_a = image_a.shape[0:2]
-        assert y == Y_a and x == X_a, 'rotate image has different size'
-
-        #        tan_angle=math.tan(math.radians(rotation))
-        tan_angle_half = math.tan(math.radians(rotation / 2))
-        cos_angle = math.cos(math.radians(rotation))
-        cos_angle_half = math.cos(math.radians(rotation / 2))
-
-        width_new_float = 2 * (cos_angle_half * (x / 2 - tan_angle_half * y / 2) / cos_angle)
-        height_new_float = 2 * (cos_angle_half * (y / 2 - tan_angle_half * x / 2) / cos_angle)
-
-        assert width_new_float > 0, 'half of the angle cannot bigger than arctan(width/height)'
-        assert height_new_float > 0, 'half of the angle cannot bigger than arctan(height/width)'
-        #        height_new=2*int(cos_angle_half*(x/2-tan_angle_half*y/2)/cos_angle)
-        #        width_new=2*int(cos_angle_half*(y/2-tan_angle_half*x/2)/cos_angle)
-        #        print('old height is',y)
-        #        print('old width is',x)
-        #        print('new_height is',height_new_float)
-        #        print('new_width is',width_new_float)
-
-        x_new = int(math.ceil((x - width_new_float) / 2))
-        y_new = int(math.ceil((y - height_new_float) / 2))
-        x_new_end = int(math.floor(width_new_float + (x - width_new_float) / 2))
-        y_new_end = int(math.floor(height_new_float + (y - height_new_float) / 2))
-
-        new_image = image_a[y_new:y_new_end, x_new:x_new_end]
-        #        print(y,x)
-        # Return the image, re-sized to the size of the image passed originally
-        return cv2.resize(src=new_image, dsize=(x, y), interpolation=interpolation)
+        else:
+            assert False,'unsupported augmentation library {}'.format(self.aug_library)
 
     @staticmethod
     def rotate_transform(image, mask, rotate_angle):
-        new_image = ImageTransformer.rotate_while_keep_size(image, rotate_angle, cv2.INTER_CUBIC)
-        new_mask = ImageTransformer.rotate_while_keep_size(mask, rotate_angle, cv2.INTER_NEAREST)
+        new_image = rotate_while_keep_size(image, rotate_angle, cv2.INTER_CUBIC)
+        new_mask = rotate_while_keep_size(mask, rotate_angle, cv2.INTER_NEAREST)
         return new_image, new_mask
 
     @staticmethod
@@ -330,9 +238,13 @@ def get_default_augmentor_config(config=None):
         config = edict()
 
     config.propability=0.25
-    config.use_rotate=True
+    if not hasattr(config,'use_rotate'):
+        config.use_rotate=True
     config.rotate_max_angle=15
-
+    
+    if not hasattr(config,'use_crop'):
+        config.use_crop=True
+        
     config.keep_crop_ratio=True
     # height:480, width: 480-720
     config.min_crop_size=480
@@ -342,9 +254,9 @@ def get_default_augmentor_config(config=None):
     # width : image width * random(0.85,1.0)
     config.crop_ratio = [0.85, 1.0]
     config.horizontal_flip = True
-    config.vertical_flip = False
+    config.vertical_flip = True
     config.debug = False
-    config.use_imgaug=True
+    config.aug_library="imgaug"
     return config
 
 
@@ -353,41 +265,51 @@ class Augmentations(object):
         if config is None:
             config = get_default_augmentor_config()
 
-        if hasattr(config,'use_semseg'):
-            self.use_semseg=config.use_semseg
+        if hasattr(config,'aug_library'):
+            self.aug_library=config.aug_library
         else:
-            self.use_semseg=False
+            self.aug_library='imgaug'
 
-        if self.use_semseg:
+        if self.aug_library=='semseg':
             value_scale = 255
             mean = [0.485, 0.456, 0.406]
             mean = [item * value_scale for item in mean]
             std = [0.229, 0.224, 0.225]
             std = [item * value_scale for item in std]
-
-            self.tran = ST.Compose([
-                ST.RandScale([0.5, 2.0]),
-                ST.RandRotate([-10,10], padding=mean, ignore_label=255),
-                ST.RandomGaussianBlur(),
-                ST.RandomHorizontalFlip(),
-                ST.Crop(config.input_shape, crop_type='rand', padding=mean, ignore_label=255)])
-        else:
+            
+            transforms=[semseg.RandScale([0.5, 2.0])]
+            
+            if config.use_rotate:
+                transforms.append(semseg.RandRotate([-10,10], padding=mean, ignore_label=255))
+            
+            transforms.append(semseg.RandomGaussianBlur())
+            transforms.append(semseg.RandomHorizontalFlip())
+            if config.use_crop:
+                transforms.append(semseg.Crop(config.input_shape, crop_type='rand', padding=mean, ignore_label=255))
+                
+            self.tran = semseg.Compose(transforms)
+            
+        elif self.aug_library in ['imgaug','pillow']:
             # augmentation for image
             self.aug = ImageAugmenter(config=config)
             # augmentation for image and mask
             self.tran = ImageTransformer(config=config)
+        else:
+            assert False,'unsupported augmentation library {}'.format(self.aug_library)
 
     def transform(self, image, mask=None):
-        if self.use_semseg:
+        if self.aug_library=='semseg':
             if mask is None:
                 return image
             else:
                 return self.tran(image,mask)
-        else:
+        elif self.aug_library in ['imgaug','pillow']:
             if mask is None:
                 return self.aug.augument_image(image)
             else:
                 return self.tran.transform_image_and_mask(image, mask)
+        else:
+            assert False,'unsupported augmentation library {}'.format(self.aug_library)
 
 
 if __name__ == '__main__':
