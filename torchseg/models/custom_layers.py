@@ -488,8 +488,6 @@ class CascadeMergeLayer(nn.Module):
             out_c=min(max(backbone.get_feature_map_channel(idx),
                       self.min_channel_number),self.max_channel_number)
 
-
-
             merge_c+=current_c
 
             current_layer=[conv_1x1(merge_c,out_c,self.use_bn)]
@@ -511,7 +509,15 @@ class CascadeMergeLayer(nn.Module):
         midnet_input_shape=backbone.get_output_shape(self.deconv_layer,self.input_shape)
         self.psplayer=PSPLayer(config.midnet_pool_sizes,config.midnet_scale,midnet_input_shape,midnet_out_channels,self.use_bn,config.additional_upsample)
         self.model_layers=nn.ModuleList([layer for layer in self.layers if layer is not None])
-
+        
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+                
     def forward(self,features):
         assert isinstance(features,list)
         feature=None

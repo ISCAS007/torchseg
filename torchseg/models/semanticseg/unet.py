@@ -94,6 +94,14 @@ class PSPUNet(nn.Module):
         self.optimizer_params=[dict(params=self.backbone.parameters(), lr_mult=1),
                           dict(params=self.midnet.parameters(),lr_mult=lr_mult),
                           dict(params=self.decoder.parameters(),lr_mult=lr_mult)]
+        
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self,x):
         feature_map = self.backbone.forward_layers(x)

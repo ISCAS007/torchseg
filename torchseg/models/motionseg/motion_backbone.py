@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from easydict import EasyDict as edict
-import timm
+#import timm
 import warnings
 from ...utils.disc_tools import lcm_list
 from ..upsample import local_upsample
@@ -342,8 +342,8 @@ class motion_backbone(TN.Module):
                 return mobilenet2(pretrained=pretrained,in_c=self.in_channels)
             elif self.config.backbone_name in globals().keys():
                 return globals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
-            elif self.config.backbone_name in timm.list_models(pretrained=True):
-                return timm.create_model(self.config.backbone_name, pretrained=pretrained)
+            # elif self.config.backbone_name in timm.list_models(pretrained=True):
+            #     return timm.create_model(self.config.backbone_name, pretrained=pretrained)
             else:
                 assert False,'unknonw backbone name {}'.format(self.config.backbone_name)
                 
@@ -357,8 +357,8 @@ class motion_backbone(TN.Module):
                 return mobilenet2(pretrained=pretrained)
             elif self.config.backbone_name in globals().keys():
                 return globals()[self.config.backbone_name](pretrained=pretrained,use_none_layer=self.use_none_layer)
-            elif self.config.backbone_name in timm.list_models(pretrained=True):
-                return timm.create_model(self.config.backbone_name, pretrained=pretrained)
+            # elif self.config.backbone_name in timm.list_models(pretrained=True):
+            #     return timm.create_model(self.config.backbone_name, pretrained=pretrained)
             else:
                 assert False,'unknonw backbone name {}'.format(self.config.backbone_name)
 
