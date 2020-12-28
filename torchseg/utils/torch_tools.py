@@ -4,11 +4,12 @@ import torch
 import time
 import json
 import os
-from packaging import version
-if version.parse(torch.__version__) < version.parse('1.1.0'):
-    from tensorboardX import SummaryWriter
-else:
-    from torch.utils.tensorboard import SummaryWriter
+# from packaging import version
+# if version.parse(torch.__version__) < version.parse('1.1.0'):
+#     from tensorboardX import SummaryWriter
+# else:
+#     from torch.utils.tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
     
 from .metrics import runningScore
 from .disc_tools import save_model_if_necessary, get_newest_file
