@@ -415,7 +415,7 @@ def get_parser():
     
     vgg_nets=['vgg'+str(i) for i in [11,13,16,19]]
     vgg_nets+=[net+'_bn' for net in vgg_nets]
-    res_nets=['res'+str(i) for i in [18,26,34,50,101,152]]
+    res_nets=['resnet'+str(i) for i in [18,26,34,50,101,152]]
     resd_nets=[net+'d' for net in res_nets]
     seres_nets=['legacy_se'+net for net in res_nets]+['seresnet50']
     
