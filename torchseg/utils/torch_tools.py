@@ -10,7 +10,7 @@ from .disc_tools import save_model_if_necessary, get_newest_file
 from .center_loss2d import CenterLoss
 from ..dataset.dataset_generalize import image_normalizations, dataset_generalize
 from .augmentor import Augmentations
-from .focalloss2d import FocalLoss2d
+from .losses import get_loss_fn
 from .poly_plateau import poly_rop
 import torch.utils.data as TD
 from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
@@ -595,15 +595,21 @@ def get_loss_fn_dict(config):
         seg_loss_weight = None
 
     loss_fn_dict = {}
-    if config.focal_loss_gamma < 0:
-        loss_fn_dict['seg'] = torch.nn.CrossEntropyLoss(
-            ignore_index=ignore_index, weight=seg_loss_weight)
-    else:
-        loss_fn_dict['seg'] = FocalLoss2d(alpha=config.focal_loss_alpha,
-                                          gamma=config.focal_loss_gamma,
-                                          weight=seg_loss_weight,
-                                          ignore_index=ignore_index,
-                                          with_grad=config.focal_loss_grad)
+    loss_fn_dict['seg']=get_loss_fn(config.loss_type,
+                                    weight=seg_loss_weight,
+                                    ignore_index=ignore_index,
+                                    focal_loss_alpha=config.focal_loss_alpha,
+                                    focal_loss_gamma=config.focal_loss_gamma,
+                                    focal_loss_grad=config.focal_loss_grad)
+    # if config.focal_loss_gamma < 0:
+    #     loss_fn_dict['seg'] = torch.nn.CrossEntropyLoss(
+    #         ignore_index=ignore_index, weight=seg_loss_weight)
+    # else:
+    #     loss_fn_dict['seg'] = FocalLoss2d(alpha=config.focal_loss_alpha,
+    #                                       gamma=config.focal_loss_gamma,
+    #                                       weight=seg_loss_weight,
+    #                                       ignore_index=ignore_index,
+    #                                       with_grad=config.focal_loss_grad)
 
     if config.with_edge:
         if hasattr(config, 'edge_class_num'):

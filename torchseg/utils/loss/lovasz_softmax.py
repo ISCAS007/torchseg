@@ -150,7 +150,7 @@ def binary_xloss(logits, labels, ignore=None):
 # --------------------------- MULTICLASS LOSSES ---------------------------
 
 
-def lovasz_softmax(probas, labels, classes='present', per_image=False, ignore=None):
+def lovasz_softmax(input, target, classes='present', per_image=False, ignore=None):
     """
     Multi-class Lovasz-Softmax loss
       probas: [B, C, H, W] Variable, class probabilities at each prediction (between 0 and 1).
@@ -160,6 +160,8 @@ def lovasz_softmax(probas, labels, classes='present', per_image=False, ignore=No
       per_image: compute the loss per image instead of per batch
       ignore: void class labels
     """
+    probas=input
+    labels=target
     if per_image:
         loss = mean(lovasz_softmax_flat(*flatten_probas(prob.unsqueeze(0), lab.unsqueeze(0), ignore), classes=classes)
                           for prob, lab in zip(probas, labels))

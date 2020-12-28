@@ -1,63 +1,73 @@
 # -*- coding: utf-8 -*-
-import random
 import numpy as np
 import cv2
 import math
 
-def get_crop_size(config,image_size,crop_size_list=None):
+def get_crop_size(config,image_size):
+    min_crop_size = config.min_crop_size
+    if not isinstance(min_crop_size,(list,tuple)):
+        min_crop_size=[min_crop_size]*2
+    if len(min_crop_size)==1:
+        min_crop_size=min_crop_size*2
+
+    max_crop_size = config.max_crop_size
+    if not isinstance(max_crop_size,(list,tuple)):
+        max_crop_size=[max_crop_size]*2
+    if len(max_crop_size)==1:
+        max_crop_size=max_crop_size*2
+    
+    # keep crop_size <= max_crop_size <= image_size
+    max_crop_size=[min(image_size[0],max_crop_size[0]), 
+                   min(image_size[1],max_crop_size[1])]
+    
     if not config.keep_crop_ratio:
         # may not keep image height:width ratio
-        # make sure crop size <= image size
-        min_crop_size = config.min_crop_size
-        if not isinstance(min_crop_size,(list,tuple)):
-            min_crop_size=[min_crop_size]*2
-        if len(min_crop_size)==1:
-            min_crop_size=min_crop_size*2
-
-        max_crop_size = config.max_crop_size
-        if not isinstance(max_crop_size,(list,tuple)):
-            max_crop_size=max_crop_size*2
-        if len(max_crop_size)==1:
-            max_crop_size=[max_crop_size[0],max_crop_size[0]]
+        # make sure min_crop_size <= crop size <= max_crop_size <= image size
 
         crop_size_step=config.crop_size_step
         if crop_size_step>0:
-            if crop_size_list is None:
-                crop_size_list=[[min_crop_size[0]],
-                                [min_crop_size[1]]]
-                for i in range(2):
-                    while crop_size_list[i][-1]+crop_size_step<max_crop_size[i]:
-                        crop_size_list[i].append(crop_size_list[i][-1]+crop_size_step)
-
-            assert len(crop_size_list)==2
-            crop_size=[random.choice(crop_size_list[0]),
-                      random.choice(crop_size_list[1])]
+            max_crop_step=[max_crop_size[0]-min_crop_size[0],
+                                  max_crop_size[1]-min_crop_size[1]]
+            a=np.random.rand()
+            
+            # use int can avoid crop_size > max_crop_size, but cannot ensure crop_size = max_crop_size
+            crop_size=[min_crop_size[0]+crop_size_step*round(a*max_crop_step/crop_size_step),
+                      min_crop_size[1]+crop_size_step*round(a*max_crop_step/crop_size_step)]
+            
+            if crop_size[0]>max_crop_size[0] or crop_size[1]>max_crop_size[1]:
+                crop_size[0]-=crop_size_step
+                crop_size[1]-=crop_size_step
         else:
             # just like crop_size_step=1
             a = np.random.rand()
+            b = np.random.rand()
             th = (min_crop_size[0] + (max_crop_size[0] - min_crop_size[0]) * a)
-            tw = (min_crop_size[1] + (max_crop_size[1] - min_crop_size[1]) * a)
-            crop_size = [int(th), int(tw)]
-
+            tw = (min_crop_size[1] + (max_crop_size[1] - min_crop_size[1]) * b)
+            crop_size = [round(th), round(tw)]
+        
+        assert crop_size[0]<=max_crop_size[0] and crop_size[1]<=max_crop_size[1]
+        assert crop_size[0]>=min_crop_size[0] and crop_size[1]>=min_crop_size[1]
+            
         # change crop_size to make sure crop_size* <= image_size
         # note in deeplabv3_plus, the author padding the image_size with mean+ignore_label
         # to make sure crop_size <= image_size*
-        if crop_size[0] <= image_size[0] and crop_size[1] <= image_size[1]:
-            pass
-        else:
-            y=int(image_size[0]*crop_size[1]/float(crop_size[0]))
-            if y<=image_size[1]:
-                crop_size[0]=image_size[0]
-                crop_size[1]=y
-            else:
-                crop_size[0]=int(image_size[1]*crop_size[0]/float(crop_size[1]))
-                crop_size[1]=image_size[1]
-                assert crop_size[0]<=image_size[0]
+        
+        # if crop_size[0] <= image_size[0] and crop_size[1] <= image_size[1]:
+        #     pass
+        # else:
+        #     y=int(image_size[0]*crop_size[1]/float(crop_size[0]))
+        #     if y<=image_size[1]:
+        #         crop_size[0]=image_size[0]
+        #         crop_size[1]=y
+        #     else:
+        #         crop_size[0]=int(image_size[1]*crop_size[0]/float(crop_size[1]))
+        #         crop_size[1]=image_size[1]
+        #         assert crop_size[0]<=image_size[0]
     else:
         # keep image height:width ratio
         # make sure crop size <= image size
         crop_ratio = config.crop_ratio
-        h, w = image_size[0:2]
+        h, w = max_crop_size
 
         # use random crop ratio
         if type(crop_ratio) == list or type(crop_ratio) == tuple:
@@ -68,12 +78,13 @@ def get_crop_size(config,image_size,crop_size_list=None):
             a = np.random.rand()
             th = (ratio_min + (ratio_max - ratio_min) * a) * h
             tw = (ratio_min + (ratio_max - ratio_min) * a) * w
-            crop_size = (int(th), int(tw))
+            crop_size = (round(th), round(tw))
         else:
             assert crop_ratio<=1.0
-            crop_size = (int(crop_ratio * h), int(crop_ratio * w))
-            
-    return crop_size,crop_size_list
+            crop_size = (round(crop_ratio * h), round(crop_ratio * w))
+        
+        assert crop_size[0]<=max_crop_size[0] and crop_size[1]<=max_crop_size[1]
+    return crop_size
 
 
 def rotate_while_keep_size(image, rotation, interpolation):

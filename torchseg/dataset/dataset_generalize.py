@@ -47,7 +47,7 @@ def get_dataset_generalize_config(config, dataset_name):
     if config is None:
         config=edict()
     
-    config.dataset_name=dataset_name
+    config.dataset_name=dataset_name.lower()
     cur_dir=os.path.dirname(__file__)
     config.txt_path=os.path.join(cur_dir,'txt')
     assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
@@ -357,8 +357,9 @@ class dataset_generalize(TD.Dataset):
 
             if self.split !='test':
                 if hasattr(self.config,'upsample_type') and self.config.upsample_type =='lossless':
+                    lossless_dsize=(self.config.output_shape[1],self.config.output_shape[0])
                     if hasattr(self.config,'output_shape') and self.config.output_shape is not None:
-                        ann = cv2.resize(src=ann, dsize=tuple(self.config.output_shape), interpolation=cv2.INTER_NEAREST)
+                        ann = cv2.resize(src=ann, dsize=lossless_dsize, interpolation=cv2.INTER_NEAREST)
                 else:
                     ann = cv2.resize(src=ann, dsize=dsize, interpolation=cv2.INTER_NEAREST)
 

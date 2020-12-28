@@ -18,6 +18,7 @@ from imgaug import augmenters as iaa
 import numpy as np
 import cv2
 import random
+import warnings
 
 from easydict import EasyDict as edict
 from torchvision import transforms as TT
@@ -84,7 +85,7 @@ class ImageAugmenter:
         
         if self.aug_library=='imgaug':
             return self.iaa_seq.augment_image(image)
-        elif self.aug_library=='semseg':
+        elif self.aug_library=='pillow':
             return self.tt_seq(image)
         else:
             assert False,'unsupported augmentation library {}'.format(self.aug_library)
@@ -93,7 +94,6 @@ class ImageTransformer(object):
     def __init__(self, config):
         self.config = config
         self.aug_library = config.aug_library
-        self.crop_size_list=None
 
     def transform_image_and_mask_pillow(self, image, mask, angle=None, crop_size=None):
         assert self.aug_library == 'pillow'
@@ -154,7 +154,7 @@ class ImageTransformer(object):
         image_size=image.shape
         # crop_size <= image_size
         if self.config.use_crop:
-            crop_size,self.crop_size_list = get_crop_size(config, image_size, self.crop_size_list)
+            crop_size = get_crop_size(config, image_size)
         else:
             crop_size=None
         
@@ -244,19 +244,58 @@ def get_default_augmentor_config(config=None):
     
     if not hasattr(config,'use_crop'):
         config.use_crop=True
+    
+    # image size != network input size != crop size
+    if not hasattr(config,'keep_crop_ratio'): 
+        config.keep_crop_ratio=True
         
-    config.keep_crop_ratio=True
-    # height:480, width: 480-720
-    config.min_crop_size=480
-    config.max_crop_size=[480,720]
+    if not config.keep_crop_ratio:
+        if config.min_crop_size is None:
+            config.min_crop_size=config.input_shape
+        if config.max_crop_size is None:
+            config.max_crop_size=[2*i for i in config.input_shape]
 
-    # height: image height * random(0.85,1.0)
-    # width : image width * random(0.85,1.0)
-    config.crop_ratio = [0.85, 1.0]
+        if not isinstance(config.min_crop_size,(tuple,list)):
+            assert config.min_crop_size>0
+            config.min_crop_size=[config.min_crop_size]*2
+        else:
+            assert min(config.min_crop_size)>0
+            
+        if not isinstance(config.max_crop_size,(tuple,list)):
+            assert config.max_crop_size>0
+            config.max_crop_size=[config.max_crop_size]*2
+        else:
+            assert min(config.max_crop_size)>0
+
+        print('min_crop_size is',config.min_crop_size)
+        print('max_crop_size is',config.max_crop_size)
+        print('crop_size_step is',config.crop_size_step)
+    else:
+        if config.min_crop_size is None:
+            config.min_crop_size=config.input_shape
+            
+        warnings.warn('ignore min_crop_size when keep_crop_ratio is True')
+        if config.max_crop_size is None:
+            config.max_crop_size=[2*i for i in config.input_shape]
+            
+        if not isinstance(config.max_crop_size,(tuple,list)):
+            assert config.max_crop_size>0
+            config.max_crop_size=[config.max_crop_size]*2
+        else:
+            assert min(config.max_crop_size)>0
+        
+        if not hasattr(config,'crop_ratio') or config.crop_ratio is None:
+            config.crop_ratio = [0.85, 1.0]
+        print('max_crop_size is',config.max_crop_size)
+        print('crop_ratio is',config.crop_ratio)
+        # height: image height * random(0.85,1.0)
+        # width : image width * random(0.85,1.0)
+        
     config.horizontal_flip = True
     config.vertical_flip = True
     config.debug = False
-    config.aug_library="imgaug"
+    if not hasattr(config,'aug_library'):
+        config.aug_library="imgaug"
     return config
 
 

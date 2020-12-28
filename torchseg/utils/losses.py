@@ -4,8 +4,39 @@
 import torch
 
 from torch.nn import functional as F
+from torch.nn import CrossEntropyLoss
+from functools import partial
+from .loss.focal_loss import focal_loss_ohem
+from .loss.focalloss2d import FocalLoss2d
+from .loss.lovasz_softmax import lovasz_softmax
+loss_types=['cross_entropy','focal_loss2d','focal_loss_ohem','lovasz_softmax']
 
-
+def get_loss_fn(loss_type,**kwargs):
+    if loss_type=='cross_entropy':
+        return CrossEntropyLoss(weight=kwargs['weight'],
+                                ignore_index=kwargs['ignore_index'])
+    elif loss_type=='focal_loss2d':
+        return FocalLoss2d(alpha=kwargs['focal_loss_alpha'],
+                           gamma=kwargs['focal_loss_gamma'],
+                           weight=kwargs['weight'],
+                           ignore_index=kwargs['ignore_index'],
+                           with_grad=kwargs['focal_loss_grad'])
+    
+    elif loss_type=='focal_loss_ohem':
+        return partial(focal_loss_ohem,
+                       alpha=kwargs['focal_loss_alpha'],
+                       gamma=kwargs['focal_loss_gamma'],
+                       OHEM_percent=0.1)
+    
+    elif loss_type=='lovasz_softmax':
+        return partial(lovasz_softmax,
+                       classes='present',
+                       ignore=kwargs['ignore_index'])
+    
+    else:
+        assert False,'unsupport loss type {}'.format(loss_type)
+    
+    
 def bce_loss(true, logits, pos_weight=None):
     """Computes the weighted binary cross-entropy loss.
 

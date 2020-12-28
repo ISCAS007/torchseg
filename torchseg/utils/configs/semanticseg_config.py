@@ -24,6 +24,7 @@ from ...models.semanticseg.motionnet import motionnet,motion_panet
 from ...models.semanticseg.unet import UNet,PSPUNet,AuxNet
 from ...models.semanticseg.global_local_net import GlobalLocalNet
 from ...models.semanticseg.semanticseg_baseline import SemanticSegBaseline
+from ...utils.losses import loss_types
 import torch
 
 def convert_to_dilated_pool(module):
@@ -107,7 +108,7 @@ def get_default_config():
     config.layer_preference='last'
     config.learning_rate=1e-4
     config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
-    config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
+    config.loss_type='cross_entropy'
     config.lr_momentum=0.9
     config.lr_weight_decay=1e-4
     config.max_channel_number=256
@@ -137,7 +138,7 @@ def get_default_config():
     config.rank=0
     config.res_attention=False
     config.resize_shape=(224,224)
-    config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
+    config.root_path=''
     config.save_model=False
     config.scheduler=None
     config.seed=42
@@ -238,7 +239,7 @@ def get_config(args=None):
 
     #TODO resize_shape can be replaced be input_shape currently
     config.resize_shape = input_shape
-    config.dataset_name = args.dataset_name.lower()
+    #config.dataset_name = args.dataset_name.lower()
 
     if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
         config.with_edge = True
@@ -246,27 +247,6 @@ def get_config(args=None):
         config.with_edge = False
 
     config=get_default_augmentor_config(config)
-    config.use_rotate=args.use_rotate
-
-    # image size != network input size != crop size
-    if config.keep_crop_ratio is False:
-        if args.min_crop_size is None:
-            config.min_crop_size=[2*i for i in config.input_shape]
-        if args.max_crop_size is None:
-            config.max_crop_size=config.min_crop_size
-
-        if not isinstance(config.min_crop_size,(tuple,list)):
-            assert config.min_crop_size>0
-        else:
-            assert min(config.min_crop_size)>0
-        if not isinstance(config.max_crop_size,(tuple,list)):
-            assert config.max_crop_size>0
-        else:
-            assert min(config.max_crop_size)>0
-
-        print('min_crop_size is',config.min_crop_size)
-        print('max_crop_size is',config.max_crop_size)
-        print('crop_size_step is',config.crop_size_step)
 
     return config
 
@@ -776,6 +756,12 @@ def get_parser():
                          help="use dilated pool or not(False)",
                          type=str2bool,
                          default=False)
+    
+    # 2020/12/28
+    parser.add_argument('--loss_type',
+                        help='loss function name',
+                        choices=loss_types,
+                        default='cross_entropy')
     return parser
 
 def get_hyperparams(key,discrete=False):
