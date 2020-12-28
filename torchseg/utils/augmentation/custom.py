@@ -31,8 +31,8 @@ def get_crop_size(config,image_size):
             a=np.random.rand()
             
             # use int can avoid crop_size > max_crop_size, but cannot ensure crop_size = max_crop_size
-            crop_size=[min_crop_size[0]+crop_size_step*round(a*max_crop_step/crop_size_step),
-                      min_crop_size[1]+crop_size_step*round(a*max_crop_step/crop_size_step)]
+            crop_size=[min_crop_size[0]+crop_size_step*round(a*max_crop_step[0]/crop_size_step),
+                      min_crop_size[1]+crop_size_step*round(a*max_crop_step[1]/crop_size_step)]
             
             if crop_size[0]>max_crop_size[0] or crop_size[1]>max_crop_size[1]:
                 crop_size[0]-=crop_size_step

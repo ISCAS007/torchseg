@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+experiment on downsample and miou
+"""
 
 from torchseg.dataset.dataset_generalize import dataset_generalize, \
     get_dataset_generalize_config
 
 from torchseg.utils.metrics import runningScore
 import cv2
-import numpy as np
 from easydict import EasyDict as edict
 if __name__ == '__main__':
     config=edict()

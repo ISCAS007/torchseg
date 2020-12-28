@@ -412,13 +412,17 @@ def get_parser():
                         help='use images number in dataset (0 for use all)',
                         type=int,
                         default=0)
-
+    
+    vgg_nets=['vgg'+str(i) for i in [11,13,16,19]]
+    vgg_nets+=[net+'_bn' for net in vgg_nets]
+    res_nets=['res'+str(i) for i in [18,26,34,50,101,152]]
+    resd_nets=[net+'d' for net in res_nets]
+    seres_nets=['legacy_se'+net for net in res_nets]+['seresnet50']
+    
     parser.add_argument("--backbone_name",
                         help="backbone name",
-                        choices=['vgg16', 'vgg19', 'vgg16_bn', 'vgg19_bn', 'resnet18',
-                                 'resnet34', 'resnet50', 'resnet101', 'resnet152',
-                                 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn',
-                                 'vgg16_gn','vgg19_gn','se_resnet50','vgg21','vgg21_bn'],
+                        choices=['MobileNetV2','mobilenetv3_large_100']+
+                            vgg_nets+res_nets+resd_nets+seres_nets,
                         default='resnet50')
 
     # 2018/11/08 change default from False to True

@@ -7,10 +7,17 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from easydict import EasyDict as edict
+import timm
 import warnings
 from ...utils.disc_tools import lcm_list
 from ..upsample import local_upsample
 from ..Anet.layers import Anet
+from ..psp_resnet import resnet18,resnet34,resnet50,resnet101
+from ..MobileNetV2 import mobilenet2
+from ..psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
+                            vgg11,vgg11_bn,vgg13,vgg13_bn,
+                            vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
+
 class conv_bn_relu(TN.Module):
     def __init__(self,
                  in_channels,
@@ -325,41 +332,29 @@ class motion_backbone(TN.Module):
             self.config.batch_norm=False
             return Anet(self.config)
         elif self.use_none_layer or self.in_channels !=3:
-            print('use none layer'+'*'*30)
-            from ..psp_resnet import resnet18,resnet34,resnet50,resnet101
-            from ..MobileNetV2 import mobilenet2
-            from ..psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
-                                        vgg11,vgg11_bn,vgg13,vgg13_bn,
-                                        vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
+            warnings.warn('use none layer'+'*'*30)
 
             #assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
             #assert self.config.backbone_name.find('vgg')>=0,'resnet with momentum is implement in psp_caffe, not here'
             if self.config.backbone_name in ['vgg16','vgg19','vgg16_bn','vgg19_bn','vgg11','vgg11_bn','vgg13','vgg13_bn','vgg21','vgg21_bn']:
-                return locals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
+                return globals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
             elif self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained,in_c=self.in_channels)
             else:
-                return locals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
+                return globals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
         else:
-            from ..psp_resnet import resnet18,resnet34,resnet50,resnet101
-            from ..MobileNetV2 import mobilenet2
-            from ..psp_vgg import (vgg16,vgg19,vgg16_bn,vgg19_bn,
-                                        vgg11,vgg11_bn,vgg13,vgg13_bn,
-                                        vgg16_gn,vgg19_gn,vgg21,vgg21_bn)
+            
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
             #from pretrainedmodels import se_resnet50
 
             assert self.in_channels==3
             if self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained)
-            elif self.config.backbone_name.find('se_resnet')>=0:
-                if pretrained:
-                    return locals()[self.config.backbone_name](pretrained='imagenet')
-                else:
-                    return locals()[self.config.backbone_name](pretrained=None)
+            elif self.config.backbone_name in timm.list_models(pretrained=True):
+                return timm.create_model(self.config.backbone_name, pretrained=pretrained)
             else:
-                assert self.config.backbone_name in locals().keys(), 'undefine backbone name %s'%self.config.backbone_name
-                return locals()[self.config.backbone_name](pretrained=pretrained,use_none_layer=self.use_none_layer)
+                assert self.config.backbone_name in globals().keys(), 'undefine backbone name %s'%self.config.backbone_name
+                return globals()[self.config.backbone_name](pretrained=pretrained,use_none_layer=self.use_none_layer)
 
     def get_dataframe(self):
         assert self.format=='vgg','only vgg models have features'
