@@ -340,8 +340,13 @@ class motion_backbone(TN.Module):
                 return globals()[self.config.backbone_name](pretrained=pretrained, eps=self.eps, momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
             elif self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained,in_c=self.in_channels)
-            else:
+            elif self.config.backbone_name in globals().keys():
                 return globals()[self.config.backbone_name](pretrained=pretrained,momentum=self.momentum,in_channels=self.in_channels,use_none_layer=self.use_none_layer)
+            elif self.config.backbone_name in timm.list_models(pretrained=True):
+                return timm.create_model(self.config.backbone_name, pretrained=pretrained)
+            else:
+                assert False,'unknonw backbone name {}'.format(self.config.backbone_name)
+                
         else:
             
 #            print('pretrained=%s backbone in image net'%str(pretrained),'*'*50)
@@ -350,11 +355,12 @@ class motion_backbone(TN.Module):
             assert self.in_channels==3
             if self.config.backbone_name == 'MobileNetV2':
                 return mobilenet2(pretrained=pretrained)
+            elif self.config.backbone_name in globals().keys():
+                return globals()[self.config.backbone_name](pretrained=pretrained,use_none_layer=self.use_none_layer)
             elif self.config.backbone_name in timm.list_models(pretrained=True):
                 return timm.create_model(self.config.backbone_name, pretrained=pretrained)
             else:
-                assert self.config.backbone_name in globals().keys(), 'undefine backbone name %s'%self.config.backbone_name
-                return globals()[self.config.backbone_name](pretrained=pretrained,use_none_layer=self.use_none_layer)
+                assert False,'unknonw backbone name {}'.format(self.config.backbone_name)
 
     def get_dataframe(self):
         assert self.format=='vgg','only vgg models have features'
