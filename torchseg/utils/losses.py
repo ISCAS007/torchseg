@@ -1,4 +1,8 @@
-"""Common image segmentation losses.
+"""
+Common image segmentation losses.
+
+### reference
+- https://github.com/JunMa11/SegLoss
 """
 
 import torch
@@ -6,7 +10,6 @@ import torch
 from torch.nn import functional as F
 from torch.nn import CrossEntropyLoss
 from functools import partial
-from .loss.focal_loss import focal_loss_ohem
 from .loss.focalloss2d import FocalLoss2d
 from .loss.lovasz_softmax import lovasz_softmax
 loss_types=['cross_entropy','focal_loss2d','focal_loss_ohem','lovasz_softmax']
@@ -23,10 +26,7 @@ def get_loss_fn(loss_type,**kwargs):
                            with_grad=kwargs['focal_loss_grad'])
     
     elif loss_type=='focal_loss_ohem':
-        return partial(focal_loss_ohem,
-                       alpha=kwargs['focal_loss_alpha'],
-                       gamma=kwargs['focal_loss_gamma'],
-                       OHEM_percent=0.1)
+        raise NotImplementedError
     
     elif loss_type=='lovasz_softmax':
         return partial(lovasz_softmax,

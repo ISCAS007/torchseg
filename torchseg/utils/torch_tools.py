@@ -4,7 +4,12 @@ import torch
 import time
 import json
 import os
-from tensorboardX import SummaryWriter
+from packaging import version
+if version.parse(torch.__version__) < version.parse('1.1.0'):
+    from tensorboardX import SummaryWriter
+else:
+    from torch.utils.tensorboard import SummaryWriter
+    
 from .metrics import runningScore
 from .disc_tools import save_model_if_necessary, get_newest_file
 from .center_loss2d import CenterLoss
@@ -596,6 +601,7 @@ def get_loss_fn_dict(config):
 
     loss_fn_dict = {}
     loss_fn_dict['seg']=get_loss_fn(config.loss_type,
+                                    class_number=config.class_number,
                                     weight=seg_loss_weight,
                                     ignore_index=ignore_index,
                                     focal_loss_alpha=config.focal_loss_alpha,
