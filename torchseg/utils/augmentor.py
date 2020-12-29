@@ -234,80 +234,70 @@ class ImageTransformer(object):
             return new_image, new_mask
 
 def get_default_augmentor_config(config=None):
-    if config is None:
+    def get_default_config():
         config = edict()
-
-    config.propability=0.25
-    if not hasattr(config,'use_rotate'):
+        config.input_shape=(224,224)
+        config.pad_for_crop=True
+        config.propability=0.25
         config.use_rotate=True
-    config.rotate_max_angle=15
-    
-    if not hasattr(config,'use_crop'):
         config.use_crop=True
-    
-    # image size != network input size != crop size
-    if not hasattr(config,'keep_crop_ratio'): 
+        config.rotate_max_angle=15
         config.keep_crop_ratio=True
-        
-    if not config.keep_crop_ratio:
-        if config.min_crop_size is None:
-            config.min_crop_size=config.input_shape
-        if config.max_crop_size is None:
-            config.max_crop_size=[2*i for i in config.input_shape]
-
-        if not isinstance(config.min_crop_size,(tuple,list)):
-            assert config.min_crop_size>0
-            config.min_crop_size=[config.min_crop_size]*2
-        else:
-            assert min(config.min_crop_size)>0
+        config.horizontal_flip = True
+        config.vertical_flip = True
+        config.debug = False
+        config.aug_library="imgaug"
+        return config
+    
+    default_config=get_default_config()
+    if config is None:
+        config=default_config
+    else:
+        for key in default_config:
+            if not hasattr(config,key):
+                config[key]=default_config[key]
             
-        if not isinstance(config.max_crop_size,(tuple,list)):
-            assert config.max_crop_size>0
-            config.max_crop_size=[config.max_crop_size]*2
-        else:
-            assert min(config.max_crop_size)>0
-
+    if not hasattr(config,'min_crop_size') or config.min_crop_size is None:
+        config.min_crop_size=config.input_shape
+    elif not isinstance(config.min_crop_size,(tuple,list)):
+        assert config.min_crop_size>0
+        config.min_crop_size=[config.min_crop_size]*2
+    else:
+        assert min(config.min_crop_size)>0
+        
+    if not hasattr(config,'max_crop_size') or config.max_crop_size is None:
+        config.max_crop_size=[2*i for i in config.input_shape]
+    elif not isinstance(config.max_crop_size,(tuple,list)):
+        assert config.max_crop_size>0
+        config.max_crop_size=[config.max_crop_size]*2
+    else:
+        assert min(config.max_crop_size)>0
+    
+    # image size != network input size != crop size        
+    if not config.keep_crop_ratio:
+        if not hasattr(config,'crop_size_step') or config.crop_size_step is None:
+            config.crop_size_step=0
+            
         print('min_crop_size is',config.min_crop_size)
         print('max_crop_size is',config.max_crop_size)
         print('crop_size_step is',config.crop_size_step)
-    else:
-        if config.min_crop_size is None:
-            config.min_crop_size=config.input_shape
-            
-        warnings.warn('ignore min_crop_size when keep_crop_ratio is True')
-        if config.max_crop_size is None:
-            config.max_crop_size=[2*i for i in config.input_shape]
-            
-        if not isinstance(config.max_crop_size,(tuple,list)):
-            assert config.max_crop_size>0
-            config.max_crop_size=[config.max_crop_size]*2
-        else:
-            assert min(config.max_crop_size)>0
-        
+    else:            
+        warnings.warn('ignore min_crop_size when keep_crop_ratio is True')        
         if not hasattr(config,'crop_ratio') or config.crop_ratio is None:
-            config.crop_ratio = [0.85, 1.0]
+            config.crop_ratio = [0.4, 1.0]
+        
         print('max_crop_size is',config.max_crop_size)
         print('crop_ratio is',config.crop_ratio)
         # height: image height * random(0.85,1.0)
         # width : image width * random(0.85,1.0)
-        
-    config.horizontal_flip = True
-    config.vertical_flip = True
-    config.debug = False
-    if not hasattr(config,'aug_library'):
-        config.aug_library="imgaug"
+    
     return config
 
 
 class Augmentations(object):
     def __init__(self, config=None):
-        if config is None:
-            config = get_default_augmentor_config()
-
-        if hasattr(config,'aug_library'):
-            self.aug_library=config.aug_library
-        else:
-            self.aug_library='imgaug'
+        config = get_default_augmentor_config(config)
+        self.aug_library=config.aug_library
 
         if self.aug_library=='semseg':
             value_scale = 255
@@ -324,7 +314,7 @@ class Augmentations(object):
             transforms.append(semseg.RandomGaussianBlur())
             transforms.append(semseg.RandomHorizontalFlip())
             if config.use_crop:
-                transforms.append(semseg.Crop(config.input_shape, crop_type='rand', padding=mean, ignore_label=255))
+                transforms.append(semseg.Crop(config.max_crop_size, crop_type='rand', padding=mean, ignore_label=255))
                 
             self.tran = semseg.Compose(transforms)
             

@@ -135,6 +135,14 @@ def get_dataset_generalize_config(config, dataset_name):
 
     return config
 
+def read_ann_file(lbl_path):
+    if not lbl_path.endswith(('.json')):
+        lbl_pil = Image.open(lbl_path)
+    else:
+        lbl_pil = createLabelImage(lbl_path)
+        
+    lbl = np.array(lbl_pil, dtype=np.uint8)
+    return lbl
 
 class dataset_generalize(TD.Dataset):
     def __init__(self, config, augmentations=None, split=None, bchw=True, normalizations=None):
@@ -346,14 +354,14 @@ class dataset_generalize(TD.Dataset):
                     img, ann = self.augmentations.transform(img, ann)
                 
                 assert hasattr(
-                            self.config, 'resize_shape'), 'augmentations may change image to random size by random crop'
+                            self.config, 'input_shape'), 'augmentations may change image to random size by random crop'
 
-        if hasattr(self.config, 'resize_shape'):
-            assert len(self.config.resize_shape) == 2, 'resize_shape should with len of 2 but %d' % len(
-                self.config.resize_shape)
+        if hasattr(self.config, 'input_shape'):
+            assert len(self.config.input_shape) == 2, 'input_shape should with len of 2 but %d' % len(
+                self.config.input_shape)
 
             # for opencv, resize input is (w,h)
-            dsize=(self.config.resize_shape[1],self.config.resize_shape[0])
+            dsize=(self.config.input_shape[1],self.config.input_shape[0])
             img = cv2.resize(src=img, dsize=dsize, interpolation=cv2.INTER_LINEAR)
 
             if self.split !='test':
