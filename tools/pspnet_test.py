@@ -14,7 +14,7 @@ from torchseg.utils.augmentor import Augmentations
 from torchseg.utils.torch_tools import keras_fit
 from torchseg.utils import torchsummary
 from torchseg.utils.benchmark import keras_benchmark
-from torchseg.utils.configs.semanticseg_config import get_parser,get_config,get_net
+from torchseg.utils.configs.semanticseg_config import get_parser,get_config,get_net,get_sub_config
 from torchseg.utils.distributed_tools import dist_train
 from torchseg.models.semanticseg.psp_edge import psp_edge
 from torchseg.models.semanticseg.psp_dict import psp_dict 
@@ -193,9 +193,18 @@ if __name__ == '__main__':
                         predict_save_path=args.predict_save_path)
     elif test == 'cycle_lr':
         n_epoch=args.n_epoch
+        sub_args=get_sub_config(config,test)
         net = get_net(config)
-        for times in range(3):
-            config.n_epoch=n_epoch*2**times
+        for times in range(sub_args.cycle_times):
+            if sub_args.cycle_period=='const':
+                config.n_epoch=n_epoch
+            elif sub_args.cycle_period=='linear':
+                config.n_epoch=n_epoch*(1+times)
+            elif sub_args.cycle_period=='exponent':
+                config.n_epoch=n_epoch*2**times
+            else:
+                assert False,'unknown cycle_period {}'.format(sub_args.cycle_period)
+                
             config.note = note+'_%d'%times
             assert net.config.n_epoch==config.n_epoch
             keras_fit(model=net,train_loader=train_loader,val_loader=val_loader)

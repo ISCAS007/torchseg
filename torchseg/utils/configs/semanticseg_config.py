@@ -615,7 +615,7 @@ def get_parser():
                        nargs='*',
                        default=None)
 
-    # work when keep_crop_ratio=False
+    # work when keep_crop_ratio=False/True
     parser.add_argument('--max_crop_size',
                        help='max size for crop the image in preprocessing',
                        type=int,
@@ -767,6 +767,33 @@ def get_parser():
                         choices=loss_types,
                         default='cross_entropy')
     return parser
+
+
+def get_sub_config(config,sub_task_name):
+    """
+    config.sub_config
+    """
+    parser = argparse.ArgumentParser()
+    
+    if sub_task_name =='cycle_lr':
+        # config.test=cycle_lr
+        parser.add_argument('--cycle_times',
+                            type=int,
+                            default=3,
+                            help='times for config.test=cycle_lr(default=3)')
+        parser.add_argument('--cycle_period',
+                            choices=['const','linear','exponent'],
+                            default='exponent',
+                            help="""the epoch for next cycle. 
+                            const: t(n+1)=t(n), 
+                            linear: t(n+1)=t(n)+T, 
+                            exponent: t(n+1)=2*t(n)""")
+    else:
+        raise NotImplementedError
+    
+    #print(config.sub_config)
+    args=parser.parse_args(config.sub_config.split())
+    return args
 
 def get_hyperparams(key,discrete=False):
     discrete_hyper_dict={

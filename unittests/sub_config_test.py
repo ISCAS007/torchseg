@@ -5,10 +5,11 @@ import sys
 
 if __name__ == '__main__':
     parser=argparse.ArgumentParser()
-    parser.add_argument('-sub_config')
+    parser.add_argument('--good')
+    parser.add_argument('--sub_config')
 
     if len(sys.argv)==1:
-        args=parser.parse_args(['-sub_config','-a 10 -b hello'])
+        args=parser.parse_args(['--good','okay','--sub_config','-a 10 -b hello'])
     else:
         args=parser.parse_args()
         print(sys.argv)

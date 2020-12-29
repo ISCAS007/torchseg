@@ -265,12 +265,12 @@ class dataset_generalize(TD.Dataset):
         """
         return image and annotation
         
-        1. opencv read image, PIL image read annotation
-        2. remap annotation
-        3. augmentation on image only
-        4. augmentation on image and annotation
-        5. resize image and annotation (augmentation may change image size, like crop)
-        6. convert color from BGR to RGB for image
+        1. opencv read image, convert color from BGR to RGB for image
+        2. PIL image read annotation image or load json annotation
+        3. remap annotation according to foreground_class_ids
+        4. augmentation on image only
+        5. augmentation on image and annotation
+        6. resize image and annotation (augmentation may change image size, like crop)
         7. normalization on image
         8. chage from [H,W,C] to [C,H,W] if bchw=True
         9. return path for split=='test' and config.with_path
@@ -289,7 +289,8 @@ class dataset_generalize(TD.Dataset):
         # eg root_path/leftImg8bit_trainvaltest/leftImg8bit/test/berlin/berlin_000000_000019_leftImg8bit.png
         img_path = self.image_files[index]
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        
         if self.split != 'test':
             # eg root_path/gtFine_trainvaltest/gtFine/test/berlin/berlin_000000_000019_gtFine_labelIds.png
             lbl_path = self.annotation_files[index]
@@ -325,7 +326,7 @@ class dataset_generalize(TD.Dataset):
                 else:
                     for idx, class_id in enumerate(self.foreground_class_ids):
                         ann[lbl == class_id] = idx
-
+            
             if self.augmentations is not None and self.split == 'train':
                 if hasattr(self.config, 'augmentations_blur'):
                     if self.config.augmentations_blur:
@@ -362,10 +363,6 @@ class dataset_generalize(TD.Dataset):
                         ann = cv2.resize(src=ann, dsize=lossless_dsize, interpolation=cv2.INTER_NEAREST)
                 else:
                     ann = cv2.resize(src=ann, dsize=dsize, interpolation=cv2.INTER_NEAREST)
-
-#        print('bgr',np.min(img),np.max(img),np.mean(img),np.std(img))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-#        print('rgb',np.min(img),np.max(img),np.mean(img),np.std(img))
 
         if hasattr(self.config,'with_edge') and self.config.with_edge and self.split !='test':
             edge_img=None

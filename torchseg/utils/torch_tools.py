@@ -363,7 +363,11 @@ def get_ckpt_path(checkpoint_path):
         print('no checkpoint file given, auto find %s' % checkpoint_path)
         return checkpoint_path
     else:
-        return checkpoint_path
+        if checkpoint_path.endswith("config.txt"):
+            print('find checkpoint file by config.txt path')
+            return get_ckpt_path(os.path.dirname(checkpoint_path))
+        else:
+            return checkpoint_path
 
 def load_ckpt(model,ckpt_path):
     state_dict = torch.load(ckpt_path)
