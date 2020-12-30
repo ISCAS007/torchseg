@@ -210,6 +210,12 @@ if __name__ == '__main__':
             keras_fit(model=net,train_loader=train_loader,val_loader=val_loader)
             # only load weight in the first time
             config.checkpoint_path=None
+    elif test == 'lossless':
+        sub_args=get_sub_config(config,test)
+        config.duc_ratio=sub_args.duc_ratio
+        net = get_net(config)
+        best_val_iou=keras_fit(net,train_loader,val_loader)
+        print('best val iou is %0.3f'%best_val_iou)
     else:
         raise NotImplementedError
 

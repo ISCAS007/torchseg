@@ -919,9 +919,15 @@ def get_suffix_net(config, midnet_out_channels, class_number, aux=False):
         decoder = upsample_subclass(midnet_out_channels,class_number,input_shape[0:2],use_sigmoid)
     elif upsample_type == 'lossless':
         # decoder = upsample_lossless(midnet_out_channels,class_number,input_shape[0:2],scale=4)
+        # output_shape =[duc_ratio*x for x in input_shape]
+        if hasattr(config,'duc_ratio'):
+            duc_ratio=config.duc_ratio
+        else:
+            duc_ratio=4
+        
         r = 2**3 if config.use_none_layer else 2**upsample_layer
         decoder = upsample_duc(midnet_out_channels,
-                               class_number, r*4, eps=eps, momentum=momentum)
+                               class_number, r*duc_ratio, eps=eps, momentum=momentum)
     else:
         assert False, 'unknown upsample type %s' % upsample_type
 

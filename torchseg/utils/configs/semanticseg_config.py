@@ -270,7 +270,7 @@ def get_parser():
     choices = ['edge', 'global', 'dict', 'fractal',
                'summary', 'naive', 'coarse',
                'convert','huawei','benchmark', 'cycle_lr',
-               'dist']
+               'dist','lossless']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="test for choices",
@@ -788,6 +788,11 @@ def get_sub_config(config,sub_task_name):
                             const: t(n+1)=t(n), 
                             linear: t(n+1)=t(n)+T, 
                             exponent: t(n+1)=2*t(n)""")
+    if sub_task_name == 'lossless':
+        parser.add_argument('--duc_ratio',
+                            type=int,
+                            default=4,
+                            help='output_shape =[duc_ratio*x for x in input_shape]')
     else:
         raise NotImplementedError
     
