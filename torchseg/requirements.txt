@@ -3,7 +3,7 @@ imgaug==0.4.0
 pretrainedmodels==0.7.4
 numpy==1.19.2
 netpbmfile==2020.10.18
-tensorflow==2.2.0
+tensorflow==2.4.0
 torchvision==0.8.1
 tabulate==0.8.7
 tqdm==4.50.2
