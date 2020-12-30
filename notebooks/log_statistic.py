@@ -36,7 +36,7 @@ def dump_recent(
          rootpath=rootpath,
          notes=notes,
          note_gtags=note_gtags,
-         sort_tags=['dataset','val/fmeasure'],
+         sort_tags=[tags[1]],
          descripe=descripe,
          delete_nan=False,
          dump_group=False,

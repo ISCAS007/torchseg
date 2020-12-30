@@ -110,8 +110,11 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                 group_tags=note_gtags[idx]
             else:
                 group_tags=[]
-
-        show_tags+=group_tags
+        
+        if note == 'recent':
+            pass
+        else:
+            show_tags+=group_tags
         show_tags+=descripe
         show_tags=list(set(show_tags))
 
@@ -123,7 +126,18 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                 warnings.warn('remove nan log')
                 print(os.path.dirname(dir))
                 os.system('rm -rf {}'.format(os.path.dirname(dir)))
-
+        
+        if 'dataset' in group_tags:
+            sort_tags=['dataset',tags[1]]+sort_tags
+        elif 'dataset_name' in group_tags:
+            sort_tags=['dataset_name',tags[1]]+sort_tags
+        else:
+            sort_tags=[tags[1]]+sort_tags
+        
+        sort_tags=list(set(sort_tags))
+        show_tags+=sort_tags
+        show_tags=list(set(show_tags))
+            
         #print(tasks[show_tags].groupby(group_tags).max().to_string())
         if dump_group:
             if len(group_tags)==0:
@@ -131,15 +145,6 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                 print('tags is',tags)
                 print('invalid_param_list is',invalid_param_list)
             else:
-                if 'dataset' in group_tags:
-                    sort_tags=['dataset',tags[1]]
-                elif 'dataset_name' in group_tags:
-                    sort_tags=['dataset_name',tags[1]]
-                else:
-                    sort_tags=tags[1]
-                
-                show_tags+=sort_tags
-                show_tags=list(set(show_tags))
                 print(tabulate(tasks[show_tags].groupby(group_tags).mean().sort_values(sort_tags),tablefmt='pipe',headers='keys'))
                 print('\n')
                 print(tabulate(tasks[[tags[1]]+group_tags].groupby(group_tags).agg([np.mean,np.std,np.max]),tablefmt='pipe',headers='keys'))
