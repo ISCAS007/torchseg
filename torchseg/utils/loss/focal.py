@@ -181,7 +181,7 @@ class FocalLossMultiClass(FocalLossBinary):
         https://arxiv.org/abs/1708.02002
     """
 
-    def forward(self, logits, targets):
+    def forward(self, input, target):
         """
         Args:
             logits: [bs; num_classes; ...]
@@ -189,6 +189,9 @@ class FocalLossMultiClass(FocalLossBinary):
         Returns:
             computed loss
         """
+        logits=input
+        targets=target
+        
         num_classes = logits.size(1)
         loss = 0
         targets = targets.view(-1)
