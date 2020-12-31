@@ -11,9 +11,10 @@ from torch.nn import functional as F
 from torch.nn import CrossEntropyLoss
 from functools import partial
 from .loss.focalloss2d import FocalLoss2d
+from .loss.focal import FocalLossMultiClass
 from .loss.lovasz_softmax import lovasz_softmax
 from .loss.lovasz import LovaszLossMultiClass
-loss_types=['cross_entropy','focal_loss2d','focal_loss_ohem','lovasz_softmax','lovasz_softmax_catalyst']
+loss_types=['cross_entropy','focal_loss2d','focal_loss','lovasz_softmax','lovasz_softmax_catalyst']
 
 def get_loss_fn(loss_type,**kwargs):
     if loss_type=='cross_entropy':
@@ -26,8 +27,10 @@ def get_loss_fn(loss_type,**kwargs):
                            ignore_index=kwargs['ignore_index'],
                            with_grad=kwargs['focal_loss_grad'])
     
-    elif loss_type=='focal_loss_ohem':
-        raise NotImplementedError
+    elif loss_type=='focal_loss':
+        return FocalLossMultiClass(alpha=kwargs['focal_loss_alpha'],
+                                   gamma=kwargs['focal_loss_gamma'],
+                                   ignore=kwargs['ignore_index'])
     
     elif loss_type=='lovasz_softmax':
         return partial(lovasz_softmax,

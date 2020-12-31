@@ -101,7 +101,7 @@ def get_default_config():
     config.hyperopt_calls=3
     config.hyperopt='loop'
     config.input_shape=(224,224)
-    config.iou_save_threshold=0.6
+    config.iou_save_threshold=0.77
     config.keep_crop_ratio=True
     config.l1_reg=1e-7
     config.l2_reg=1e-5
@@ -180,7 +180,11 @@ def get_config(args=None):
         if key not in config.keys():
             print('{} : unknown keys {}'.format(key,args.__dict__[key]))
             config[key]=args.__dict__[key]
-
+    
+    # supoort for multiple dataset
+    config.dataset_names=config.dataset_name
+    config.dataset_name=config.dataset_name[0]
+    
     os.environ['use_none_layer'] = str(config.use_none_layer)
 
     # use_bn,use_dropout will change the variable in local_bn,local_dropout
@@ -230,7 +234,8 @@ def get_config(args=None):
     #TODO midnet_out_channels is not used by stoa model
     config.midnet_out_channels = 512
     config = get_dataset_generalize_config(
-        config, args.dataset_name)
+        config, config.dataset_name)
+    
     if config.ignore_index == 0:
         config.class_number = len(config.foreground_class_ids)+1
     else:
@@ -400,8 +405,9 @@ def get_parser():
 
     parser.add_argument('--dataset_name',
                         help='dataset name',
+                        nargs='*',
                         choices=support_datasets,
-                        default='Cityscapes')
+                        default=['Cityscapes'])
 
     parser.add_argument('--dataset_use_part',
                         help='use images number in dataset (0 for use all)',
@@ -667,7 +673,7 @@ def get_parser():
     parser.add_argument('--iou_save_threshold',
                         help='validation iou save threshold',
                         type=float,
-                        default=0.6)
+                        default=0.77)
 
     # benchmark
     parser.add_argument('--checkpoint_path',
