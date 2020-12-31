@@ -42,10 +42,10 @@ class runningScore(object):
         fwavacc = (freq[freq > 0] * iu[freq > 0]).sum()
         cls_iu = dict(zip(range(self.n_classes), iu))
 
-        return {'Overall Acc: \t': acc,
-                'Mean Acc : \t': acc_cls,
-                'FreqW Acc : \t': fwavacc,
-                'Mean IoU : \t': mean_iu,}, cls_iu
+        return {'Overall Acc': acc,
+                'Mean Acc': acc_cls,
+                'FreqW Acc': fwavacc,
+                'Mean IoU': mean_iu,}, cls_iu
 
     def reset(self):
         self.confusion_matrix = np.zeros((self.n_classes, self.n_classes))
@@ -69,11 +69,11 @@ def get_scores(label_trues,label_preds):
 
     cl, n_cl = eval_segm.union_classes(label_preds_2d, label_trues_2d)
 
-    return {'Overall Acc: \t': eval_segm.pixel_accuracy(label_preds_2d,label_trues_2d),
-            'Mean Acc : \t': eval_segm.mean_accuracy(label_preds_2d,label_trues_2d),
-            'FreqW IoU : \t': eval_segm.frequency_weighted_IU(label_preds_2d,label_trues_2d),
-            'Mean IoU : \t': eval_segm.mean_IU(label_preds_2d,label_trues_2d),
-            'Appeared cls: \t':n_cl}
+    return {'Overall Acc': eval_segm.pixel_accuracy(label_preds_2d,label_trues_2d),
+            'Mean Acc': eval_segm.mean_accuracy(label_preds_2d,label_trues_2d),
+            'FreqW IoU': eval_segm.frequency_weighted_IU(label_preds_2d,label_trues_2d),
+            'Mean IoU': eval_segm.mean_IU(label_preds_2d,label_trues_2d),
+            'Appeared cls':n_cl}
 
 def get_fmeasure(gt,pred,fmeasure_only=True):
     if isinstance(gt,str):

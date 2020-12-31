@@ -45,11 +45,32 @@ if __name__ == '__main__':
             if i>10:
                 break
         scores,cls_iu=metric.get_scores()
-        miou=scores['Mean IoU : \t']
+        miou=scores['Mean IoU']
         
         print('| {} | {:.4f} |'.format(scale,miou))
     
-    
+    print('| scale | miou |')
+    print('| -\t | -\t |')
+    for scale in [0.9,0.8, 0.7, 0.6, 0.5]:
+        metric.reset()
+        for i in range(N):
+            img,ann=val_dataset.__getitem__(i)
+            
+            
+            h,w=ann.shape
+            ann_downsample=cv2.resize(ann,dsize=(0,0),fx=scale,fy=scale,interpolation=cv2.INTER_NEAREST)
+            ann_upsample=cv2.resize(ann_downsample,dsize=(w,h),interpolation=cv2.INTER_NEAREST)
+            
+            ann_upsample[ann_upsample==config.ignore_index]=0
+            metric.update(ann,ann_upsample)
+            
+            if i>10:
+                break
+        scores,cls_iu=metric.get_scores()
+        miou=scores['Mean IoU']
+        
+        print('| {} | {:.4f} |'.format(scale,miou))
+        
     ### test for common size
     print('| size | miou |')
     print('| -\t | -\t |')
@@ -72,7 +93,7 @@ if __name__ == '__main__':
             if i>10:
                 break
         scores,cls_iu=metric.get_scores()
-        miou=scores['Mean IoU : \t']
+        miou=scores['Mean IoU']
         
         print('| {} | {:.4f} |'.format(size,miou))
     

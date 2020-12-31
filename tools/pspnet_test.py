@@ -11,7 +11,7 @@ if '.' not in sys.path:
 from torchseg.dataset.dataset_generalize import dataset_generalize, \
     get_dataset_generalize_config, image_normalizations
 from torchseg.utils.augmentor import Augmentations
-from torchseg.utils.torch_tools import keras_fit
+from torchseg.utils.torch_tools import keras_fit,get_loaders
 from torchseg.utils import torchsummary
 from torchseg.utils.benchmark import keras_benchmark
 from torchseg.utils.configs.semanticseg_config import get_parser,get_config,get_net,get_sub_config
@@ -26,40 +26,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     config = get_config(args)
 
-    if config.norm_ways is None:
-        normalizations = None
-    else:
-        normalizations = image_normalizations(config.norm_ways)
-
-    if config.augmentation:
-        augmentations = Augmentations(config)
-    else:
-        augmentations = None
-
     # must change batch size here!!!
     batch_size = args.batch_size
-        
-    train_dataset = dataset_generalize(
-        config, split='train',
-        augmentations=augmentations,
-        normalizations=normalizations)
-    train_loader = TD.DataLoader(
-        dataset=train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        drop_last=True,
-        num_workers=4)
-
-    val_dataset = dataset_generalize(config,
-                                     split='val',
-                                     augmentations=None,
-                                     normalizations=normalizations)
-    val_loader = TD.DataLoader(
-        dataset=val_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        drop_last=False,
-        num_workers=2)
+    
+    train_loader,val_loader=get_loaders(config)
 
     note = config.note
     test = args.test
@@ -109,29 +79,7 @@ if __name__ == '__main__':
                 config, dataset_name)
             #config.dataset_name = dataset_name.lower()
 
-            coarse_train_dataset = dataset_generalize(
-                config,
-                split='train',
-                augmentations=augmentations,
-                normalizations=normalizations)
-            coarse_train_loader = TD.DataLoader(
-                dataset=coarse_train_dataset,
-                batch_size=batch_size,
-                shuffle=True,
-                drop_last=True,
-                num_workers=8)
-
-            coarse_val_dataset = dataset_generalize(
-                    config,
-                    split='val',
-                    augmentations=augmentations,
-                    normalizations=normalizations)
-            coarse_val_loader = TD.DataLoader(
-                dataset=coarse_val_dataset,
-                batch_size=batch_size,
-                shuffle=True,
-                drop_last=False,
-                num_workers=8)
+            coarse_train_loader,coarse_val_loader = get_loaders(config)
             keras_fit(net,coarse_train_loader, coarse_val_loader)
     elif test == 'summary':
         net = get_net(config)
@@ -146,6 +94,16 @@ if __name__ == '__main__':
         # train on cityscapes, validation on huawei
         net = get_net(config)
         
+        if config.norm_ways is None:
+            normalizations = None
+        else:
+            normalizations = image_normalizations(config.norm_ways)
+        
+        if config.augmentation:
+            augmentations = Augmentations(config)
+        else:
+            augmentations = None
+            
         train_datasets=[]
         for dataset_name in ['Cityscapes_Category','HuaWei']:
             config = get_dataset_generalize_config(
@@ -170,7 +128,7 @@ if __name__ == '__main__':
         val_dataset = dataset_generalize(
                 config,
                 split='val',
-                augmentations=augmentations,
+                augmentations=None,
                 normalizations=normalizations)
         val_loader = TD.DataLoader(
             dataset=val_dataset,
@@ -184,7 +142,6 @@ if __name__ == '__main__':
         config.with_path=True
         config.augmentation=False
         net = get_net(config)
-#        test_loader=get_loader(config,'val')
         test_loader=None
         keras_benchmark(model=net,
                         test_loader=test_loader,
@@ -193,9 +150,12 @@ if __name__ == '__main__':
                         predict_save_path=args.predict_save_path)
     elif test == 'cycle_lr':
         n_epoch=args.n_epoch
+        base_learning_rate=config.learning_rate
         sub_args=get_sub_config(config,test)
         net = get_net(config)
         for times in range(sub_args.cycle_times):
+            config.learning_rate=base_learning_rate*(sub_args.cycle_lr_mult**times)
+            
             if sub_args.cycle_period=='const':
                 config.n_epoch=n_epoch
             elif sub_args.cycle_period=='linear':
@@ -210,9 +170,8 @@ if __name__ == '__main__':
             keras_fit(model=net,train_loader=train_loader,val_loader=val_loader)
             # only load weight in the first time
             config.checkpoint_path=None
-    elif test == 'lossless':
-        sub_args=get_sub_config(config,test)
-        config.duc_ratio=sub_args.duc_ratio
+    elif test in ['lossless','optimizer']:
+        config=get_sub_config(config,test)
         net = get_net(config)
         best_val_iou=keras_fit(net,train_loader,val_loader)
         print('best val iou is %0.3f'%best_val_iou)

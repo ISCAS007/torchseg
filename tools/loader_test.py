@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 config=edict()
 config.root_path='/media/sdb/CVDataset/ObjectSegmentation/archives/Cityscapes_archives'
 config.cityscapes_split=random.choice(['test','val','train'])
-config.resize_shape=(224,224)
+config.input_shape=(224,224)
 config.print_path=True
 config.with_path=True
 config=get_dataset_generalize_config(config,'Cityscapes')

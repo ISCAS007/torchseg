@@ -33,7 +33,7 @@ def get_loader(config,split):
         return test_loader
     else:
         assert split in ['train','val']
-        if config.augmentation:
+        if config.augmentation and split=='train':
             augmentations = Augmentations(config)
         else:
             augmentations = None
@@ -47,7 +47,7 @@ def get_loader(config,split):
             batch_size=config.batch_size,
             shuffle=(split=='train'),
             drop_last=(split=='train'),
-            num_workers=8)
+            num_workers=config.batch_size)
 
         return loader
 

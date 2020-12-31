@@ -137,7 +137,6 @@ def get_default_config():
     config.pre_lr_mult=1.0
     config.rank=0
     config.res_attention=False
-    config.resize_shape=(224,224)
     config.root_path=''
     config.save_model=False
     config.scheduler=None
@@ -237,10 +236,6 @@ def get_config(args=None):
     else:
         config.class_number = len(config.foreground_class_ids)
 
-    #TODO resize_shape can be replaced be input_shape currently
-    config.resize_shape = input_shape
-    #config.dataset_name = args.dataset_name.lower()
-
     if args.net_name in ['psp_edge','merge_seg','cross_merge','psp_hed']:
         config.with_edge = True
     else:
@@ -267,14 +262,14 @@ def load_config(config_file):
     return config
 
 def get_parser():
-    choices = ['edge', 'global', 'dict', 'fractal',
+    test_choices = ['edge', 'global', 'dict', 'fractal',
                'summary', 'naive', 'coarse',
                'convert','huawei','benchmark', 'cycle_lr',
-               'dist','lossless']
+               'dist','lossless','optimizer']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
-                        help="test for choices",
-                        choices=choices,
+                        help="task name(default: naive ==> train and validation)",
+                        choices=test_choices,
                         default='naive')
 
     parser.add_argument("--batch_size",
@@ -788,17 +783,62 @@ def get_sub_config(config,sub_task_name):
                             const: t(n+1)=t(n), 
                             linear: t(n+1)=t(n)+T, 
                             exponent: t(n+1)=2*t(n)""")
-    if sub_task_name == 'lossless':
+        parser.add_argument('--cycle_lr_mult',
+                            type=float,
+                            default=1.0,
+                            help="""
+                            the learning rate multiple number
+                            lr(n+1)=lr(n)*cycle_lr_mult
+                            """)           
+    elif sub_task_name == 'lossless':
         parser.add_argument('--duc_ratio',
                             type=int,
                             default=4,
                             help='output_shape =[duc_ratio*x for x in input_shape]')
+    elif sub_task_name == 'optimizer':
+        parser.add_argument('--rop_patience',
+                            type=int,
+                            default=10,
+                            help='the patience for scheduler poly_rop, rop(default:10)')
+        parser.add_argument('--rop_factor',
+                            type=float,
+                            default=0.1,
+                            help='the factor for scheduler poly_rop, rop(default:0.1)')
+        parser.add_argument('--rop_cooldown',
+                            type=int,
+                            default=0,
+                            help='the cooldown for scheduler poly_rop, rop(default:0)')
+        parser.add_argument('--poly_max_iter',
+                            type=int,
+                            default=50,
+                            help='the poly_max_iter for scheduler poly_rop(default:50)')
+        parser.add_argument('--poly_power',
+                            type=float,
+                            default=0.9,
+                            help='the poly_power for scheduler poly_rop(default:0.9)')
+        parser.add_argument('--cos_T_max',
+                            type=int,
+                            default=50,
+                            help='the T_max for scheduler cos_lr(default:50)')
     else:
         raise NotImplementedError
     
     #print(config.sub_config)
     args=parser.parse_args(config.sub_config.split())
-    return args
+    
+    print('*'*30+' sub config ' + '*'*30)
+    parser.format_help()
+    sort_keys=sorted(list(args.__dict__.keys()))
+    for key in sort_keys:
+        if hasattr(config,key):
+            print('{} = {} (default: {})'.format(key,args.__dict__[key],config[key]))
+            config[key]=args.__dict__[key]
+        else:
+            print('add sub config {} : {}'.format(key,args.__dict__[key]))
+            config[key]=args.__dict__[key]
+    
+    print('*'*30+' sub config ' + '*'*30)
+    return config
 
 def get_hyperparams(key,discrete=False):
     discrete_hyper_dict={

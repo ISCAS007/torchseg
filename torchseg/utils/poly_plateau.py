@@ -1,17 +1,18 @@
 from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
 
 class poly_rop(rop):
-    def __init__(self,poly_max_iter,poly_power,**args):
+    def __init__(self,poly_max_iter=50,poly_power=0.9,**args):
         super().__init__(**args)
         self.poly_or_rop='rop'
         self.poly_offset=0
-        self.poly_max_iter=50
-        self.poly_power=0.9
+        self.poly_max_iter=poly_max_iter
+        self.poly_power=poly_power
         
     def step(self,metrics,epoch=None):
         current = metrics
         if epoch is None:
-            epoch = self.last_epoch = self.last_epoch + 1
+            epoch = self.last_epoch + 1
+            
         self.last_epoch = epoch
         
         if self.poly_or_rop=='rop':

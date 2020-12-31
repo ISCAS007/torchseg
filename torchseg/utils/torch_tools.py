@@ -24,7 +24,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
 from tqdm import tqdm, trange
 import glob
 
-def get_loader(config):
+def get_loaders(config):
     if config.norm_ways is None:
         normalizations = None
     else:
@@ -56,7 +56,7 @@ def get_loader(config):
     val_loader = TD.DataLoader(
         dataset=val_dataset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         drop_last=False,
         num_workers=config.num_workers)
 
@@ -326,20 +326,62 @@ def get_optimizer(model, config):
 def get_scheduler(optimizer, config):
     scheduler = config.scheduler if hasattr(
         config, 'scheduler') else None
+    
+    if hasattr(config,'rop_patience'):
+        patience=config.rop_patience
+    else:
+        patience=10
+        
+    if hasattr(config,'rop_factor'):
+        factor=config.rop_factor
+    else:
+        factor=0.1
+        
+    if hasattr(config,'rop_cooldown'):
+        cooldown=config.rop_cooldown
+    else:
+        cooldown=0
+        
+    if hasattr(config,'poly_max_iter'):
+        poly_max_iter=config.poly_max_iter
+    else:
+        poly_max_iter=50
+        
+    if hasattr(config,'poly_power'):
+        poly_power=config.poly_power
+    else:
+        poly_power=0.9
+        
+    if hasattr(config,'cos_T_max'):
+        T_max=config.cos_T_max
+    else:
+        T_max=50
+        
     if scheduler == 'rop':
         # 'max' for acc and miou, 'min' for loss
-        scheduler = rop(optimizer, 'min',
+        scheduler = rop(optimizer=optimizer, 
+                        mode='min',
                         threshold=1e-4,
-                        patience=10, verbose=True,
-                        cooldown=0, min_lr=1e-4)
+                        patience=patience, 
+                        verbose=False,
+                        factor=factor,
+                        cooldown=cooldown,
+                        min_lr=1e-4)
     elif scheduler in ['poly_rop','pop']:
         # 'max' for acc and miou, 'min' for loss
-        scheduler = poly_rop(poly_max_iter=50, poly_power=0.9, optimizer = optimizer, mode= 'min',
-                                                               threshold=1e-4,
-                                                               patience=10, verbose=True,
-                                                               cooldown=0, min_lr=1e-4)
+        scheduler = poly_rop(poly_max_iter=poly_max_iter,
+                             poly_power=poly_power,
+                             optimizer = optimizer,
+                             mode= 'min',
+                             threshold=1e-4,
+                             patience=patience, 
+                             verbose=False,
+                             cooldown=cooldown,
+                             min_lr=1e-4)
     elif scheduler in ['cos','cos_lr']:
-        scheduler = cos_lr(optimizer=optimizer,T_max=50,eta_min=1e-4)
+        scheduler = cos_lr(optimizer=optimizer,
+                           T_max=T_max,
+                           eta_min=1e-4)
     else:
         assert scheduler is None
 
@@ -426,7 +468,7 @@ def keras_fit(model, train_loader=None, val_loader=None, config=None):
     best_iou = 0.0
     # create loader from config
     if train_loader is None and val_loader is None:
-        train_loader, val_loader = get_loader(config)
+        train_loader, val_loader = get_loaders(config)
 
     loaders = [train_loader, val_loader]
     loader_names = ['train', 'val']
@@ -807,8 +849,8 @@ def get_metric(running_metrics, metric_fn_dict, summary_all=False, prefix_note='
 
     metric_dict = {}
     score, class_iou = running_metrics.get_scores()
-    metric_dict['%s/acc' % prefix_note] = score['Overall Acc: \t']
-    metric_dict['%s/iou' % prefix_note] = score['Mean IoU : \t']
+    metric_dict['%s/acc' % prefix_note] = score['Overall Acc']
+    metric_dict['%s/iou' % prefix_note] = score['Mean IoU']
 
     class_iou_dict = {}
     for k, v in class_iou.items():
@@ -819,14 +861,14 @@ def get_metric(running_metrics, metric_fn_dict, summary_all=False, prefix_note='
             score, class_iou = metric_fn_dict[key].get_scores()
             if key in ['seg', 'edge']:
                 metric_dict[prefix_note+'_metric/'+key +
-                            '_acc'] = score['Overall Acc: \t']
+                            '_acc'] = score['Overall Acc']
                 metric_dict[prefix_note+'_metric/' +
-                            key+'_iou'] = score['Mean IoU : \t']
+                            key+'_iou'] = score['Mean IoU']
             else:
                 metric_dict[prefix_note+'_branch_metric/' +
-                            key+'_acc'] = score['Overall Acc: \t']
+                            key+'_acc'] = score['Overall Acc']
                 metric_dict[prefix_note+'_branch_metric/' +
-                            key+'_iou'] = score['Mean IoU : \t']
+                            key+'_iou'] = score['Mean IoU']
 
     return metric_dict, class_iou_dict
 

@@ -61,7 +61,7 @@ if __name__ == '__main__':
     for img_f in args.images:
         img=cv2.imread(img_f,cv2.IMREAD_COLOR)
         # for opencv, resize input is (w,h)
-        dsize=(config.resize_shape[1],config.resize_shape[0])
+        dsize=(config.input_shape[1],config.input_shape[0])
         img = cv2.resize(src=img, dsize=dsize, interpolation=cv2.INTER_LINEAR)
             
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

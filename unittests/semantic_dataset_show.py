@@ -23,7 +23,6 @@ def test_dataset_loader(dataset_name):
     config.dataset_name=dataset_name
     config.print_path=True
     config.input_shape=(224,224)
-    config.resize_shape=(224,224)
     config.ignore_index=255
     config.with_edge=False
     config.batch_size=2
