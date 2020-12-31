@@ -26,7 +26,7 @@ def test_dataset_loader(dataset_name):
     config.ignore_index=255
     config.with_edge=False
     config.batch_size=2
-    config=get_dataset_generalize_config(config,config.dataset_name)
+    config=get_dataset_generalize_config(config,dataset_name)
     
     config=get_default_augmentor_config(config)
     augmentations=Augmentations(config)
@@ -61,7 +61,7 @@ def test_dataset(dataset_name):
     config.max_crop_size=(1024,2048)
     config.aug_library='imgaug'
     
-    config=get_dataset_generalize_config(config,config.dataset_name)
+    config=get_dataset_generalize_config(config,dataset_name)
     
     config=get_default_augmentor_config(config)
     augmentations=Augmentations(config)

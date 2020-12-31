@@ -5,7 +5,7 @@ import sys
 
 if __name__ == '__main__':
     parser=argparse.ArgumentParser()
-    parser.add_argument('--good')
+    parser.add_argument('--good',nargs='*',choices=['a','b','c','okay'],default=['a'])
     parser.add_argument('--sub_config')
 
     if len(sys.argv)==1:

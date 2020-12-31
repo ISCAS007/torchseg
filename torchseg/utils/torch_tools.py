@@ -22,8 +22,35 @@ import torch.utils.data as TD
 from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
 from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
 from tqdm import tqdm, trange
+from easydict import EasyDict as edict
 import glob
 
+def get_merged_dataset(config,split,normalizations=None,augmentations=None):
+    """
+    load multiple dataset from config.dataset_names, which is a list/tuple
+    config project on config.dataset, which is a string
+    """
+    if not hasattr(config,'dataset_names'):
+        config.dataset_names=[config.dataset_name]
+        
+    assert isinstance(config.dataset_names,(list,tuple))
+    
+    dconfig=edict(config.copy())
+    datasets=[]
+    for dataset_name in config.dataset_names:
+        dconfig.dataset_name=dataset_name
+        dataset = dataset_generalize(dconfig,
+                                     split=split,
+                                     augmentations=augmentations if split=='train' else None,
+                                     normalizations=normalizations)
+        datasets.append(dataset)
+    
+    if len(datasets)==1:
+        return datasets[0]
+    else:
+        merged_dataset=TD.ConcatDataset(datasets)
+        return merged_dataset
+        
 def get_loaders(config):
     if config.norm_ways is None:
         normalizations = None
@@ -34,33 +61,21 @@ def get_loaders(config):
         augmentations = Augmentations(config)
     else:
         augmentations = None
-
-    # must change batch size here!!!
-    batch_size = config.batch_size
-
-    train_dataset = dataset_generalize(
-        config, split='train',
-        augmentations=augmentations,
-        normalizations=normalizations)
-    train_loader = TD.DataLoader(
-        dataset=train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        drop_last=True,
-        num_workers=config.num_workers)
-
-    val_dataset = dataset_generalize(config,
-                                     split='val',
-                                     augmentations=None,
-                                     normalizations=normalizations)
-    val_loader = TD.DataLoader(
-        dataset=val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        drop_last=False,
-        num_workers=config.num_workers)
-
-    return train_loader, val_loader
+    
+    loaders={}
+    for split in ['train','val']:
+        dataset = get_merged_dataset(config,split=split,
+                                    augmentations=augmentations if split=='train' else None,
+                                    normalizations=normalizations)
+        
+        loaders[split]=TD.DataLoader(
+                        dataset=dataset,
+                        batch_size=config.batch_size,
+                        shuffle=True if split=='train' else False,
+                        drop_last=True if split=='train' else False,
+                        num_workers=2*config.batch_size)
+        
+    return loaders['train'], loaders['val']
 
 
 def add_image(summary_writer, name, image, step):

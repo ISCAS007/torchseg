@@ -47,7 +47,12 @@ def get_dataset_generalize_config(config, dataset_name):
     if config is None:
         config=edict()
     
+    if isinstance(config.dataset_name,(list,tuple)):
+        if not hasattr(config,'dataset_names'):
+            config.dataset_names=config.dataset_name
+            
     config.dataset_name=dataset_name.lower()
+        
     cur_dir=os.path.dirname(__file__)
     config.txt_path=os.path.join(cur_dir,'txt')
     assert os.path.exists(config.txt_path),'txt path %s not exist!'%config.txt_path
@@ -169,7 +174,7 @@ class dataset_generalize(TD.Dataset):
         None.
 
         """
-        self.config = config
+        self.config = get_dataset_generalize_config(config,config.dataset_name)
         self.augmentations = augmentations
         self.bchw = bchw
         self.split = split
