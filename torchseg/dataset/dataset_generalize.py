@@ -42,6 +42,7 @@ from .labels_cityscapes import id2catId
 support_datasets = ['ADEChallengeData2016', 'VOC2012', 'Kitti2015',
                         'Cityscapes', 'Cityscapes_Fine', 'Cityscapes_Coarse', 
                         'ADE20K', 'HuaWei', 'Cityscapes_Category']
+support_datasets +=[d.lower() for d in support_datasets]
 
 def get_dataset_generalize_config(config, dataset_name):
     if config is None:
@@ -59,7 +60,7 @@ def get_dataset_generalize_config(config, dataset_name):
         
     assert dataset_name in support_datasets, 'unknown dataset %s, not in support dataset %s' % (
         dataset_name, str(support_datasets))
-    if dataset_name == 'ADEChallengeData2016':
+    if dataset_name in ['ADEChallengeData2016','adechallengedata2016']:
         # train + val, no test
         config.root_path = '/media/sdb/CVDataset/ObjectSegmentation/ADEChallengeData2016'
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
@@ -68,7 +69,7 @@ def get_dataset_generalize_config(config, dataset_name):
             config.root_path, 'annotations')
         config.foreground_class_ids = [i for i in range(1, 151)]
         config.ignore_index = 0
-    elif dataset_name == 'ADE20K':
+    elif dataset_name in ['ADE20K','ade20k']:
         assert False, 'the ADE20K dataset luck some of detail'
         # train + val
         config.root_path = '/media/sdb/CVDataset/ObjectSegmentation/ADE20K_2016_07_26/images'
@@ -77,7 +78,7 @@ def get_dataset_generalize_config(config, dataset_name):
         
 #        config.foreground_class_ids=[i for i in range(20)]
 #        config.ignore_index=255
-    elif dataset_name == 'VOC2012':
+    elif dataset_name in ['VOC2012','voc2012']:
         # train + val, no test
 #        config.root_path = '/media/sdb/CVDataset/VOC'
         config.root_path = os.path.expanduser('~/cvdataset/VOC')
@@ -93,7 +94,7 @@ def get_dataset_generalize_config(config, dataset_name):
                        2060925, 3381632, 4344951, 2283739, 2888641,
                        11995853, 1670340, 2254463, 3612229, 3984238, 2349235]
         config.ignore_index = 255
-    elif dataset_name in ['Cityscapes', 'Cityscapes_Fine']:
+    elif dataset_name in ['Cityscapes', 'cityscapes', 'Cityscapes_Fine', 'cityscapes_fine']:
         # train + val + test
         config.root_path = os.path.expanduser('~/cvdataset/Cityscapes')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
@@ -105,7 +106,7 @@ def get_dataset_generalize_config(config, dataset_name):
         names='road,sidewalk,building,wall,fence,pole,traffic light,traffic sign,vegetation,terrain,sky,person,rider,car,truck,bus,train,motorcycle,bicycle'
         config.class_names=names.split(',')
         config.ignore_index = 255
-    elif dataset_name == 'Cityscapes_Coarse':
+    elif dataset_name in ['Cityscapes_Coarse','cityscapes_coarse']:
         # train + val + train_extra
         config.root_path = os.path.expanduser('~/cvdataset/Cityscapes')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
@@ -113,7 +114,7 @@ def get_dataset_generalize_config(config, dataset_name):
         config.foreground_class_ids = [
             7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33]
         config.ignore_index = 255
-    elif dataset_name == 'Cityscapes_Category':
+    elif dataset_name in ['Cityscapes_Category','cityscapes_category']:
         # train + val + test
         config.root_path = os.path.expanduser('~/cvdataset/Cityscapes')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
@@ -125,7 +126,7 @@ def get_dataset_generalize_config(config, dataset_name):
         names='void,flat,human,vehicle,construction,object,nature,sky'
         config.class_names=names.split(',')
         config.ignore_index = 255
-    elif dataset_name == 'HuaWei':
+    elif dataset_name in ['HuaWei','huawei']:
         # train
         config.root_path = os.path.expanduser('~/cvdataset/huawei/segmentation')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
