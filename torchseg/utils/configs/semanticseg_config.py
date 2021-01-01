@@ -109,8 +109,6 @@ def get_default_config():
     config.learning_rate=1e-4
     config.log_dir=os.path.expanduser('~/tmp/logs/pytorch')
     config.loss_type='cross_entropy'
-    config.lr_momentum=0.9
-    config.lr_weight_decay=1e-4
     config.max_channel_number=256
     config.max_crop_size=None
     config.main_base_weight=1.0
@@ -301,16 +299,6 @@ def get_parser():
                         help="learning rate scheduler, None or rop, poly_rop, cos_lr",
                         choices=['rop','poly_rop','cos_lr'],
                         default=None)
-
-    parser.add_argument('--lr_weight_decay',
-                        help='weight decay for learning rate',
-                        type=float,
-                        default=1e-4)
-
-    parser.add_argument('--lr_momentum',
-                        help='moemntum for learning rate',
-                        type=float,
-                        default=0.9)
 
     parser.add_argument('--use_bn',
                         help='use batch norm or not',
@@ -826,6 +814,18 @@ def get_sub_config(config,sub_task_name):
                             type=int,
                             default=50,
                             help='the T_max for scheduler cos_lr(default:50)')
+        parser.add_argument('--sgd_nesterov',
+                            type=str2bool,
+                            default=False,
+                            help='nesterov for sgd with momentum(default:False)')
+        parser.add_argument('--lr_momentum',
+                            type=float,
+                            default=0.9,
+                            help='momentum for optimizer sgd(default:0.9)')
+        parser.add_argument('--lr_weight_decay',
+                            type=float,
+                            default=1e-4,
+                            help='weight decay for optimizer sgd(default:1e-4)')
     else:
         raise NotImplementedError
     

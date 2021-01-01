@@ -307,6 +307,7 @@ def get_optimizer(model, config):
         config, 'lr_weight_decay') else 0.0001
     lr_momentum = config.lr_momentum if hasattr(
         config, 'lr_momentum') else 0.9
+    nesterov = config.sgd_nesterov if hasattr(config,'sgd_nesterov') else False
 
     if hasattr(model, 'optimizer_params'):
         optimizer_params = model.optimizer_params
@@ -331,7 +332,8 @@ def get_optimizer(model, config):
             optimizer_params, lr=init_lr, weight_decay=lr_weight_decay)
     elif optimizer_str == 'sgd':
         optimizer = torch.optim.SGD(
-            optimizer_params, lr=init_lr, momentum=lr_momentum, weight_decay=lr_weight_decay)
+            optimizer_params, lr=init_lr, momentum=lr_momentum,
+            weight_decay=lr_weight_decay, nesterov=nesterov)
     else:
         assert False, 'unknown optimizer %s' % optimizer_str
 
