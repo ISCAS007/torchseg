@@ -130,7 +130,7 @@ def get_dataset_generalize_config(config, dataset_name):
         # train
         config.root_path = os.path.expanduser('~/cvdataset/huawei/segmentation')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
-        
+        config.counts=[100,10,100,100,10,100,100]
         config.txt_note = 'huawei'
         config.foreground_class_ids = [i for i in range(1,8)]
         names='void,flat,human,vehicle,construction,object,nature,sky'
