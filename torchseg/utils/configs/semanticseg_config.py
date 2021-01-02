@@ -26,6 +26,8 @@ from ...models.semanticseg.global_local_net import GlobalLocalNet
 from ...models.semanticseg.semanticseg_baseline import SemanticSegBaseline
 from ...utils.losses import loss_types
 import torch
+import segmentation_models_pytorch as smp
+import timm
 
 def convert_to_dilated_pool(module):
     dilation=3
@@ -407,11 +409,13 @@ def get_parser():
     res_nets=['resnet'+str(i) for i in [18,26,34,50,101,152]]
     resd_nets=[net+'d' for net in res_nets]
     seres_nets=['legacy_se'+net for net in res_nets]+['seresnet50']
+    smp_nets=smp.encoders.get_encoder_names()
+    timm_nets=timm.list_models()
     
     parser.add_argument("--backbone_name",
                         help="backbone name",
                         choices=['MobileNetV2','mobilenetv3_large_100']+
-                            vgg_nets+res_nets+resd_nets+seres_nets,
+                            vgg_nets+res_nets+resd_nets+seres_nets+smp_nets,
                         default='resnet50')
 
     # 2018/11/08 change default from False to True

@@ -48,7 +48,7 @@ def get_dataset_generalize_config(config, dataset_name):
     if config is None:
         config=edict()
     
-    if isinstance(config.dataset_name,(list,tuple)):
+    if hasattr(config,'dataset_name') and isinstance(config.dataset_name,(list,tuple)):
         if not hasattr(config,'dataset_names'):
             config.dataset_names=config.dataset_name
             
@@ -130,7 +130,7 @@ def get_dataset_generalize_config(config, dataset_name):
         # train
         config.root_path = os.path.expanduser('~/cvdataset/huawei/segmentation')
         assert os.path.exists(config.root_path),'dataset path %s not exist!'%config.root_path
-        config.counts=[100,10,100,100,10,100,100]
+        config.counts=[719803581, 10178368, 155740239, 495698797, 92958663, 984373213, 798056550]
         config.txt_note = 'huawei'
         config.foreground_class_ids = [i for i in range(1,8)]
         names='void,flat,human,vehicle,construction,object,nature,sky'

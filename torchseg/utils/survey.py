@@ -38,6 +38,22 @@ class dataset_survey():
         print(self.size_survey)
         print(self.class_survey)
         
+class dataset_class_count():
+    def __init__(self,class_number):
+        self.reset(class_number)
+        
+    def update(self,image):
+        for i in np.unique(image):
+            if i<self.class_number:
+                self.class_survey[i]+=np.count_nonzero(image==i)
+    
+    def summary(self):
+        return self.class_survey
+    
+    def reset(self,class_number):
+        self.class_number=class_number
+        self.class_survey=[0]*class_number
+        
 class dataset_mean():
     def __init__(self):
         self.reset()
