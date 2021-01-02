@@ -243,16 +243,21 @@ class dataset_generalize(TD.Dataset):
             else:
                 self.ignore_index = 0
 
-            print("Found %d image files, %d annotation files" %
-                  (len(self.image_files), len(self.annotation_files)))
+            print("%s %s: Found %d image files, %d annotation files" %
+                  (config.dataset_name, split, 
+                   len(self.image_files),
+                   len(self.annotation_files)))
+            
             assert len(self.image_files) == len(self.annotation_files)
 
             if hasattr(self.config,'dataset_use_part'):
                 if self.config.dataset_use_part > 0:
                     self.image_files=self.image_files[0:self.config.dataset_use_part]
                     self.annotation_files=self.annotation_files[0:self.config.dataset_use_part]
-                    print("use %d image files, %d annotation files" %
-                          (len(self.image_files), len(self.annotation_files)))
+                    print("%s(part) %s: use %d image files, %d annotation files" %
+                          (config.dataset_name,split,
+                           len(self.image_files),
+                           len(self.annotation_files)))
 
     @staticmethod
     def get_files_from_txt(txt_file, root_path):

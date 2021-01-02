@@ -298,8 +298,8 @@ def get_parser():
                         default='adam')
 
     parser.add_argument("--scheduler",
-                        help="learning rate scheduler, None or rop, poly_rop, cos_lr",
-                        choices=['rop','poly_rop','cos_lr'],
+                        help="learning rate scheduler, None or rop, poly_rop, cos_lr, poly",
+                        choices=['rop','poly_rop','cos_lr','poly','none'],
                         default=None)
 
     parser.add_argument('--use_bn',

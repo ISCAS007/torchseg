@@ -17,7 +17,7 @@ from .center_loss2d import CenterLoss
 from ..dataset.dataset_generalize import image_normalizations, dataset_generalize
 from .augmentor import Augmentations
 from .losses import get_loss_fn
-from .poly_plateau import poly_rop
+from .poly_plateau import poly_rop,poly_lr_scheduler
 import torch.utils.data as TD
 from torch.optim.lr_scheduler import CosineAnnealingLR as cos_lr
 from torch.optim.lr_scheduler import ReduceLROnPlateau as rop
@@ -176,11 +176,11 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
         tqdm_step = loader
 
     for i, (datas) in enumerate(tqdm_step):
-        if loader_name == 'train' and scheduler is None:
-            # work only for sgd and no other scheduler
-            poly_lr_scheduler(optimizer,
-                              iter=epoch*len(loader)+i,
-                              max_iter=config.n_epoch*len(loader))
+        if loader_name == 'train' and hasattr(config,'scheduler') and config.scheduler in ['poly']:
+            # init max_iter
+            scheduler.max_iter=config.n_epoch*len(loader)
+            # scheduler learning rate
+            scheduler.step()
 
         # support for w/o edge
         if len(datas) == 2:
@@ -273,29 +273,6 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                                                             prefix_note=loader_name)
     return outputs_dict, targets_dict, running_metrics, metric_fn_dict, losses_dict, loss_weight_dict
 
-
-def poly_lr_scheduler(optimizer, iter,
-                      max_iter=100, power=0.9):
-    """Polynomial decay of learning rate
-        :param init_lr is base learning rate
-        :param iter is a current iteration
-        :param lr_decay_iter how frequently decay occurs, default is 1
-        :param max_iter is number of maximum iterations
-        :param power is a polymomial power
-
-    """
-    if type(optimizer) != torch.optim.SGD:
-        return 0
-
-    if iter > max_iter:
-        return 0
-
-    scale = (1 - iter/(1.0+max_iter))**power
-    for i, p in enumerate(optimizer.param_groups):
-        optimizer.param_groups[i]['lr'] = optimizer.param_groups[i]['initial_lr'] * scale
-    return 0
-
-
 def get_optimizer(model, config):
     init_lr = config.learning_rate if hasattr(
         config, 'learning_rate') else 0.0001
@@ -371,8 +348,13 @@ def get_scheduler(optimizer, config):
         T_max=config.cos_T_max
     else:
         T_max=50
-        
-    if scheduler == 'rop':
+    
+    if scheduler == 'poly':
+        # need reset max_iter on training loop
+        scheduler = poly_lr_scheduler(optimizer=optimizer,
+                                      max_iter=0,
+                                      power=poly_power)
+    elif scheduler == 'rop':
         # 'max' for acc and miou, 'min' for loss
         scheduler = rop(optimizer=optimizer, 
                         mode='min',
