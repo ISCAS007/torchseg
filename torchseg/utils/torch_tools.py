@@ -250,14 +250,12 @@ def train_val(model, optimizer, scheduler, loss_fn_dict,
                 losses_dict[k] = [v.data.cpu().numpy()]
 
         if loader_name == 'train':
-            total_loss+=loss_dict['%s/total_loss' % loader_name]
+            total_loss=loss_dict['%s/total_loss' % loader_name]/config.accumulate
+            total_loss.backward()
             if (i+1) % config.accumulate == 0:
-                total_loss=total_loss/config.accumulate
-                total_loss.backward()
-                total_loss=0
-
                 optimizer.step()
                 optimizer.zero_grad()
+                
                 if config.center_loss is not None:
                     for param in center_loss_model.parameters():
                         param.grad.data *= (1. / config.center_loss_weight)
@@ -382,8 +380,7 @@ def get_scheduler(optimizer, config):
                         patience=patience, 
                         verbose=False,
                         factor=factor,
-                        cooldown=cooldown,
-                        min_lr=1e-4)
+                        cooldown=cooldown)
     elif scheduler in ['poly_rop','pop']:
         # 'max' for acc and miou, 'min' for loss
         scheduler = poly_rop(poly_max_iter=poly_max_iter,
@@ -393,12 +390,10 @@ def get_scheduler(optimizer, config):
                              threshold=1e-4,
                              patience=patience, 
                              verbose=False,
-                             cooldown=cooldown,
-                             min_lr=1e-4)
+                             cooldown=cooldown)
     elif scheduler in ['cos','cos_lr']:
         scheduler = cos_lr(optimizer=optimizer,
-                           T_max=T_max,
-                           eta_min=1e-4)
+                           T_max=T_max)
     else:
         assert scheduler is None
 
