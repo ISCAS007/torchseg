@@ -86,26 +86,35 @@ def get_diff(img1,img2,bg=0,out_of_roi=255):
     merge_image[:,:,2]=255*(img1==out_of_roi).astype(np.uint8)
     return diff,merge_image
 
-def show_images(images,titles=None,vmin=None,vmax=None,cmap=None):
+def show_images(images,titles=None,row=2,vmin=None,vmax=None,cmap=None):
     if len(images)==1:
         plt.imshow(images[0],vmin=vmin,vmax=vmax,cmap=cmap)
         if titles is None:
             plt.title("image")
         else:
             plt.title(titles[0])
+        plt.axis('off')
         plt.show()
+        
+        return plt
     else:
-        fig, axes = plt.subplots(2, (len(images)+1)//2, figsize=(7, 6), sharex=True, sharey=True)
+        fig, axes = plt.subplots(row, (len(images)+row-1)//row, figsize=(7, 6))
         ax = axes.ravel()
 
         for i in range(len(images)):
             ax[i].imshow(images[i],vmin=vmin,vmax=vmax,cmap=cmap)
+            ax[i].axis('off')
             if titles is None:
                 ax[i].set_title("image %d"%i)
             else:
                 ax[i].set_title(titles[i])
-
+        
+        for i in range(len(images),len(ax)):
+            ax[i].axis('off')
+        
         plt.show()
+        
+        return fig
 
 def show_tensor_list(images_tensor,title,normer=None,vmin=None,vmax=None,cmap=None):
     """

@@ -33,3 +33,19 @@ python models/motionseg.py evaluation xxx/xxx.txt
 modify utils/augmentor.py --> ImageAugmenter --> __init__ and augument_image
 modify dataset/segtrackv2_dataset.py --> motionseg_dataset --> __init__ and __getitem__
 ```
+
+## cdnet2014 
+background 0
+shadow 50
+out of roi 85
+unknown 170
+foreground 255
+```
+def convert_label(img):
+    labels=np.zeros_like(img)
+    labels[img==85]=255
+    labels[img==170]=255
+    labels[img==255]=1
+    labels=labels.astype(np.uint8)
+    return labels
+```

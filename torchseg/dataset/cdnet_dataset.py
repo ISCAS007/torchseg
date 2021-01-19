@@ -178,7 +178,7 @@ class cdnet_dataset(motionseg_dataset):
         def convert_label(img):
             labels=np.zeros_like(img)
             labels[img==85]=255
-            labels[img==170]=1
+            labels[img==170]=255
             labels[img==255]=1
             labels=labels.astype(np.uint8)
             return labels

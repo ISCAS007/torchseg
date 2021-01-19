@@ -263,15 +263,18 @@ class dataset_generalize(TD.Dataset):
     def get_files_from_txt(txt_file, root_path):
         with open(txt_file, 'r') as f:
             files = [i.strip() for i in f.readlines()]
+            # line format: image_filename + space + annotation_filename
             if ' ' in files[0]:
                 image_files = []
                 annotation_files = []
                 for line in files:
                     strs = line.split(' ')
+                    assert len(strs)==2
                     image_files.append(os.path.join(root_path, strs[0]))
                     annotation_files.append(os.path.join(root_path, strs[1]))
 
                 return image_files, annotation_files
+            # line format: image_filename
             else:
                 files = [os.path.join(root_path, file) for file in files]
                 return files

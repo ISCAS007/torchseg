@@ -8,6 +8,7 @@
 - 2019/11/27 add input_format for fbms dataset and panet2, so there are bugs for other dataset and network structure
 - 2019/12/16 add davis dataset
 - 2020/12/05 update to package version, mv source file to rootpath/torchseg
+- 2021/01/12 update cdnet gt2label() function, video category PTZ unknonw == out of roi
 
 # todo
 - [x] [pspnet](models/pspnet.py)
