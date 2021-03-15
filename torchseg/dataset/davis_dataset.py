@@ -11,7 +11,13 @@ from .segtrackv2_dataset import motionseg_dataset
 class davis_dataset(motionseg_dataset):
     split_set=['train','val','test-dev','test-challenge']
     split_with_gt_set=['train','val']
-    def __init__(self,config,split='train',normalizations=None,augmentations=None,task='unsupervised'):
+    def __init__(self,
+                 config,
+                 split='train',
+                 normalizations=None,
+                 augmentations=None,
+                 task='unsupervised',
+                 category=None):
         super().__init__(config,split,normalizations,augmentations)
         if split not in self.split_set:
             assert False,'unknown split {} for davis'.format(split)
@@ -40,20 +46,45 @@ class davis_dataset(motionseg_dataset):
             self.annotation_folder = 'Annotations'
 
         self.root_path=config.root_path
-        self.main_input_path_list=self.get_main_input_path_list(split)
-
-        print('%s dataset size %d'%(split,len(self.main_input_path_list)))
-        self.main_input_path_list.sort()
-        if self.split in ['train','val']:
-            n=len(self.main_input_path_list)
-            if n > self.config['use_part_number'] > 0:
-                gap=n//self.config['use_part_number']
-                self.main_input_path_list=self.main_input_path_list[::gap]
-                print('total dataset image %d, use %d'%(n,len(self.main_input_path_list)))
+        
+        if category is None:
+            self.main_input_path_list=self.get_main_input_path_list(split)
+            print('%s dataset size %d'%(split,len(self.main_input_path_list)))
+            self.main_input_path_list.sort()
+            if self.split in ['train','val']:
+                n=len(self.main_input_path_list)
+                if n > self.config['use_part_number'] > 0:
+                    gap=n//self.config['use_part_number']
+                    self.main_input_path_list=self.main_input_path_list[::gap]
+                    print('total dataset image %d, use %d'%(n,len(self.main_input_path_list)))
+        elif split=='train':
+            # use the first video to train 
+            self.main_input_path_list=[os.path.join(self.root_path,
+                                                    self.image_folder,  # 'JPEGImages'
+                                                    self.resolution,  # 480p
+                                                    category,
+                                                    '00000'+self.image_suffix)]*100
+            print('fine tune on {} {}'.format(category,self.main_input_path_list[0]))
+        else:
+            # use the total video to test
+            assert split=='val'
+            self.main_input_path_list=glob.glob(os.path.join(self.root_path,
+                                                             self.image_folder,  # 'JPEGImages'
+                                                             self.resolution,  # 480p
+                                                             category,
+                                                             '*'+self.image_suffix))
+            print('%s dataset size %d'%(split,len(self.main_input_path_list)))
 
     def __len__(self):
         return len(self.main_input_path_list)
-
+    
+    def inVideo(self,path,category):
+        path_info = self.path_parse(main_input_path)
+        if path_info.category==category:
+            return True
+        else:
+            return False
+        
     def get_neighbor_path(self, main_input_path, neighbor_type=None):
         path_info = self.path_parse(main_input_path)
         neighbor_root_path = os.path.join(path_info.root,

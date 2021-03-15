@@ -1,4 +1,8 @@
 # coding: utf-8
+"""
+usage: python notebooks/log_statistic.py --notes light001
+"""
+
 import os
 import argparse
 
