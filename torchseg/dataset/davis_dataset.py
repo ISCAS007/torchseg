@@ -46,7 +46,7 @@ class davis_dataset(motionseg_dataset):
             self.annotation_folder = 'Annotations'
 
         self.root_path=config.root_path
-        
+
         if category is None:
             self.main_input_path_list=self.get_main_input_path_list(split)
             print('%s dataset size %d'%(split,len(self.main_input_path_list)))
@@ -58,12 +58,12 @@ class davis_dataset(motionseg_dataset):
                     self.main_input_path_list=self.main_input_path_list[::gap]
                     print('total dataset image %d, use %d'%(n,len(self.main_input_path_list)))
         elif split=='train':
-            # use the first video to train 
+            # use the first video to train
             self.main_input_path_list=[os.path.join(self.root_path,
                                                     self.image_folder,  # 'JPEGImages'
                                                     self.resolution,  # 480p
                                                     category,
-                                                    '00000'+self.image_suffix)]*100
+                                                    '00000'+self.image_suffix)]*config.use_part_number
             print('fine tune on {} {}'.format(category,self.main_input_path_list[0]))
         else:
             # use the total video to test
@@ -77,14 +77,14 @@ class davis_dataset(motionseg_dataset):
 
     def __len__(self):
         return len(self.main_input_path_list)
-    
+
     def inVideo(self,path,category):
         path_info = self.path_parse(main_input_path)
         if path_info.category==category:
             return True
         else:
             return False
-        
+
     def get_neighbor_path(self, main_input_path, neighbor_type=None):
         path_info = self.path_parse(main_input_path)
         neighbor_root_path = os.path.join(path_info.root,

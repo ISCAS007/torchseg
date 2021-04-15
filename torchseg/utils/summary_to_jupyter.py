@@ -67,7 +67,7 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
         dump_dir=True,
         recent_log_number=100):
     dir_tags=[tags[1],'dir']
-            
+
     for idx,note in enumerate(notes):
         show_tags=[]
         show_tags=tags.copy()
@@ -103,14 +103,14 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                         warnings.warn('exception in task')
                         print(type(tasks[col][0]),col)
 
-            print('###',note,','.join(param_list))
+            print('### ',note,','.join(param_list))
             group_tags=param_list
         else:
             if idx<len(note_gtags):
                 group_tags=note_gtags[idx]
             else:
                 group_tags=[]
-        
+
         if note == 'recent':
             pass
         else:
@@ -126,18 +126,18 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                 warnings.warn('remove nan log')
                 print(os.path.dirname(dir))
                 os.system('rm -rf {}'.format(os.path.dirname(dir)))
-        
+
         if 'dataset' in group_tags:
             sort_tags=['dataset',tags[1]]+sort_tags
         elif 'dataset_name' in group_tags:
             sort_tags=['dataset_name',tags[1]]+sort_tags
         else:
             sort_tags=[tags[1]]+sort_tags
-        
+
         sort_tags=list(set(sort_tags))
         show_tags+=sort_tags
         show_tags=list(set(show_tags))
-            
+
         #print(tasks[show_tags].groupby(group_tags).max().to_string())
         if dump_group:
             if len(group_tags)==0:
@@ -149,8 +149,8 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
                 print('\n')
                 print(tabulate(tasks[[tags[1]]+group_tags].groupby(group_tags).agg([np.mean,np.std,np.max]),tablefmt='pipe',headers='keys'))
                 print('\n')
-        
-        
+
+
         if note=='recent':
             sort_tags=['log_time'] if sort_tags is None or len(sort_tags)==0 else sort_tags
             print(tabulate(tasks[show_tags].sort_values(sort_tags),tablefmt='pipe',headers='keys'))
@@ -158,9 +158,15 @@ def dump(tags=['train/fmeasure','val/fmeasure'],
             sort_tags=['note'] if sort_tags is None or len(sort_tags)==0 else sort_tags
             show_tags+=sort_tags
             show_tags=list(set(show_tags))
-                
+
             print(tabulate(tasks[show_tags].sort_values(sort_tags),tablefmt='pipe',headers='keys'))
         print('\n')
+
+        # print average result for experiment
+        print('### '+' '.join(tags))
+        print(tasks[tags].mean())
+        print('\n')
+
         if dump_dir:
             print(tabulate(tasks[dir_tags].sort_values(tags[1]),tablefmt='pipe',headers='keys'))
             print('\n')
